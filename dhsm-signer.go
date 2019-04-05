@@ -11,7 +11,7 @@ import (
 func main() {
   args := os.Args[1:]
   zonefile := "example.com"
-  pkcs11lib := "/usr/local/bin/pkcs11.so"
+  pkcs11lib := "/usr/local/lib/libpkcs11.so"
 
   if (len(args) > 2) {
     fmt.Println("Usage: " + os.Args[0] + " [zonefile] [pkcs11-lib]")
