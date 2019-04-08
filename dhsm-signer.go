@@ -14,7 +14,7 @@ func findObject(p *Ctx, session SessionHandle, label string) []ObjectHandle {
   if err := p.FindObjectsInit(session, template); err != nil {
     panic("FindObjectsInit")
   }
-  obj, _, err := p.FindObjects(session, 4)
+  obj, _, err := p.FindObjects(session, 1024)
   if err != nil {
     panic("FindObjects")
   }
