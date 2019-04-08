@@ -4,7 +4,7 @@ import (
   "fmt"
   "os"
   . "github.com/miekg/pkcs11"
-//  "github.com/miekg/dns"
+//  . "github.com/miekg/dns"
 )
 
 func findObject(p *Ctx, session SessionHandle, label string) []ObjectHandle {
@@ -46,6 +46,7 @@ func generateRSAKeyPair(p *Ctx, session SessionHandle, tokenLabel string, tokenP
     NewAttribute(CKA_CLASS, CKO_PUBLIC_KEY),
     NewAttribute(CKA_KEY_TYPE, CKK_RSA),
     NewAttribute(CKA_TOKEN, tokenPersistent),
+    NewAttribute(CKA_ENCRYPT, true),
     NewAttribute(CKA_VERIFY, true),
     NewAttribute(CKA_PUBLIC_EXPONENT, []byte{1, 0, 1}),
     NewAttribute(CKA_MODULUS_BITS, bits),
@@ -53,10 +54,13 @@ func generateRSAKeyPair(p *Ctx, session SessionHandle, tokenLabel string, tokenP
   }
   
   privateKeyTemplate := []*Attribute{
+    NewAttribute(CKA_CLASS, CKO_PRIVATE_KEY),
+    NewAttribute(CKA_KEY_TYPE, CKK_RSA),
     NewAttribute(CKA_TOKEN, tokenPersistent),
     NewAttribute(CKA_SIGN, true),
     NewAttribute(CKA_LABEL, tokenLabel),
     NewAttribute(CKA_SENSITIVE, true),
+    NewAttribute(CKA_PRIVATE, true),
     NewAttribute(CKA_EXTRACTABLE, true),
   }
 
@@ -117,13 +121,6 @@ func main() {
   }
   defer p.CloseSession(session)
 
-  /*
-  token_info, err := p.GetTokenInfo(slots[0])
-  if err != nil {
-    panic(err)
-  }
-  fmt.Printf("%+v\n",token_info) 
-*/
   err = p.Login(session, CKU_USER, "1234")
   if err != nil {
       panic(err)
@@ -131,7 +128,16 @@ func main() {
   defer p.Logout(session)
 
   fmt.Println("Creating keys...")
-  _,_ = generateRSAKeyPair(p,session,"ksk",true,1024)
+  pk,_ := generateRSAKeyPair(p,session,"ksk",true,1024)
+
+  _ = p.DigestInit(session, []*Mechanism{
+    NewMechanism(CKM_SHA_1, nil),
+    })
+  
+  template  :=  []*Attribute{NewAttribute(CKA_MODULUS,nil)}
+  attr, _ :=  p.GetAttributeValue(session,ObjectHandle(pk), template)
+  hash, _  := p.Digest(session,attr[0].Value)
+  fmt.Println(hash)
 
   fmt.Println("Keys created... deleting")
   objs := findObject(p,session,"ksk")
