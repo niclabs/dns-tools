@@ -17,36 +17,30 @@ func findObject(p *Ctx, session SessionHandle, template []*(Attribute)) []Object
   if err := p.FindObjectsFinal(session); err != nil {
     panic("FindObjectsFinal")
   }
+/*
   if len(obj) > 0 {
     fmt.Println("found!")
     for _,o :=  range obj {
-      att := []*(Attribute){
-        NewAttribute(CKA_CLASS, nil),
-        NewAttribute(CKA_LABEL, nil),
-        NewAttribute(CKA_KEY_TYPE, nil),
-      }
-      at,_ := p.GetAttributeValue(session,o,att)
-      for _,a := range at {
-        if (a.Type == 3) { fmt.Println(a.Type , string(a.Value)) 
-        } else { fmt.Println(a.Type , a.Value) }
-      }
-    fmt.Println()
+      fmt.Println("Object = ",o)
     }
+    fmt.Println()
   }
+*/
   return obj
 }
 
 func generateRSAKeyPair(p *Ctx, session SessionHandle, tokenLabel string, tokenPersistent bool, bits int) (ObjectHandle, ObjectHandle) {
 
-  currentTime := time.Now()
-  nextTear := currentTime.AddDate(1,0,0)
+  today := time.Now()
+  nextyear := today.AddDate(1,0,0)
 
-  
   publicKeyTemplate := []*Attribute{
     NewAttribute(CKA_CLASS, CKO_PUBLIC_KEY),
     NewAttribute(CKA_LABEL, "dHSM-signer"),
     NewAttribute(CKA_KEY_TYPE, CKK_RSA),
     NewAttribute(CKA_TOKEN, tokenPersistent),
+    NewAttribute(CKA_START_DATE, today),
+    NewAttribute(CKA_END_DATE, nextyear),
     NewAttribute(CKA_ENCRYPT, true),
     NewAttribute(CKA_VERIFY, true),
     NewAttribute(CKA_PUBLIC_EXPONENT, []byte{1, 0, 1}),
@@ -58,6 +52,8 @@ func generateRSAKeyPair(p *Ctx, session SessionHandle, tokenLabel string, tokenP
     NewAttribute(CKA_LABEL, "dHSM-signer"),
     NewAttribute(CKA_KEY_TYPE, CKK_RSA),
     NewAttribute(CKA_TOKEN, tokenPersistent),
+    NewAttribute(CKA_START_DATE, today),
+    NewAttribute(CKA_END_DATE, nextyear),
     NewAttribute(CKA_SIGN, true),
     NewAttribute(CKA_SENSITIVE, true),
     NewAttribute(CKA_PRIVATE, true),
@@ -73,16 +69,46 @@ func generateRSAKeyPair(p *Ctx, session SessionHandle, tokenLabel string, tokenP
   return pbk, pvk
 }
 
+func SearchValidKeys(p *Ctx, session SessionHandle) []ObjectHandle {
+
+  AllTemplate := []*Attribute{
+    NewAttribute(CKA_LABEL, "dHSM-signer"),
+  }
+  DateTemplate := []*Attribute{
+    NewAttribute(CKA_START_DATE, nil),
+    NewAttribute(CKA_END_DATE, nil),
+  }
+  objs := findObject(p,session,AllTemplate)
+
+  if len(objs) > 0 {
+    fmt.Println("Keys found... checking validity")
+    for _, o := range objs {
+      attr, err := p.GetAttributeValue(session,o,DateTemplate)
+      if err != nil {
+        fmt.Println("Attributes  failed", err)
+      } else {
+        for _, a := range attr {
+          fmt.Println(string(a.Value))
+        }
+      }
+    }
+  } else {
+    fmt.Println("Keys not found :-/")
+  }
+  return objs
+}
+
+
 func SearchAndDestroy(p *Ctx, session SessionHandle) {
   deleteTemplate := []*Attribute{
     NewAttribute(CKA_LABEL, "dHSM-signer"),
   }
-  objs := findObject(p,session,deleteTemplate)
+  objs2 := findObject(p,session,deleteTemplate)
   
-  if len(objs) > 0 {
+  if len(objs2) > 0 {
     fmt.Println("Keys found... deleting")
-    for i,_ := range objs {
-      if e := p.DestroyObject(session, objs[i]); e != nil {
+    for _,o := range objs2 {
+      if e := p.DestroyObject(session, o); e != nil {
         fmt.Println("Destroy Key failed", e)
       }
     }

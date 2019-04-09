@@ -20,9 +20,11 @@ func main() {
   fmt.Println("Signing...",zfile)
 
   generateRSAKeyPair(p,session,"ksk",true,1024)
+  defer SearchAndDestroy(p,session)
 
   fmt.Println("key generated")
 
-  SearchAndDestroy(p,session)
+  _ = SearchValidKeys(p,session)
+
 }
 
