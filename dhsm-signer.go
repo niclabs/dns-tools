@@ -2,15 +2,11 @@ package main
 
 import (
   "fmt"
-  "os"
+  "time"
   . "github.com/miekg/pkcs11"
-//  . "github.com/miekg/dns"
 )
 
-func findObject(p *Ctx, session SessionHandle, label string) []ObjectHandle {
-  template := []*(Attribute){
-    NewAttribute(CKA_LABEL, label),
-  }
+func findObject(p *Ctx, session SessionHandle, template []*(Attribute)) []ObjectHandle {
   if err := p.FindObjectsInit(session, template); err != nil {
     panic("FindObjectsInit")
   }
@@ -25,9 +21,9 @@ func findObject(p *Ctx, session SessionHandle, label string) []ObjectHandle {
     fmt.Println("found!")
     for _,o :=  range obj {
       att := []*(Attribute){
-        NewAttribute(CKA_CLASS, label),
-        NewAttribute(CKA_LABEL, label),
-        NewAttribute(CKA_KEY_TYPE, label),
+        NewAttribute(CKA_CLASS, nil),
+        NewAttribute(CKA_LABEL, nil),
+        NewAttribute(CKA_KEY_TYPE, nil),
       }
       at,_ := p.GetAttributeValue(session,o,att)
       for _,a := range at {
@@ -42,23 +38,27 @@ func findObject(p *Ctx, session SessionHandle, label string) []ObjectHandle {
 
 func generateRSAKeyPair(p *Ctx, session SessionHandle, tokenLabel string, tokenPersistent bool, bits int) (ObjectHandle, ObjectHandle) {
 
+  currentTime := time.Now()
+  nextTear := currentTime.AddDate(1,0,0)
+
+  
   publicKeyTemplate := []*Attribute{
     NewAttribute(CKA_CLASS, CKO_PUBLIC_KEY),
+    NewAttribute(CKA_LABEL, "dHSM-signer"),
     NewAttribute(CKA_KEY_TYPE, CKK_RSA),
     NewAttribute(CKA_TOKEN, tokenPersistent),
     NewAttribute(CKA_ENCRYPT, true),
     NewAttribute(CKA_VERIFY, true),
     NewAttribute(CKA_PUBLIC_EXPONENT, []byte{1, 0, 1}),
     NewAttribute(CKA_MODULUS_BITS, bits),
-    NewAttribute(CKA_LABEL, tokenLabel),
   }
   
   privateKeyTemplate := []*Attribute{
     NewAttribute(CKA_CLASS, CKO_PRIVATE_KEY),
+    NewAttribute(CKA_LABEL, "dHSM-signer"),
     NewAttribute(CKA_KEY_TYPE, CKK_RSA),
     NewAttribute(CKA_TOKEN, tokenPersistent),
     NewAttribute(CKA_SIGN, true),
-    NewAttribute(CKA_LABEL, tokenLabel),
     NewAttribute(CKA_SENSITIVE, true),
     NewAttribute(CKA_PRIVATE, true),
     NewAttribute(CKA_EXTRACTABLE, true),
@@ -73,78 +73,22 @@ func generateRSAKeyPair(p *Ctx, session SessionHandle, tokenLabel string, tokenP
   return pbk, pvk
 }
 
-func main() {
-  args := os.Args[1:]
-  zonefile := "example.com"
-  pkcs11lib := "/usr/local/lib/libpkcs11.so"
-
-  if (len(args) > 2) {
-    fmt.Println("Usage: " + os.Args[0] + " [zonefile] [pkcs11-lib]")
-    return
-    } else if (len(args) < 2) {
-    zonefile = args[0]
-  }  else {
-    zonefile = args[0]
-    pkcs11lib = args[1]
+func SearchAndDestroy(p *Ctx, session SessionHandle) {
+  deleteTemplate := []*Attribute{
+    NewAttribute(CKA_LABEL, "dHSM-signer"),
   }
-  fmt.Println(zonefile + " " + pkcs11lib)
-
-  p := New(pkcs11lib)
-
-  err := p.Initialize()
-  if err != nil {
-    panic(err)
-    fmt.Println("Has the .db RW permission?")
-  }
-  defer p.Destroy()
-  defer p.Finalize()
-  slots, err := p.GetSlotList(true)
-  if err != nil {
-      panic(err)
-  }
-
-  info, err := p.GetInfo()
-  if err != nil {
-    panic("GetInfo error")
-  }
-  fmt.Println("HSM Info: \n", info)
- 
-  for s := range slots {
-    fmt.Println("Slot",s,"info:")
-    slot_info, _ := p.GetSlotInfo(uint(s))
-    fmt.Printf("%+v\n",slot_info)
-    fmt.Println()
-  }
-  session, err := p.OpenSession(slots[0], CKF_SERIAL_SESSION|CKF_RW_SESSION)
-  if err != nil {
-    panic(err)
-  }
-  defer p.CloseSession(session)
-
-  err = p.Login(session, CKU_USER, "1234")
-  if err != nil {
-      panic(err)
-  }
-  defer p.Logout(session)
-
-  fmt.Println("Creating keys...")
-  pk,_ := generateRSAKeyPair(p,session,"ksk",true,1024)
-
-  _ = p.DigestInit(session, []*Mechanism{
-    NewMechanism(CKM_SHA_1, nil),
-    })
+  objs := findObject(p,session,deleteTemplate)
   
-  template  :=  []*Attribute{NewAttribute(CKA_MODULUS,nil)}
-  attr, _ :=  p.GetAttributeValue(session,ObjectHandle(pk), template)
-  hash, _  := p.Digest(session,attr[0].Value)
-  fmt.Println(hash)
-
-  fmt.Println("Keys created... deleting")
-  objs := findObject(p,session,"ksk")
-  for i,_ := range objs {
-    if e := p.DestroyObject(session, objs[i]); e != nil {
-      fmt.Println("Destroy Key failed", e)
+  if len(objs) > 0 {
+    fmt.Println("Keys found... deleting")
+    for i,_ := range objs {
+      if e := p.DestroyObject(session, objs[i]); e != nil {
+        fmt.Println("Destroy Key failed", e)
+      }
     }
+  } else {
+    fmt.Println("Keys not found :-/")
   }
 }
+
 
