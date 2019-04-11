@@ -8,19 +8,19 @@ import (
 
 func main() {
 
-  p, session, zone, zfile, reuse_keys := init_dHSMsigner()
+  p, session, zone, zfile, reset_keys := init_dHSMsigner()
   defer p.Destroy()
   defer p.Finalize()
   defer p.CloseSession(session)
   defer p.Logout(session)
 
-  if (reuse_keys) { 
-    fmt.Println("Check if there are available keys for ...",zone)
-  }
-  fmt.Println("Signing...",zfile)
+  fmt.Println("Signing...",zfile,"for",zone,"with reset keys =",reset_keys)
+
+  ReadAndParseZone(zfile)
+  return;
 
   generateRSAKeyPair(p,session,"ksk",true,1024)
-  defer SearchAndDestroy(p,session)
+  defer DestroyAllKeys(p,session)
 
   fmt.Println("key generated")
 

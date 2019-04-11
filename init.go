@@ -12,7 +12,7 @@ func init_dHSMsigner() (*Ctx, SessionHandle, string, string, bool) {
   zone := flag.String("zone","","zone name")
   file := flag.String("file","","full path to zone file to be signed")
   p11lib :=  flag.String("p11lib","","full path to pkcs11 lib file")
-  rk := flag.Bool("renew_keys",false,"create a new set of keys for signing")
+  rk := flag.Bool("reset_keys",false,"create a new set of keys for signing")
 
   flag.Parse()
 
