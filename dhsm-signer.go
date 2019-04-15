@@ -74,6 +74,23 @@ func generateRSAKeyPair(p *Ctx, session SessionHandle, tokenLabel string, tokenP
   return pbk, pvk
 }
 
+func SignRR(p *Ctx, session SessionHandle, rr []byte, sk ObjectHandle) []byte {
+
+  m := []*Mechanism{NewMechanism(CKM_SHA256_RSA_PKCS, nil)}
+  e:= p.SignInit(session, m, sk)
+  if e != nil {
+    fmt.Println("failed to init sign:", e)
+    return nil
+  } 
+ 
+  s, e := p.Sign(session, rr)
+  if e != nil {
+    fmt.Println("failed to sign:", e)
+    return nil
+  } 
+  return s
+}
+
 func SearchValidKeys(p *Ctx, session SessionHandle) []ObjectHandle {
 
   AllTemplate := []*Attribute{

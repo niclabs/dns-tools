@@ -2,9 +2,24 @@ package main
 
 import (
   "fmt"
-//  . "github.com/miekg/pkcs11"
-//  . "github.com/miekg/dns"
+//.  . "github.com/miekg/pkcs11"
+  . "github.com/miekg/dns"
+  "encoding/gob"
+  "bytes"
 )
+
+// GetBytes direct from stackoverflow
+
+func GetBytes(key interface{}) []byte {
+  
+  var buf bytes.Buffer
+  enc := gob.NewEncoder(&buf)
+  err := enc.Encode(key)
+  if err != nil {
+    return nil
+  }
+  return buf.Bytes()
+}
 
 func main() {
 
@@ -16,15 +31,31 @@ func main() {
 
   fmt.Println("Signing...",zfile,"for",zone,"with reset keys =",reset_keys)
 
-  ReadAndParseZone(zfile)
-  return;
+  rrmap := ReadAndParseZone(zfile)
 
-  generateRSAKeyPair(p,session,"ksk",true,1024)
-  defer DestroyAllKeys(p,session)
-
+/*
+  fmt.Println("generating ksk")
+  pksk, _ := generateRSAKeyPair(p,session,"ksk",true,2048)
+*/
+  fmt.Println("generating zsk")
+  _, szsk := generateRSAKeyPair(p,session,"zsk",true,1024)
   fmt.Println("key generated")
 
+  s := SignRR(p, session, GetBytes(rrmap[TypeA]), szsk)
+  if s == nil {
+    fmt.Println("SignRR failed")
+    } 
+  fmt.Println("signature:", rrmap[TypeA],s)
+
+  defer DestroyAllKeys(p,session)
+
+
+/*
   _ = SearchValidKeys(p,session)
+  fmt.Println(pksk,pzsk)
+*/
+
+
 
 }
 
