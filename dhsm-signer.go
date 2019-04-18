@@ -4,6 +4,9 @@ import (
   "fmt"
   "time"
   . "github.com/miekg/pkcs11"
+  "crypto/rsa"
+  "crypto/x509"
+  "math/big"
 )
 
 func removeDuplicates(objs []ObjectHandle) []ObjectHandle {
@@ -45,7 +48,6 @@ func generateRSAKeyPair(p *Ctx, session SessionHandle, tokenLabel string, tokenP
     NewAttribute(CKA_TOKEN, tokenPersistent),
     NewAttribute(CKA_START_DATE, today),
     NewAttribute(CKA_END_DATE, nextyear),
-    NewAttribute(CKA_ENCRYPT, true),
     NewAttribute(CKA_VERIFY, true),
     NewAttribute(CKA_PUBLIC_EXPONENT, []byte{1, 0, 1}),
     NewAttribute(CKA_MODULUS_BITS, bits),
@@ -73,6 +75,31 @@ func generateRSAKeyPair(p *Ctx, session SessionHandle, tokenLabel string, tokenP
   }
   return pbk, pvk
 }
+
+
+// return the public key in ASN.1 DER form
+
+func GetKeyBytes(p *Ctx, session SessionHandle,o ObjectHandle) []byte {
+  pk := rsa.PublicKey{N: big.NewInt(0), E: 0}
+  PKTemplate := []*Attribute{
+    NewAttribute(CKA_MODULUS,nil),
+    NewAttribute(CKA_PUBLIC_EXPONENT,nil),
+    }
+  attr, err := p.GetAttributeValue(session,o,PKTemplate)
+  if err != nil {
+    fmt.Println("Attributes  failed", err)
+    return nil
+  } else {
+    pk.N.SetBytes(attr[0].Value)
+    e := big.NewInt(0)
+    e.SetBytes(attr[1].Value)
+    pk.E = int(e.Int64())
+  }
+  return x509.MarshalPKCS1PublicKey(&pk)
+}
+
+
+// Sign an RR set
 
 func SignRR(p *Ctx, session SessionHandle, rr []byte, sk ObjectHandle) []byte {
 

@@ -2,9 +2,8 @@ package main
 
 import (
   "fmt"
-//.  . "github.com/miekg/pkcs11"
-  . "github.com/miekg/dns"
   "encoding/gob"
+  b64 "encoding/base64"
   "bytes"
 )
 
@@ -29,26 +28,50 @@ func main() {
   defer p.CloseSession(session)
   defer p.Logout(session)
 
+  if zone[len(zone)-1] != '.' { zone = zone + "."}
+
   fmt.Println("Signing...",zfile,"for",zone,"with reset keys =",reset_keys)
 
-  rrmap := ReadAndParseZone(zfile)
+  rrmap, minTTL := ReadAndParseZone(zfile)
 
-/*
   fmt.Println("generating ksk")
   pksk, _ := generateRSAKeyPair(p,session,"ksk",true,2048)
-*/
+  dnskeytype, ksk := CreateNewDNSKEY(
+             zone,
+             257,
+             8,  // RSASHA hardcoded, because I also like to live dangerously
+             minTTL, // SOA -> minimum TTL
+             b64.StdEncoding.EncodeToString(GetKeyBytes(p,session,pksk)),
+           )
+  rrmap[dnskeytype] = append(rrmap[dnskeytype],ksk)
+
+
   fmt.Println("generating zsk")
-  _, szsk := generateRSAKeyPair(p,session,"zsk",true,1024)
-  fmt.Println("key generated")
+  pzsk, szsk := generateRSAKeyPair(p,session,"zsk",true,1024)
+  dnskeytype, zsk := CreateNewDNSKEY(
+             zone,
+             256,
+             8, 
+             minTTL, 
+             b64.StdEncoding.EncodeToString(GetKeyBytes(p,session,pzsk)),
+           )
+  rrmap[dnskeytype] = append(rrmap[dnskeytype],zsk)
 
-  s := SignRR(p, session, GetBytes(rrmap[TypeA]), szsk)
-  if s == nil {
-    fmt.Println("SignRR failed")
-    } 
-  fmt.Println("signature:", rrmap[TypeA],s)
-
+  fmt.Println("keys generated")
   defer DestroyAllKeys(p,session)
 
+  fmt.Println("Start signing")
+
+  for k,v := range rrmap {
+    sig := SignRR(p, session, GetBytes(v), szsk)
+    if sig == nil { panic ("Error SignRR") }
+
+    rrmap[46] = append(rrmap[46],CreateNewRRSIG(zone, k, v, zsk,
+                   b64.StdEncoding.EncodeToString(sig)))
+  }
+
+
+  fmt.Println(rrmap)
 
 /*
   _ = SearchValidKeys(p,session)
