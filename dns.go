@@ -25,7 +25,6 @@ func ReadAndParseZone(filezone string) (map[uint16][]RR, uint32) {
     if (rr.Header().Rrtype == TypeSOA) { 
       var soa *SOA
       soa = rr.(*SOA)
-      fmt.Println(soa)
       minTTL = soa.Minttl 
       }
     }
@@ -51,7 +50,9 @@ func CreateNewRRSIG(zone string, t uint16, rrs []RR, key RR, sig string) RR {
   k := key.(*DNSKEY)
 
   rrsig := &RRSIG { Algorithm : k.Algorithm}
-  rrsig.Hdr = RR_Header { Name:zone, Rrtype: TypeRRSIG, Class: ClassINET}
+  rrsig.Hdr = RR_Header { Name: rrs[0].Header().Name, 
+                          Rrtype: TypeRRSIG, 
+                          Class: ClassINET}
   rrsig.Hdr.Ttl = k.Hdr.Ttl
   rrsig.TypeCovered = t
   rrsig.SignerName = zone

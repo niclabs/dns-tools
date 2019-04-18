@@ -35,16 +35,7 @@ func main() {
   rrmap, minTTL := ReadAndParseZone(zfile)
 
   fmt.Println("generating ksk")
-  pksk, _ := generateRSAKeyPair(p,session,"ksk",true,2048)
-  dnskeytype, ksk := CreateNewDNSKEY(
-             zone,
-             257,
-             8,  // RSASHA hardcoded, because I also like to live dangerously
-             minTTL, // SOA -> minimum TTL
-             b64.StdEncoding.EncodeToString(GetKeyBytes(p,session,pksk)),
-           )
-  rrmap[dnskeytype] = append(rrmap[dnskeytype],ksk)
-
+  pksk, sksk := generateRSAKeyPair(p,session,"ksk",true,2048)
 
   fmt.Println("generating zsk")
   pzsk, szsk := generateRSAKeyPair(p,session,"zsk",true,1024)
@@ -55,7 +46,6 @@ func main() {
              minTTL, 
              b64.StdEncoding.EncodeToString(GetKeyBytes(p,session,pzsk)),
            )
-  rrmap[dnskeytype] = append(rrmap[dnskeytype],zsk)
 
   fmt.Println("keys generated")
   defer DestroyAllKeys(p,session)
@@ -70,9 +60,29 @@ func main() {
                    b64.StdEncoding.EncodeToString(sig)))
   }
 
+  rrmap[dnskeytype] = append(rrmap[dnskeytype],zsk)
+  dnskeytype, ksk := CreateNewDNSKEY(
+             zone,
+             257,
+             8,  // RSASHA hardcoded, because I also like to live dangerously
+             minTTL, // SOA -> minimum TTL
+             b64.StdEncoding.EncodeToString(GetKeyBytes(p,session,pksk)),
+           )
+  rrmap[dnskeytype] = append(rrmap[dnskeytype],ksk)
 
-  fmt.Println(rrmap)
+  sigzsk := SignRR(p,session, GetBytes(zsk), sksk)
+  rrmap[46] = append(rrmap[46],
+                     CreateNewRRSIG(zone,
+                       dnskeytype,
+                       rrmap[dnskeytype],
+                       ksk,
+                       b64.StdEncoding.EncodeToString(sigzsk)))
 
+  for _, rrs := range rrmap {
+    for  _, rr :=  range rrs {
+      fmt.Println(rr)
+    }
+  }
 /*
   _ = SearchValidKeys(p,session)
   fmt.Println(pksk,pzsk)
