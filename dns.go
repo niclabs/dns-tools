@@ -5,11 +5,41 @@ import (
   "io/ioutil"
   . "github.com/miekg/dns"
   "strings"
+  "sort"
   "time"
 )
 
+type rrArray []RR
+
+func (a rrArray) Len() int{
+
+  return len(a)
+}
+
+func (a rrArray) Swap(i,j int) {
+
+  a[i],a[j] = a[j],a[i]
+}
+
+func (a rrArray) Less(i,j int) bool {
+
+  si := strings.Split(strings.ToLower(a[i].Header().Name),".")
+  sj := strings.Split(strings.ToLower(a[j].Header().Name),".")
+
+  if (len(si) < len (sj)  || len(si) > len (sj)) {
+    return len(si) < len (sj)
+  }
+
+  // Equal lenght, check from left to right omiting .[nothing]
+
+  for k:= len(si)-2; k >= 0; k-- {
+    if (si[k] < sj[k]) { return true } else if (si[k] > sj[k]) { return false}
+  }
+  return a[i].Header().Rrtype < a[j].Header().Rrtype
+}
+
 func ReadAndParseZone(filezone string) (map[uint16][]RR, uint32) {
-  
+
   b, err := ioutil.ReadFile(filezone)
   if err != nil {
     panic ("Error, reading zone file")
@@ -33,6 +63,9 @@ func ReadAndParseZone(filezone string) (map[uint16][]RR, uint32) {
     fmt.Println("Error parsing zone",err)
     return nil,0
   }
+  for i := range rrs {
+    sort.Sort(rrArray(rrs[i]))
+  }
   return rrs, uint32(minTTL)
 }
 
@@ -55,7 +88,7 @@ func CreateNewRRSIG(zone string, t uint16, rrs []RR, key RR, sig string) RR {
                           Class: ClassINET}
   rrsig.Hdr.Ttl = k.Hdr.Ttl
   rrsig.TypeCovered = t
-  rrsig.SignerName = zone
+  rrsig.SignerName = strings.ToLower(zone)
   rrsig.Labels = uint8(len(rrs))
   rrsig.Signature = sig
   rrsig.KeyTag = k.KeyTag()
@@ -65,3 +98,18 @@ func CreateNewRRSIG(zone string, t uint16, rrs []RR, key RR, sig string) RR {
   return rrsig
 }
 
+func PrintZone(rrmap map[uint16][]RR) {
+
+  var r []RR
+  for _, rrs := range rrmap {
+    for  _, rr :=  range rrs {
+      r = append(r,rr)
+    }
+  }
+
+  sort.Sort(rrArray(r))
+
+  for _, rr := range r {
+    fmt.Println(rr)
+  }
+}

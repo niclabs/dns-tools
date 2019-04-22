@@ -78,11 +78,8 @@ func main() {
                        ksk,
                        b64.StdEncoding.EncodeToString(sigzsk)))
 
-  for _, rrs := range rrmap {
-    for  _, rr :=  range rrs {
-      fmt.Println(rr)
-    }
-  }
+  PrintZone (rrmap)
+
 /*
   _ = SearchValidKeys(p,session)
   fmt.Println(pksk,pzsk)
