@@ -38,7 +38,7 @@ func (a rrArray) Less(i,j int) bool {
   return a[i].Header().Rrtype < a[j].Header().Rrtype
 }
 
-func ReadAndParseZone(filezone string) (map[uint16][]RR, uint32) {
+func ReadAndParseZone(filezone string) ([]RR, uint32) {
 
   b, err := ioutil.ReadFile(filezone)
   if err != nil {
@@ -46,12 +46,18 @@ func ReadAndParseZone(filezone string) (map[uint16][]RR, uint32) {
     }
 
   minTTL := uint32(3600)
- 
+
   zone := string(b)
-  rrs := map[uint16][]RR{}
+  rrs := []RR{}
+
   z:= NewZoneParser(strings.NewReader(zone), "", "")
+  if err := z.Err(); err != nil {
+    fmt.Println("Error parsing zone",err)
+    return nil,0
+  }
+
   for rr, ok := z.Next(); ok; rr, ok = z.Next() {
-    rrs[rr.Header().Rrtype] = append(rrs[rr.Header().Rrtype],rr)
+    rrs = append(rrs,rr)
     if (rr.Header().Rrtype == TypeSOA) { 
       var soa *SOA
       soa = rr.(*SOA)
@@ -59,13 +65,7 @@ func ReadAndParseZone(filezone string) (map[uint16][]RR, uint32) {
       }
     }
 
-  if err := z.Err(); err != nil {
-    fmt.Println("Error parsing zone",err)
-    return nil,0
-  }
-  for i := range rrs {
-    sort.Sort(rrArray(rrs[i]))
-  }
+  sort.Sort(rrArray(rrs))
   return rrs, uint32(minTTL)
 }
 
@@ -98,18 +98,96 @@ func CreateNewRRSIG(zone string, t uint16, rrs []RR, key RR, sig string) RR {
   return rrsig
 }
 
-func PrintZone(rrmap map[uint16][]RR) {
-
-  var r []RR
-  for _, rrs := range rrmap {
-    for  _, rr :=  range rrs {
-      r = append(r,rr)
-    }
-  }
-
-  sort.Sort(rrArray(r))
+func PrintZone(r []RR) {
 
   for _, rr := range r {
     fmt.Println(rr)
   }
 }
+
+func AddNSECRecords(rrs []RR) []RR {
+
+  typemap := make([]uint16,0)
+  name := rrs[0].Header().Name
+  typemap = append(typemap,rrs[0].Header().Rrtype)
+  l := len(rrs)
+  
+  for i:=1; i < l; i++ {
+    if rrs[i].Header().Name == name {
+      typemap = append(typemap,rrs[i].Header().Rrtype)
+    } else {
+      typemap = append(typemap,TypeNSEC)
+      nsec := &NSEC { }
+      nsec.Hdr.Name = name
+      nsec.Hdr.Rrtype = TypeNSEC
+      nsec.Hdr.Class = ClassINET
+      nsec.Hdr.Ttl = rrs[i-1].Header().Ttl
+      nsec.NextDomain = rrs[i].Header().Name
+      nsec.TypeBitMap = typemap
+      rrs = append(rrs,nsec)
+      // reset all
+      typemap = make([]uint16,0)
+      name = rrs[i].Header().Name
+      typemap = append(typemap,rrs[i].Header().Rrtype)
+    }
+  }
+  // last record
+  typemap = append(typemap,TypeNSEC)
+  nsec := &NSEC { }
+  nsec.Hdr.Name = name
+  nsec.Hdr.Rrtype = TypeNSEC
+  nsec.Hdr.Class = ClassINET
+  nsec.Hdr.Ttl = rrs[len(rrs)-1].Header().Ttl
+  nsec.NextDomain = rrs[0].Header().Name
+  nsec.TypeBitMap = typemap
+  rrs = append(rrs,nsec)
+
+  sort.Sort(rrArray(rrs))
+  return rrs
+}
+
+// Code "borrowed" from https://github.com/miekg/dns/blob/master/dnssec.go
+
+func (rr *RRSIG) BytesToSign(rrset []RR) []byte {
+  if rr.KeyTag == 0 || len(rr.SignerName) == 0 || rr.Algorithm == 0 {
+    return nil
+    }
+
+  h0 := rrset[0].Header()
+	rr.Hdr.Rrtype = TypeRRSIG
+	rr.Hdr.Name = h0.Name
+	rr.Hdr.Class = h0.Class
+	if rr.OrigTtl == 0 { // If set don't override
+		rr.OrigTtl = h0.Ttl
+	}
+	rr.TypeCovered = h0.Rrtype
+	rr.Labels = uint8(CountLabel(h0.Name))
+
+	if strings.HasPrefix(h0.Name, "*") {
+		rr.Labels-- // wildcard, remove from label count
+	}
+
+	sigwire := new(rrsigWireFmt)
+	sigwire.TypeCovered = rr.TypeCovered
+	sigwire.Algorithm = rr.Algorithm
+	sigwire.Labels = rr.Labels
+	sigwire.OrigTtl = rr.OrigTtl
+	sigwire.Expiration = rr.Expiration
+	sigwire.Inception = rr.Inception
+	sigwire.KeyTag = rr.KeyTag
+	// For signing, lowercase this name
+	sigwire.SignerName = strings.ToLower(rr.SignerName)
+
+	// Create the desired binary blob
+	signdata := make([]byte, DefaultMsgSize)
+	n, err := packSigWire(sigwire, signdata)
+	if err != nil {
+		return err
+	}
+	signdata = signdata[:n]
+	wire, err := rawSignatureData(rrset, rr)
+
+        return append(signdata, wire...)
+}
+
+

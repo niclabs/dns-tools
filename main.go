@@ -3,7 +3,7 @@ package main
 import (
   "fmt"
   "encoding/gob"
-  b64 "encoding/base64"
+//  b64 "encoding/base64"
   "bytes"
 )
 
@@ -32,7 +32,10 @@ func main() {
 
   fmt.Println("Signing...",zfile,"for",zone,"with reset keys =",reset_keys)
 
-  rrmap, minTTL := ReadAndParseZone(zfile)
+  rr, minTTL := ReadAndParseZone(zfile)
+
+  rr = AddNSECRecords(rr)
+
 
   fmt.Println("generating ksk")
   pksk, sksk := generateRSAKeyPair(p,session,"ksk",true,2048)
@@ -78,7 +81,7 @@ func main() {
                        ksk,
                        b64.StdEncoding.EncodeToString(sigzsk)))
 
-  PrintZone (rrmap)
+  PrintZone (rr)
 
 /*
   _ = SearchValidKeys(p,session)
