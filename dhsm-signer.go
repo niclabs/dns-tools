@@ -2,12 +2,15 @@ package main
 
 import (
   "fmt"
+  "io"
   "time"
   . "github.com/miekg/pkcs11"
+  "crypto"
   "crypto/rsa"
   "crypto/x509"
   "math/big"
 )
+
 
 func removeDuplicates(objs []ObjectHandle) []ObjectHandle {
   encountered := map[ObjectHandle]bool{}
@@ -100,22 +103,31 @@ func GetKeyBytes(p *Ctx, session SessionHandle,o ObjectHandle) []byte {
 
 
 // Sign an RR set
+type rrSigner struct { 
+  p *Ctx
+  session SessionHandle
+  sk, pk ObjectHandle
+  }
 
-func SignRR(p *Ctx, session SessionHandle, rr []byte, sk ObjectHandle) []byte {
+func (rs rrSigner) Public() crypto.PublicKey {
+  return crypto.PublicKey(rs.pk)
+  }
+
+func (rs rrSigner) Sign(rand io.Reader, rr []byte, opts crypto.SignerOpts) ([]byte, error) {
 
   m := []*Mechanism{NewMechanism(CKM_SHA256_RSA_PKCS, nil)}
-  e:= p.SignInit(session, m, sk)
+  e:= rs.p.SignInit(rs.session, m, rs.sk)
   if e != nil {
     fmt.Println("failed to init sign:", e)
-    return nil
+    return nil, e
   } 
  
-  s, e := p.Sign(session, rr)
+  s, e := rs.p.Sign(rs.session, rr)
   if e != nil {
     fmt.Println("failed to sign:", e)
-    return nil
+    return nil, e
   } 
-  return s
+  return s, nil
 }
 
 func SearchValidKeys(p *Ctx, session SessionHandle) []ObjectHandle {

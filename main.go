@@ -3,8 +3,9 @@ package main
 import (
   "fmt"
   "encoding/gob"
-//  b64 "encoding/base64"
+  b64 "encoding/base64"
   "bytes"
+  "sort"
 )
 
 // GetBytes direct from stackoverflow
@@ -32,17 +33,11 @@ func main() {
 
   fmt.Println("Signing...",zfile,"for",zone,"with reset keys =",reset_keys)
 
-  rr, minTTL := ReadAndParseZone(zfile)
-
-  rr = AddNSECRecords(rr)
-
-
-  fmt.Println("generating ksk")
-  pksk, sksk := generateRSAKeyPair(p,session,"ksk",true,2048)
+  rrset, minTTL := ReadAndParseZone(zfile)
 
   fmt.Println("generating zsk")
   pzsk, szsk := generateRSAKeyPair(p,session,"zsk",true,1024)
-  dnskeytype, zsk := CreateNewDNSKEY(
+  _, zsk := CreateNewDNSKEY(
              zone,
              256,
              8, 
@@ -50,38 +45,45 @@ func main() {
              b64.StdEncoding.EncodeToString(GetKeyBytes(p,session,pzsk)),
            )
 
-  fmt.Println("keys generated")
-  defer DestroyAllKeys(p,session)
-
-  fmt.Println("Start signing")
-
-  for k,v := range rrmap {
-    sig := SignRR(p, session, GetBytes(v), szsk)
-    if sig == nil { panic ("Error SignRR") }
-
-    rrmap[46] = append(rrmap[46],CreateNewRRSIG(zone, k, v, zsk,
-                   b64.StdEncoding.EncodeToString(sig)))
-  }
-
-  rrmap[dnskeytype] = append(rrmap[dnskeytype],zsk)
-  dnskeytype, ksk := CreateNewDNSKEY(
+  fmt.Println("generating ksk")
+  pksk, sksk := generateRSAKeyPair(p,session,"ksk",true,2048)
+  _, ksk := CreateNewDNSKEY(
              zone,
              257,
              8,  // RSASHA hardcoded, because I also like to live dangerously
              minTTL, // SOA -> minimum TTL
              b64.StdEncoding.EncodeToString(GetKeyBytes(p,session,pksk)),
            )
-  rrmap[dnskeytype] = append(rrmap[dnskeytype],ksk)
+  defer DestroyAllKeys(p,session)
+  fmt.Println("keys generated")
 
-  sigzsk := SignRR(p,session, GetBytes(zsk), sksk)
-  rrmap[46] = append(rrmap[46],
-                     CreateNewRRSIG(zone,
-                       dnskeytype,
-                       rrmap[dnskeytype],
-                       ksk,
-                       b64.StdEncoding.EncodeToString(sigzsk)))
+  fmt.Println("Start signing")
+  zsksigner := rrSigner{p,session,szsk,pzsk}
+  ksksigner := rrSigner{p,session,sksk,pksk}
 
-  PrintZone (rr)
+  for i,v := range rrset {
+    rrsig := CreateNewRRSIG(zone, zsk)
+    err := rrsig.Sign(zsksigner,v)
+    if err != nil { panic ("Error SignRR") }
+    rrset[i] = append(rrset[i],rrsig)
+
+    if (v[0].Header().Name == zone) {
+      rrset[i] = append(rrset[i],zsk)
+      zsksig := CreateNewRRSIG(zone,ksk)
+      err := zsksig.Sign(ksksigner, rrset[i][len(rrset[i])-1:])
+      if err != nil { panic ("Error SignRR KSK") }
+      rrset[i] = append(rrset[i],zsksig)
+      rrset[i] = append(rrset[i],ksk)
+      sort.Sort(rrArray(rrset[i]))
+    }
+  }
+
+
+  AddNSECRecords(rrset)
+
+  
+  PrintZone (rrset)
+  return
 
 /*
   _ = SearchValidKeys(p,session)
