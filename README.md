@@ -10,7 +10,7 @@ Features:
     - [ ] ECDSAP
     - [ ] SHA-1
     - [ ] SHA128
-    - [x] SHA256
+    - [x] SHA256
     - [ ] SHA512
 - [ ] Reuse keys
 - [x] Delete keys
