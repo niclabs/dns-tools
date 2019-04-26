@@ -2,6 +2,7 @@ package main
 
 import (
   "fmt"
+  "encoding/binary"
   "io"
   "time"
   . "github.com/miekg/pkcs11"
@@ -130,19 +131,25 @@ func (rs rrSigner) Sign(rand io.Reader, rr []byte, opts crypto.SignerOpts) ([]by
   return s, nil
 }
 
-func SearchValidKeys(p *Ctx, session SessionHandle) []ObjectHandle {
+func SearchValidKeys(p *Ctx, session SessionHandle) ([]ObjectHandle,[]bool) {
 
   AllTemplate := []*Attribute{
     NewAttribute(CKA_LABEL, "dHSM-signer"),
   }
   DateTemplate := []*Attribute{
-    NewAttribute(CKA_ID, nil),
+    NewAttribute(CKA_CLASS, nil),
     NewAttribute(CKA_ID, nil),
     NewAttribute(CKA_START_DATE, nil),
     NewAttribute(CKA_END_DATE, nil),
+    NewAttribute(CKA_LABEL, "dHSM-signer"),
   }
   objs := findObject(p,session,AllTemplate)
-  valid_keys := []ObjectHandle {}
+
+  // I'm not sure if objects start at 0 or 1, so 
+  // I'm adding a boolean to tell if that key is present
+
+  valid_keys := []ObjectHandle {0,0,0,0}
+  exists := []bool {false,false,false,false}
 
   if len(objs) > 0 {
     t := time.Now()
@@ -150,13 +157,46 @@ func SearchValidKeys(p *Ctx, session SessionHandle) []ObjectHandle {
     fmt.Println("Keys found... checking validity")
     for _, o := range objs {
       attr, err := p.GetAttributeValue(session,o,DateTemplate)
+      fmt.Println(attr)
       if err != nil {
         fmt.Println("Attributes  failed", err)
       } else {
-        for _, a := range attr {
-          fmt.Println(a.Type, string(a.Value),sToday)
-          if a.Type == 273 && string(a.Value) > sToday {
-            valid_keys = append(valid_keys,o)
+        class := uint(binary.BigEndian.Uint32(attr[0].Value))
+        id := string(attr[1].Value)
+        start := string(attr[2].Value)
+        end := string(attr[3].Value)
+        valid := (start <= sToday && sToday <= end)
+
+        if (class == CKO_PUBLIC_KEY) {
+          if (id == "zsk") {
+            if (valid) {
+              fmt.Println("Found valid Public ZSK")
+              valid_keys[0] = o
+              exists[0] = true
+            }
+          }
+          if (id == "ksk") {
+            if (valid) {
+             fmt.Println("Found valid Public KSK")
+              valid_keys[2] = o
+              exists[2] = true
+            }
+          }
+        }
+        if (class == CKO_PRIVATE_KEY) {
+          if (id == "zsk") {
+            if (valid) {
+              fmt.Println("Found valid Private ZSK")
+              valid_keys[1] = o
+              exists[1] = true
+            }
+          }
+          if (id == "ksk") {
+            if (valid) {
+             fmt.Println("Found valid Private KSK")
+              valid_keys[3] = o
+              exists[3] = true
+            }
           }
         }
       }
@@ -164,7 +204,7 @@ func SearchValidKeys(p *Ctx, session SessionHandle) []ObjectHandle {
   } else {
     fmt.Println("No keys found :-/")
   }
-  return valid_keys
+  return valid_keys,exists
 }
 
 
@@ -186,4 +226,14 @@ func DestroyAllKeys(p *Ctx, session SessionHandle) {
   }
 }
 
+func ExpireKey(p *Ctx, session SessionHandle,o ObjectHandle) error {
 
+  today := time.Now()
+  yesterday := today.AddDate(0,0,-1)
+
+  expireTemplate := []*Attribute{
+                      NewAttribute(CKA_END_DATE, yesterday),
+                    }
+
+  return p.SetAttributeValue(session, o, expireTemplate)
+}

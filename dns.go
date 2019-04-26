@@ -97,15 +97,14 @@ func ReadAndParseZone(filezone string) ([][]RR, uint32) {
   return set, uint32(minTTL)
 }
 
-func CreateNewDNSKEY(zone string, f uint16, a uint8, ttl uint32, k string) (uint16, RR) {
+func CreateNewDNSKEY(zone string, f uint16, a uint8, ttl uint32, k string) *DNSKEY {
 
   key := &DNSKEY { Flags: f, Protocol: 3, Algorithm: a }
   key.Hdr = RR_Header { Name: zone, Rrtype: TypeDNSKEY, Class: ClassINET, Ttl: ttl }
   key.PublicKey = k
 
-  return TypeDNSKEY, key
+  return key
 }
-
 
 
 func CreateNewRRSIG(zone string, key RR) *RRSIG {
