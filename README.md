@@ -4,9 +4,9 @@ DNS zone Signer for HSMs (using PKCS11)
 Features:
 - [x] Read zone
 - [x] Parse zone
-- [ ] Create keys    
+- [x] Create keys in HSM
 - [x] Sign using PKCS11 (for HSMs):
-    - [x] RSA
+    - [x] RSA
     - [ ] ECDSAP
     - [ ] SHA-1
     - [ ] SHA128
