@@ -47,7 +47,7 @@ func init_dHSMsigner() (*Ctx, SessionHandle, string, string, bool) {
   err := p.Initialize()
   if err != nil {
     fmt.Fprintf(os.Stderr, "Error initializing %s\n",*p11lib)
-    fmt.Fprintf(os.Stderr, "Has the .db RW permission?")
+    fmt.Fprintf(os.Stderr, "Has the .db RW permission?\n")
     panic(err)
   }
 
@@ -56,12 +56,6 @@ func init_dHSMsigner() (*Ctx, SessionHandle, string, string, bool) {
     fmt.Fprintf(os.Stderr, "Error checking slots\n")
     panic(err)
   }
-
-  info, err := p.GetInfo()
-  if err != nil {
-    panic("GetInfo error")
-  }
-  fmt.Println("HSM Info: \n", info)
 
   session, err := p.OpenSession(slots[0], CKF_SERIAL_SESSION|CKF_RW_SESSION)
   if err != nil {
@@ -77,10 +71,10 @@ func init_dHSMsigner() (*Ctx, SessionHandle, string, string, bool) {
 
   if (*rk) {
     DestroyAllKeys(p,session)
-    p.Destroy()
-    p.Finalize()
-    p.CloseSession(session)
     p.Logout(session)
+    p.CloseSession(session)
+    p.Finalize()
+    p.Destroy()
     fmt.Fprintf(os.Stderr, "All keys destroyed\n")
     os.Exit(1)
   }

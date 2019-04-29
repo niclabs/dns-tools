@@ -7,6 +7,7 @@ import (
   "strings"
   "sort"
   "time"
+  "os"
 )
 
 /* begin []RR sorting */
@@ -62,7 +63,7 @@ func ReadAndParseZone(filezone string) ([][]RR, uint32) {
 
   z:= NewZoneParser(strings.NewReader(zone), "", "")
   if err := z.Err(); err != nil {
-    fmt.Println("Error parsing zone",err)
+    fmt.Fprintf(os.Stderr,"Error parsing zone %s\n",err)
     return nil,0
   }
 

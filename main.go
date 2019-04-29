@@ -2,10 +2,9 @@ package main
 
 import (
   "fmt"
-//  "encoding/gob"
   b64 "encoding/base64"
-//  "bytes"
   "sort"
+  "os"
 )
 
 func main() {
@@ -34,7 +33,7 @@ func main() {
       ExpireKey(p,session,szsk) 
     }
     if create_keys || !bkeys[0] {
-      fmt.Println("generating zsk")
+      fmt.Fprintf(os.Stderr,"generating zsk\n")
       pzsk, szsk = generateRSAKeyPair(p,session,"zsk",true,1024)
     }
     if create_keys && bkeys[2] { 
@@ -42,11 +41,13 @@ func main() {
       ExpireKey(p,session,sksk) 
     }
     if create_keys || !bkeys[2]  {
-      fmt.Println("generating ksk")
+      fmt.Fprintf(os.Stderr,"generating ksk\n")
       pksk, sksk = generateRSAKeyPair(p,session,"ksk",true,2048)
     }
-    fmt.Println("keys generated")
+    fmt.Fprintf(os.Stderr,"keys generated\n")
   }
+//  defer DestroyAllKeys(p,session)
+
   zsk := CreateNewDNSKEY(
          zone,
          256,
@@ -62,7 +63,9 @@ func main() {
          b64.StdEncoding.EncodeToString(GetKeyBytes(p,session,pksk)),
        )
 
-  fmt.Println("Start signing")
+  AddNSECRecords(rrset)
+
+  fmt.Fprintf(os.Stderr,"Start signing\n")
   zsksigner := rrSigner{p,session,szsk,pzsk}
   ksksigner := rrSigner{p,session,sksk,pksk}
 
@@ -84,7 +87,6 @@ func main() {
   }
 
 
-  AddNSECRecords(rrset)
 
   
   PrintZone (rrset)

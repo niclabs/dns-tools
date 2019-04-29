@@ -10,6 +10,7 @@ import (
   "crypto/rsa"
   "crypto/x509"
   "math/big"
+  "os"
 )
 
 
@@ -67,8 +68,8 @@ func generateRSAKeyPair(p *Ctx, session SessionHandle, tokenLabel string, tokenP
     NewAttribute(CKA_END_DATE, nextyear),
     NewAttribute(CKA_SIGN, true),
     NewAttribute(CKA_SENSITIVE, true),
-    NewAttribute(CKA_PRIVATE, true),
-    NewAttribute(CKA_EXTRACTABLE, true),
+//    NewAttribute(CKA_PRIVATE, true),
+//    NewAttribute(CKA_EXTRACTABLE, true),
   }
 
   pbk, pvk, e := p.GenerateKeyPair(session,
@@ -91,7 +92,7 @@ func GetKeyBytes(p *Ctx, session SessionHandle,o ObjectHandle) []byte {
     }
   attr, err := p.GetAttributeValue(session,o,PKTemplate)
   if err != nil {
-    fmt.Println("Attributes  failed", err)
+    fmt.Fprintf(os.Stderr,"Attributes  failed %s\n", err)
     return nil
   } else {
     pk.N.SetBytes(attr[0].Value)
@@ -119,13 +120,13 @@ func (rs rrSigner) Sign(rand io.Reader, rr []byte, opts crypto.SignerOpts) ([]by
   m := []*Mechanism{NewMechanism(CKM_SHA256_RSA_PKCS, nil)}
   e:= rs.p.SignInit(rs.session, m, rs.sk)
   if e != nil {
-    fmt.Println("failed to init sign:", e)
+    fmt.Fprintf(os.Stderr,"failed to init sign: %s\n", e)
     return nil, e
   } 
  
   s, e := rs.p.Sign(rs.session, rr)
   if e != nil {
-    fmt.Println("failed to sign:", e)
+    fmt.Fprintf(os.Stderr,"failed to sign: %s\n", e)
     return nil, e
   } 
   return s, nil
@@ -136,12 +137,13 @@ func SearchValidKeys(p *Ctx, session SessionHandle) ([]ObjectHandle,[]bool) {
   AllTemplate := []*Attribute{
     NewAttribute(CKA_LABEL, "dHSM-signer"),
   }
+
   DateTemplate := []*Attribute{
     NewAttribute(CKA_CLASS, nil),
     NewAttribute(CKA_ID, nil),
     NewAttribute(CKA_START_DATE, nil),
     NewAttribute(CKA_END_DATE, nil),
-    NewAttribute(CKA_LABEL, "dHSM-signer"),
+    NewAttribute(CKA_LABEL, nil),
   }
   objs := findObject(p,session,AllTemplate)
 
@@ -154,30 +156,31 @@ func SearchValidKeys(p *Ctx, session SessionHandle) ([]ObjectHandle,[]bool) {
   if len(objs) > 0 {
     t := time.Now()
     sToday := fmt.Sprintf("%d%02d%02d",t.Year(),t.Month(), t.Day())
-    fmt.Println("Keys found... checking validity")
+    fmt.Fprintf(os.Stderr,"Keys found... checking validity\n")
     for _, o := range objs {
       attr, err := p.GetAttributeValue(session,o,DateTemplate)
-      fmt.Println(attr)
       if err != nil {
-        fmt.Println("Attributes  failed", err)
+        fmt.Fprintf(os.Stderr,"Attributes  failed %s\n", err)
       } else {
-        class := uint(binary.BigEndian.Uint32(attr[0].Value))
+        class := uint(binary.LittleEndian.Uint32(attr[0].Value))
         id := string(attr[1].Value)
         start := string(attr[2].Value)
         end := string(attr[3].Value)
         valid := (start <= sToday && sToday <= end)
 
+	fmt.Fprintf(os.Stderr,"Checking key class %v id %s and valid %t\n",class,id,valid)
+
         if (class == CKO_PUBLIC_KEY) {
           if (id == "zsk") {
             if (valid) {
-              fmt.Println("Found valid Public ZSK")
+              fmt.Fprintf(os.Stderr,"Found valid Public ZSK\n")
               valid_keys[0] = o
               exists[0] = true
             }
           }
           if (id == "ksk") {
             if (valid) {
-             fmt.Println("Found valid Public KSK")
+             fmt.Fprintf(os.Stderr,"Found valid Public KSK\n")
               valid_keys[2] = o
               exists[2] = true
             }
@@ -186,14 +189,14 @@ func SearchValidKeys(p *Ctx, session SessionHandle) ([]ObjectHandle,[]bool) {
         if (class == CKO_PRIVATE_KEY) {
           if (id == "zsk") {
             if (valid) {
-              fmt.Println("Found valid Private ZSK")
+              fmt.Fprintf(os.Stderr,"Found valid Private ZSK\n")
               valid_keys[1] = o
               exists[1] = true
             }
           }
           if (id == "ksk") {
             if (valid) {
-             fmt.Println("Found valid Private KSK")
+             fmt.Fprintf(os.Stderr,"Found valid Private KSK\n")
               valid_keys[3] = o
               exists[3] = true
             }
@@ -202,7 +205,7 @@ func SearchValidKeys(p *Ctx, session SessionHandle) ([]ObjectHandle,[]bool) {
       }
     }
   } else {
-    fmt.Println("No keys found :-/")
+    fmt.Fprintf(os.Stderr,"No keys found :-/")
   }
   return valid_keys,exists
 }
@@ -210,19 +213,29 @@ func SearchValidKeys(p *Ctx, session SessionHandle) ([]ObjectHandle,[]bool) {
 
 func DestroyAllKeys(p *Ctx, session SessionHandle) {
   deleteTemplate := []*Attribute{
+//NewAttribute(CKA_KEY_TYPE, CKK_RSA),
     NewAttribute(CKA_LABEL, "dHSM-signer"),
   }
   objs2 := findObject(p,session,deleteTemplate)
   
   if len(objs2) > 0 {
-    fmt.Println("Keys found... deleting")
+    fmt.Fprintf(os.Stderr,"Keys found... deleting")
+
+    founddeleteTemplate := []*Attribute{
+      NewAttribute(CKA_LABEL, nil),
+      NewAttribute(CKA_ID, nil),
+    }
+
     for _,o := range objs2 {
+      attr, _ := p.GetAttributeValue(session,o,founddeleteTemplate)
+      fmt.Fprintf(os.Stderr,"Deleting %s %s\n",string(attr[0].Value),string(attr[1].Value))
+
       if e := p.DestroyObject(session, o); e != nil {
-        fmt.Println("Destroy Key failed", e)
+        fmt.Fprintf(os.Stderr,"Destroy Key failed %s\n", e)
       }
     }
   } else {
-    fmt.Println("Keys not found :-/")
+    fmt.Fprintf(os.Stderr,"Keys not found :-/")
   }
 }
 
