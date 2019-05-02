@@ -7,13 +7,15 @@ import (
   . "github.com/miekg/pkcs11"
 )
 
-func init_dHSMsigner() (*Ctx, SessionHandle, string, string, bool) {
+func init_dHSMsigner() (*Ctx, SessionHandle, string, string, bool, bool, bool) {
 
   rk := flag.Bool("reset_keys",false,"remove all keys and exit")
   ck := flag.Bool("create_keys",false,"create a new pair of keys, outdading all valid keys. Default: first try to find valid keys.")
   zone := flag.String("zone","","zone name")
   file := flag.String("file","","full path to zone file to be signed")
   p11lib :=  flag.String("p11lib","","full path to pkcs11 lib file")
+  nsec3 := flag.Bool("nsec3",false,"Use NSEC3 insted of NSEC (default: NSEC)")
+  optout := flag.Bool ("opt-out",false,"Use NSEC3 with opt-out")
 
   flag.Parse()
 
@@ -78,6 +80,6 @@ func init_dHSMsigner() (*Ctx, SessionHandle, string, string, bool) {
     fmt.Fprintf(os.Stderr, "All keys destroyed\n")
     os.Exit(1)
   }
-  return p,session,*zone,*file,*ck
+  return p,session,*zone,*file,*ck,*nsec3,*optout
 }
 

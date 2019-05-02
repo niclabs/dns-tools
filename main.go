@@ -9,7 +9,7 @@ import (
 
 func main() {
 
-  p, session, zone, zfile, create_keys := init_dHSMsigner()
+  p, session, zone, zfile, create_keys, nsec3, optout := init_dHSMsigner()
   defer p.Destroy()
   defer p.Finalize()
   defer p.CloseSession(session)
@@ -63,7 +63,12 @@ func main() {
          b64.StdEncoding.EncodeToString(GetKeyBytes(p,session,pksk)),
        )
 
-  AddNSECRecords(rrset)
+  if (nsec3) {
+    AddNSEC3Records(rrset,optout)
+  } else {
+    AddNSECRecords(rrset)
+  }
+  PrintZone (rrset)
 
   fmt.Fprintf(os.Stderr,"Start signing\n")
   zsksigner := rrSigner{p,session,szsk,pzsk}
@@ -85,15 +90,9 @@ func main() {
       sort.Sort(rrArray(rrset[i]))
     }
   }
-
-
-
   
   PrintZone (rrset)
   return
-
-
-
 
 }
 
