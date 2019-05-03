@@ -14,7 +14,7 @@ Features:
     - [ ] SHA128
     - [x] SHA256
     - [ ] SHA512
-- [ ] Reuse keys
+- [x] Reuse keys
 - [x] Delete keys
 - [ ] Save zone to file
 
