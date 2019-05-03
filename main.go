@@ -64,11 +64,10 @@ func main() {
        )
 
   if (nsec3) {
-    AddNSEC3Records(rrset,optout)
+    AddNSEC3Records(&rrset,optout)
   } else {
     AddNSECRecords(rrset)
   }
-  PrintZone (rrset)
 
   fmt.Fprintf(os.Stderr,"Start signing\n")
   zsksigner := rrSigner{p,session,szsk,pzsk}
