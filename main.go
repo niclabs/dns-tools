@@ -90,6 +90,8 @@ func main() {
     }
   }
   
+  fmt.Fprintf(os.Stderr,"DS: %s\n", ksk.ToDS(1)) // SHA256
+
   PrintZone (rrset)
   return
 

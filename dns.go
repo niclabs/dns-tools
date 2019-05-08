@@ -224,6 +224,7 @@ func AddNSEC3Records(set *[][]RR, optout bool) {
     nsec3.Salt = param.Salt
     hname := HashName(rrs[0].Header().Name, param.Hash,
                       param.Iterations, param.Salt)
+
     if h[hname] {
       collision = true
       last = -1
@@ -244,13 +245,14 @@ func AddNSEC3Records(set *[][]RR, optout bool) {
   }
 
   if (last >= 0)  {
-    (*set)[n+last-1][0].(*NSEC3).NextDomain = (*set)[n][0].Header().Name
-    (*set)[n+last-1][0].(*NSEC3).HashLength = uint8(len((*set)[n][0].Header().Name))
+    (*set)[n+last][0].(*NSEC3).NextDomain = (*set)[n][0].Header().Name
+    (*set)[n+last][0].(*NSEC3).HashLength = uint8(len((*set)[n][0].Header().Name))
 
     for i := n; i < len(*set); i++ {
       (*set)[i][0].Header().Name = (*set)[i][0].Header().Name + "." + apex
       (*set)[i][0].Header().Ttl = minttl
     }
+
     (*set)[soaindex] = append((*set)[soaindex],param)
     sort.Sort(rrArray((*set)[soaindex]))
     sort.Sort(rrSet(*set))
