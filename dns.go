@@ -82,6 +82,8 @@ func ReadAndParseZone(filezone string) ([][]RR, uint32) {
   sort.Sort(rrArray(rrs))
 
   // RRsets are RR grouped by label and class
+  // An RRSIG record contains the signature for an RRset with a particular
+  // name, class, and type. RFC4034
 
   rr := rrs[0]
   set := make([][]RR,0,32)
@@ -91,7 +93,7 @@ func ReadAndParseZone(filezone string) ([][]RR, uint32) {
   for k := 1; k < len(rrs); k++ {
     h0 := rr.Header()
     h1 := rrs[k].Header()
-    if !(h0.Class == h1.Class && strings.ToLower(h0.Name) ==  strings.ToLower(h1.Name)) {
+    if !(h0.Class == h1.Class && strings.ToLower(h0.Name) ==  strings.ToLower(h1.Name) && h0.Rrtype == h1.Rrtype) {
       i = i + 1
       rr = rrs[k]
       set = append(set,make([]RR,0,32))
@@ -169,7 +171,7 @@ func AddNSECRecords(set [][]RR) {
 
 func generateSalt() string {
   rand.Seed(time.Now().UnixNano())
-  r := rand.Int63()
+  r := rand.Int31()
   s := fmt.Sprintf("%x", r)
   return s
 }

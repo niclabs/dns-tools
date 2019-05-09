@@ -46,7 +46,6 @@ func main() {
     }
     fmt.Fprintf(os.Stderr,"keys generated\n")
   }
-//  defer DestroyAllKeys(p,session)
 
   zsk := CreateNewDNSKEY(
          zone,
@@ -73,22 +72,32 @@ func main() {
   zsksigner := rrSigner{p,session,szsk,pzsk}
   ksksigner := rrSigner{p,session,sksk,pksk}
 
+  var rrsigarray rrArray
+ 
+
+// REVISE
+// NNSEC RRSET IS NOT THE SAME THAN RRSIG RRSET
+// CREATE THE SET DYNAMICALLY 
+ 
   for i,v := range rrset {
     rrsig := CreateNewRRSIG(zone, zsk)
     err := rrsig.Sign(zsksigner,v)
     if err != nil { panic ("Error SignRR") }
-    rrset[i] = append(rrset[i],rrsig)
-
-    if (v[0].Header().Name == zone) {
-      rrset[i] = append(rrset[i],zsk)
-      zsksig := CreateNewRRSIG(zone,ksk)
-      err := zsksig.Sign(ksksigner, rrset[i][len(rrset[i])-1:])
-      if err != nil { panic ("Error SignRR KSK") }
-      rrset[i] = append(rrset[i],zsksig)
-      rrset[i] = append(rrset[i],ksk)
-      sort.Sort(rrArray(rrset[i]))
+    rrsigarray = append(rrsigarray,rrsig)
     }
-  }
+
+  rrdnskey := rrArray{zsk,ksk}
+  sort.Sort(rrdnskey)
+
+  rrdnskeysig := CreateNewRRSIG(zone,ksk)
+  err := rrdnskeysig.Sign(ksksigner,rrdnskey)
+  if err != nil { panic ("Error SignRR") }
+
+  rrsigarray = append(rrsigarray,rrdnskeysig)
+  sort.Sort(rrsigarray)
+
+  rrset = append(rrset,rrdnskey)
+  sort.Sort(rrSet(rrset))
   
   fmt.Fprintf(os.Stderr,"DS: %s\n", ksk.ToDS(1)) // SHA256
 
