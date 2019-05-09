@@ -70,10 +70,12 @@ func ReadAndParseZone(filezone string) ([][]RR, uint32) {
 
   for rr, ok := z.Next(); ok; rr, ok = z.Next() {
     rrs = append(rrs,rr)
-    if (rr.Header().Rrtype == TypeSOA) { 
+    if (rr.Header().Rrtype == TypeSOA) {
       var soa *SOA
       soa = rr.(*SOA)
-      minTTL = soa.Minttl 
+      minTTL = soa.Minttl
+	/* UPDATING THE SERIAL */
+      rr.(*SOA).Serial = rr.(*SOA).Serial + 2
       }
     }
 
@@ -204,6 +206,7 @@ func AddNSEC3Records(set *[][]RR, optout bool) {
         param.Hdr.Ttl = minttl
         soaindex = i
         typemap[TypeNSEC3PARAM] = true
+	
       }
     }
     if optout && !typemap[TypeDS] && !typemap[TypeDNSKEY] { continue; }
