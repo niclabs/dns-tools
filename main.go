@@ -74,6 +74,9 @@ func main() {
 
   rrset := CreateRRset (rrzone, true)
  
+  fmt.Println(rrset)
+  return
+
   for _,v := range rrset {
     rrsig := CreateNewRRSIG(zone, zsk)
     err := rrsig.Sign(zsksigner,v)
@@ -83,7 +86,6 @@ func main() {
 
   
   rrdnskey := rrArray{zsk,ksk}
-  sort.Sort(rrdnskey)
 
   rrdnskeysig := CreateNewRRSIG(zone,ksk)
   err := rrdnskeysig.Sign(ksksigner,rrdnskey)
