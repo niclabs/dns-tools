@@ -17,7 +17,7 @@ func main() {
 
   if zone[len(zone)-1] != '.' { zone = zone + "."}
 
-  rrset, minTTL := ReadAndParseZone(zfile)
+  rrzone, minTTL := ReadAndParseZone(zfile)
 
   // bkeys = {pzsk, szsk, pksk, sksk}
   keys, bkeys := SearchValidKeys(p,session)
@@ -63,29 +63,25 @@ func main() {
        )
 
   if (nsec3) {
-    AddNSEC3Records(&rrset,optout)
+    AddNSEC3Records(&rrzone,optout)
   } else {
-    AddNSECRecords(rrset)
+    AddNSECRecords(&rrzone)
   }
 
   fmt.Fprintf(os.Stderr,"Start signing\n")
   zsksigner := rrSigner{p,session,szsk,pzsk}
   ksksigner := rrSigner{p,session,sksk,pksk}
 
-  var rrsigarray rrArray
+  rrset := CreateRRset (rrzone, true)
  
-
-// REVISE
-// NNSEC RRSET IS NOT THE SAME THAN RRSIG RRSET
-// CREATE THE SET DYNAMICALLY 
- 
-  for i,v := range rrset {
+  for _,v := range rrset {
     rrsig := CreateNewRRSIG(zone, zsk)
     err := rrsig.Sign(zsksigner,v)
     if err != nil { panic ("Error SignRR") }
-    rrsigarray = append(rrsigarray,rrsig)
+    rrzone = append(rrzone,rrsig)
     }
 
+  
   rrdnskey := rrArray{zsk,ksk}
   sort.Sort(rrdnskey)
 
@@ -93,15 +89,15 @@ func main() {
   err := rrdnskeysig.Sign(ksksigner,rrdnskey)
   if err != nil { panic ("Error SignRR") }
 
-  rrsigarray = append(rrsigarray,rrdnskeysig)
-  sort.Sort(rrsigarray)
+  rrzone = append(rrzone,zsk)
+  rrzone = append(rrzone,ksk)
+  rrzone = append(rrzone,rrdnskeysig)
 
-  rrset = append(rrset,rrdnskey)
-  sort.Sort(rrSet(rrset))
+  sort.Sort(rrArray(rrzone))
   
   fmt.Fprintf(os.Stderr,"DS: %s\n", ksk.ToDS(1)) // SHA256
 
-  PrintZone (rrset)
+  PrintZone (rrzone)
   return
 
 }

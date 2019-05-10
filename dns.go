@@ -50,7 +50,31 @@ func (a ui16Array) Swap(i,j int) { a[i],a[j] = a[j],a[i] }
 func (a ui16Array) Less(i,j int) bool { return a[i] < a[j] }
 /* end uint16 sorting */
 
-func ReadAndParseZone(filezone string) ([][]RR, uint32) {
+func CreateRRset(rrs []RR, byType bool) [][]RR {
+  // RRsets are RR grouped by label and class for NSEC/NSEC3
+  // and by label, class, type for RRSIG:
+  // An RRSIG record contains the signature for an RRset with a particular
+  // name, class, and type. RFC4034
+
+  rr := rrs[0]
+  set := make([][]RR,0,32)
+  set = append(set,make([]RR,0,32))
+  set[0] = append(set[0],rr)
+  i := 0
+  for k := 1; k < len(rrs); k++ {
+    h0 := rr.Header()
+    h1 := rrs[k].Header()
+    if !(h0.Class == h1.Class && strings.ToLower(h0.Name) ==  strings.ToLower(h1.Name) && (!byType || h0.Rrtype == h1.Rrtype)) {
+      i = i + 1
+      rr = rrs[k]
+      set = append(set,make([]RR,0,32))
+    }
+    set[i] = append(set[i],rrs[k])
+  }
+return set
+}
+
+func ReadAndParseZone(filezone string) ([]RR, uint32) {
 
   b, err := ioutil.ReadFile(filezone)
   if err != nil {
@@ -81,26 +105,7 @@ func ReadAndParseZone(filezone string) ([][]RR, uint32) {
 
   sort.Sort(rrArray(rrs))
 
-  // RRsets are RR grouped by label and class
-  // An RRSIG record contains the signature for an RRset with a particular
-  // name, class, and type. RFC4034
-
-  rr := rrs[0]
-  set := make([][]RR,0,32)
-  set = append(set,make([]RR,0,32))
-  set[0] = append(set[0],rr)
-  i := 0
-  for k := 1; k < len(rrs); k++ {
-    h0 := rr.Header()
-    h1 := rrs[k].Header()
-    if !(h0.Class == h1.Class && strings.ToLower(h0.Name) ==  strings.ToLower(h1.Name) && h0.Rrtype == h1.Rrtype) {
-      i = i + 1
-      rr = rrs[k]
-      set = append(set,make([]RR,0,32))
-    }
-    set[i] = append(set[i],rrs[k])
-  }
-  return set, uint32(minTTL)
+  return rrs, uint32(minTTL)
 }
 
 func CreateNewDNSKEY(zone string, f uint16, a uint8, ttl uint32, k string) *DNSKEY {
@@ -127,16 +132,16 @@ func CreateNewRRSIG(zone string, key RR) *RRSIG {
   return rrsig
 }
 
-func PrintZone(r [][]RR) {
+func PrintZone(r []RR) {
 
-  for _, rrs := range r {
-    for _, rr := range rrs {
-      fmt.Println(rr)
-    }
+  for _, rr := range r {
+    fmt.Println(rr)
   }
 }
 
-func AddNSECRecords(set [][]RR) {
+func AddNSECRecords(zone *[]RR) {
+
+  set := CreateRRset(*zone,false)
 
   n := len(set)
   for i , rrs := range(set) {
@@ -161,11 +166,10 @@ func AddNSECRecords(set [][]RR) {
     nsec.NextDomain = set[(i+1) % n][0].Header().Name
     nsec.TypeBitMap = typearray
     
-    set[i] = append(set[i],nsec)
-    sort.Sort(rrArray(set[i]))
+    *zone = append(*zone,nsec)
   }
 
-  sort.Sort(rrSet(set))
+  sort.Sort(rrArray(*zone))
 }
 
 
@@ -176,10 +180,12 @@ func generateSalt() string {
   return s
 }
 
-func AddNSEC3Records(set *[][]RR, optout bool) {
+func AddNSEC3Records(zone *[]RR, optout bool) {
+
+  set := CreateRRset(*zone, false)
+
   h := make(map[string]bool)
   collision := false
-  soaindex := -1
 
   param := &NSEC3PARAM {}
   param.Hdr.Class = ClassINET
@@ -193,10 +199,10 @@ func AddNSEC3Records(set *[][]RR, optout bool) {
   apex := ""
   minttl := uint32(8600)
 
-  n := len(*set)
+  n := len(set)
   last := -1
 
-  for i, rrs := range(*set) {
+  for _, rrs := range(set) {
     typemap := make(map[uint16]bool)
     for _, rr := range rrs {
       typemap[rr.Header().Rrtype] = true
@@ -206,9 +212,7 @@ func AddNSEC3Records(set *[][]RR, optout bool) {
         apex = rr.Header().Name
         minttl = rr.(*SOA).Minttl
         param.Hdr.Ttl = minttl
-        soaindex = i
         typemap[TypeNSEC3PARAM] = true
-	
       }
     }
     if optout && !typemap[TypeDS] && !typemap[TypeDNSKEY] { continue; }
@@ -241,32 +245,31 @@ func AddNSEC3Records(set *[][]RR, optout bool) {
     nsec3.TypeBitMap = typearray
 
     if (last >= 0) { // not the first NSEC3 record
-      (*set)[n+last][0].(*NSEC3).NextDomain = nsec3.Hdr.Name
-      (*set)[n+last][0].(*NSEC3).HashLength = uint8(len(nsec3.Hdr.Name))
+      set[n+last][0].(*NSEC3).NextDomain = nsec3.Hdr.Name
+      set[n+last][0].(*NSEC3).HashLength = uint8(len(nsec3.Hdr.Name))
     }
     last = last + 1
 
-    *set = append(*set, []RR{nsec3})
+    set = append(set, []RR{nsec3})
   }
 
   if (last >= 0)  {
-    (*set)[n+last][0].(*NSEC3).NextDomain = (*set)[n][0].Header().Name
-    (*set)[n+last][0].(*NSEC3).HashLength = uint8(len((*set)[n][0].Header().Name))
+    set[n+last][0].(*NSEC3).NextDomain = set[n][0].Header().Name
+    set[n+last][0].(*NSEC3).HashLength = uint8(len(set[n][0].Header().Name))
 
-    for i := n; i < len(*set); i++ {
-      (*set)[i][0].Header().Name = (*set)[i][0].Header().Name + "." + apex
-      (*set)[i][0].Header().Ttl = minttl
+    for i := n; i < len(set); i++ {
+      set[i][0].Header().Name = set[i][0].Header().Name + "." + apex
+      set[i][0].Header().Ttl = minttl
+      *zone = append(*zone,set[i][0])
     }
 
-    (*set)[soaindex] = append((*set)[soaindex],param)
-    sort.Sort(rrArray((*set)[soaindex]))
-    sort.Sort(rrSet(*set))
+    *zone = append(*zone,param)
+    sort.Sort(rrArray(*zone))
   }
 
   if (collision) { // all again
     fmt.Fprintf(os.Stderr,"Collision detected, NSEC3-ing all again\n")
-    *set = (*set)[:n]
-    AddNSEC3Records(set,optout)
+    AddNSEC3Records(zone,optout)
   }
 
 }
