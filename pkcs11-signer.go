@@ -7,9 +7,6 @@ import (
   "time"
   . "github.com/miekg/pkcs11"
   "crypto"
-  "crypto/rsa"
-  "crypto/x509"
-  "math/big"
   "os"
 )
 
@@ -85,7 +82,10 @@ func generateRSAKeyPair(p *Ctx, session SessionHandle, tokenLabel string, tokenP
 // return the public key in ASN.1 DER form
 
 func GetKeyBytes(p *Ctx, session SessionHandle,o ObjectHandle) []byte {
-  pk := rsa.PublicKey{N: big.NewInt(0), E: 0}
+
+  var n uint32
+  //pk := rsa.PublicKey{N: big.NewInt(0), E: 0}
+  
   PKTemplate := []*Attribute{
     NewAttribute(CKA_MODULUS,nil),
     NewAttribute(CKA_PUBLIC_EXPONENT,nil),
@@ -94,13 +94,22 @@ func GetKeyBytes(p *Ctx, session SessionHandle,o ObjectHandle) []byte {
   if err != nil {
     fmt.Fprintf(os.Stderr,"Attributes  failed %s\n", err)
     return nil
-  } else {
-    pk.N.SetBytes(attr[0].Value)
-    e := big.NewInt(0)
-    e.SetBytes(attr[1].Value)
-    pk.E = int(e.Int64())
   }
-  return x509.MarshalPKCS1PublicKey(&pk)
+
+  n = uint32(len(attr[1].Value))
+  a := make([]byte,4,n+8)
+  binary.BigEndian.PutUint32(a,n)
+  // Stores as BigEndian, read as LittleEndian, what could go wrong?
+  if (n < 256) {
+    a = a[3:]
+  } else {
+    a = a[1:]
+  }
+
+  a = append (a[:],attr[1].Value...)
+  a = append (a[:],attr[0].Value...)
+
+  return a
 }
 
 
