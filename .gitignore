@@ -1,2 +1,6 @@
+# goland
 .idea/
+# possible zone file (txt) 
 *.txt
+# binary
+dhsm-signer
