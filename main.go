@@ -73,7 +73,7 @@ func main() {
   ksksigner := rrSigner{p,session,sksk,pksk}
 
   rrset := CreateRRset (rrzone, true)
- 
+
   for _,v := range rrset {
     rrsig := CreateNewRRSIG(zone, zsk)
     err := rrsig.Sign(zsksigner,v)
@@ -81,7 +81,6 @@ func main() {
     rrzone = append(rrzone,rrsig)
     }
 
-  
   rrdnskey := rrArray{zsk,ksk}
 
   rrdnskeysig := CreateNewRRSIG(zone,ksk)
@@ -96,8 +95,7 @@ func main() {
   rrzone = append(rrzone,rrdnskeysig)
 
   sort.Sort(rrArray(rrzone))
- 
-   
+
   fmt.Fprintf(os.Stderr,"DS: %s\n", ksk.ToDS(1)) // SHA256
 
   PrintZone (rrzone)

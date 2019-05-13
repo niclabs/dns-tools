@@ -79,20 +79,18 @@ func generateRSAKeyPair(p *Ctx, session SessionHandle, tokenLabel string, tokenP
 }
 
 
-// return the public key in ASN.1 DER form
-
+// RFC 3110
 func GetKeyBytes(p *Ctx, session SessionHandle,o ObjectHandle) []byte {
 
   var n uint32
-  //pk := rsa.PublicKey{N: big.NewInt(0), E: 0}
-  
+
   PKTemplate := []*Attribute{
     NewAttribute(CKA_MODULUS,nil),
     NewAttribute(CKA_PUBLIC_EXPONENT,nil),
     }
   attr, err := p.GetAttributeValue(session,o,PKTemplate)
   if err != nil {
-    fmt.Fprintf(os.Stderr,"Attributes  failed %s\n", err)
+    fmt.Fprintf(os.Stderr,"Attributes failed %s\n", err)
     return nil
   }
 
@@ -106,8 +104,8 @@ func GetKeyBytes(p *Ctx, session SessionHandle,o ObjectHandle) []byte {
     a = a[1:]
   }
 
-  a = append (a[:],attr[1].Value...)
-  a = append (a[:],attr[0].Value...)
+  a = append(a[:],attr[1].Value...)
+  a = append(a[:],attr[0].Value...)
 
   return a
 }
