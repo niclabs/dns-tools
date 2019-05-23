@@ -4,6 +4,7 @@ import (
 	b64 "encoding/base64"
 	"fmt"
 	"os"
+	"sort"
 )
 
 func main() {
@@ -104,7 +105,7 @@ func main() {
 	rrzone = append(rrzone, ksk)
 	rrzone = append(rrzone, rrdnskeysig)
 
-	//sort.Sort(rrArray(rrzone))
+	sort.Sort(rrArray(rrzone))
 
 	fmt.Fprintf(os.Stderr, "DS: %s\n", ksk.ToDS(1)) // SHA256
 

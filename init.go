@@ -10,14 +10,33 @@ import (
 func init_dHSMsigner() (*Ctx, SessionHandle, string, string, bool, bool, bool) {
 
 	rk := flag.Bool("reset_keys", false, "remove all keys and exit")
+	verif := flag.Bool("verify_rrsig", false, "verifies the RRsigs of an already signed zone file and exit")
 	ck := flag.Bool("create_keys", false, "create a new pair of keys, outdading all valid keys. Default: first try to find valid keys.")
 	zone := flag.String("zone", "", "zone name")
-	file := flag.String("file", "", "full path to zone file to be signed")
+	file := flag.String("file", "", "full path to zone file to be signed or verified")
 	p11lib := flag.String("p11lib", "", "full path to pkcs11 lib file")
 	nsec3 := flag.Bool("nsec3", false, "Use NSEC3 insted of NSEC (default: NSEC)")
 	optout := flag.Bool("opt-out", false, "Use NSEC3 with opt-out")
 
 	flag.Parse()
+
+	if *verif {
+		if len(*zone) < 1 || len(*file) < 1 {
+			fmt.Fprintf(os.Stderr, "file or zone missing\nUsage of %s:\n", os.Args[0])
+			flag.PrintDefaults()
+			os.Exit(1)
+		}
+
+		_, perr := os.Stat(*file)
+		if perr != nil || os.IsNotExist(perr) {
+			fmt.Fprintf(os.Stderr, "Error file %s doesn't exists or has not reading permission\n", *file)
+			os.Exit(1)
+		}
+		if err := VerifyFile(*file); err != nil {
+			panic(err)
+		}
+		os.Exit(0)
+	}
 
 	if len(*p11lib) < 1 {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
@@ -26,6 +45,7 @@ func init_dHSMsigner() (*Ctx, SessionHandle, string, string, bool, bool, bool) {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
+
 
 	if !*rk {
 		if len(*zone) < 1 || len(*file) < 1 {
@@ -39,6 +59,7 @@ func init_dHSMsigner() (*Ctx, SessionHandle, string, string, bool, bool, bool) {
 			fmt.Fprintf(os.Stderr, "Error file %s doesn't exists or has not reading permission\n", *file)
 			os.Exit(1)
 		}
+
 	}
 	p := New(*p11lib)
 	if p == nil {
