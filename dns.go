@@ -132,11 +132,11 @@ func CreateNewRRSIG(zone string, key RR, expdate time.Time, ttl uint32) *RRSIG {
 	k := key.(*DNSKEY)
 
 	rrsig := &RRSIG{Algorithm: k.Algorithm}
-	rrsig.Hdr.Ttl = ttl
+	rrsig.Hdr.Ttl = ttl // Uses RRset TTL, not key TTL.
 	rrsig.SignerName = strings.ToLower(zone)
 	rrsig.KeyTag = k.KeyTag()
 	rrsig.Inception = uint32(time.Now().Unix())
-	rrsig.Expiration = uint32(expdate.Unix())
+	rrsig.Expiration = uint32(expdate.Unix()) // changed to key exp
 	return rrsig
 }
 
