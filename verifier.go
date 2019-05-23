@@ -23,19 +23,20 @@ func VerifyFile(filepath string) error {
 	// Pairing each RRSet with its RRSig
 	for _, set := range rrSets {
 		if len(set) > 0 {
-			if key, isDNSKEY := set[0].(*dns.DNSKEY); isDNSKEY {
-				if key.Flags == 256 {
-					pzsk = key
-					pksk = set[1].(*dns.DNSKEY)
-				} else if key.Flags == 257 {
-					pksk = key
-					pzsk = set[1].(*dns.DNSKEY)
+			if set[0].Header().Rrtype == dns.TypeDNSKEY {
+				key1 := set[0].(*dns.DNSKEY)
+				key2 := set[1].(*dns.DNSKEY)
+				if key1.Flags == 256 {
+					pzsk = key1
+					pksk = key2
+				} else if key1.Flags == 257 {
+					pksk = key2
+					pzsk = key1
 				}
 			}
 			rep := set[0]
 			var setHashString string
-			_, isRRSIG := set[0].(*dns.RRSIG)
-			if isRRSIG {
+			if set[0].Header().Rrtype == dns.TypeRRSIG {
 				for _, presig := range set {
 					sig := presig.(*dns.RRSIG)
 					setHashString = fmt.Sprintf("%s#%s#%s", sig.Header().Name, dns.Class(sig.Header().Class), dns.Type(sig.TypeCovered))
@@ -75,7 +76,7 @@ func VerifyFile(filepath string) error {
 			return fmt.Errorf("the sig %s doesnt have a set", setName)
 		}
 
-		if _, isDNSKEY := set[0].(*dns.DNSKEY); isDNSKEY {
+		if set[0].Header().Rrtype == dns.TypeDNSKEY {
 			// use pksk to verify
 			if err := sig.Verify(pksk, set); err != nil {
 				fmt.Fprintf(os.Stderr, "on set %s, error: %s\n", setName, err)

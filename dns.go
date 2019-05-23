@@ -222,7 +222,7 @@ func AddNSEC3Records(zone *[]RR, optout bool) {
 				apex = rr.Header().Name
 				minttl = rr.(*SOA).Minttl
 				param.Hdr.Ttl = minttl
-				typemap[TypeNSEC3PARAM] = true
+				//typemap[TypeNSEC3PARAM] = true
 			}
 		}
 		if optout && !typemap[TypeDS] && !typemap[TypeDNSKEY] {

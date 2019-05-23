@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-func init_dHSMsigner() (*Ctx, SessionHandle, string, string, bool, bool, bool) {
+func init_dHSMsigner() (*Ctx, SessionHandle, string, string, bool, bool, bool, string) {
 
 	rk := flag.Bool("reset_keys", false, "remove all keys and exit")
 	verif := flag.Bool("verify_rrsig", false, "verifies the RRsigs of an already signed zone file and exit")
@@ -17,6 +17,7 @@ func init_dHSMsigner() (*Ctx, SessionHandle, string, string, bool, bool, bool) {
 	p11lib := flag.String("p11lib", "", "full path to pkcs11 lib file")
 	nsec3 := flag.Bool("nsec3", false, "Use NSEC3 insted of NSEC (default: NSEC)")
 	optout := flag.Bool("opt-out", false, "Use NSEC3 with opt-out")
+	output := flag.String("output", "", "output for the signed zone file")
 
 	flag.Parse()
 
@@ -101,5 +102,5 @@ func init_dHSMsigner() (*Ctx, SessionHandle, string, string, bool, bool, bool) {
 		fmt.Fprintf(os.Stderr, "All keys destroyed\n")
 		os.Exit(1)
 	}
-	return p, session, *zone, *file, *ck, *nsec3, *optout
+	return p, session, *zone, *file, *ck, *nsec3, *optout, *output
 }

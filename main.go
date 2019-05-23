@@ -9,7 +9,7 @@ import (
 
 func main() {
 
-	p, session, zone, zfile, create_keys, nsec3, optout := init_dHSMsigner()
+	p, session, zone, zfile, create_keys, nsec3, optout, output := init_dHSMsigner()
 	defer p.Destroy()
 	defer p.Finalize()
 	defer p.CloseSession(session)
@@ -110,6 +110,19 @@ func main() {
 	fmt.Fprintf(os.Stderr, "DS: %s\n", ksk.ToDS(1)) // SHA256
 
 	PrintZone(rrzone)
+	if len(output) > 0 {
+		// Saving zone as file
+		f, err := os.Create(output)
+		if err != nil {
+			panic(fmt.Errorf("couldn't write file to path %s: %s", output, err))
+		}
+		for _, rr := range rrzone {
+			_, err := fmt.Fprintf(f, fmt.Sprintf("%s\n", rr))
+			if err != nil {
+				panic(fmt.Errorf("couldn't write file to path %s: %s", output, err))
+			}
+		}
+	}
 	return
 
 }
