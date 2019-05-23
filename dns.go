@@ -127,12 +127,13 @@ func CreateNewDNSKEY(zone string, f uint16, a uint8, ttl uint32, k string) *DNSK
 	return key
 }
 
-func CreateNewRRSIG(zone string, key RR, expdate time.Time, ttl uint32) *RRSIG {
+func CreateNewRRSIG(zone string, key RR, expdate time.Time, rrsetTTL uint32) *RRSIG {
 
 	k := key.(*DNSKEY)
 
 	rrsig := &RRSIG{Algorithm: k.Algorithm}
-	rrsig.Hdr.Ttl = ttl // Uses RRset TTL, not key TTL.
+	// Uses RRset TTL, not key TTL (RFC4034, 3: The TTL value of an RRSIG RR MUST match the TTL value of the RRset it covers)
+	rrsig.Hdr.Ttl = rrsetTTL
 	rrsig.SignerName = strings.ToLower(zone)
 	rrsig.KeyTag = k.KeyTag()
 	rrsig.Inception = uint32(time.Now().Unix())
