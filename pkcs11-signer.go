@@ -133,6 +133,7 @@ func (rs rrSigner) Public() crypto.PublicKey {
 func (rs rrSigner) Sign(rand io.Reader, rr []byte, opts crypto.SignerOpts) ([]byte, error) {
 
 	// Inspired in https://github.com/ThalesIgnite/crypto11/blob/38ef75346a1dc2094ffdd919341ef9827fb041c0/rsa.go#L281
+
 	oid := pkcs1Prefix[opts.HashFunc()]
 	T := make([]byte, len(oid)+len(rr))
 	copy(T[0:len(oid)], oid)

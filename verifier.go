@@ -12,7 +12,7 @@ type RRSigTuple struct {
 }
 
 func VerifyFile(filepath string) error {
-	rrZone, _ := ReadAndParseZone(filepath)
+	rrZone, _ := ReadAndParseZone(filepath, false)
 
 	rrSets := CreateRRset(rrZone, true)
 

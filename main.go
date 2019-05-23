@@ -19,7 +19,7 @@ func main() {
 		zone = zone + "."
 	}
 
-	rrzone, minTTL := ReadAndParseZone(zfile)
+	rrzone, minTTL := ReadAndParseZone(zfile, true)
 
 	// bkeys = {pzsk, szsk, pksk, sksk}
 	keys, bkeys, expdates := SearchValidKeys(p, session)
@@ -65,6 +65,7 @@ func main() {
 	)
 
 	if (nsec3) {
+		fmt.Printf("%v", optout)
 		AddNSEC3Records(&rrzone, optout)
 	} else {
 		AddNSECRecords(&rrzone)

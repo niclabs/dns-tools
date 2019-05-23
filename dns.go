@@ -84,7 +84,7 @@ func CreateRRset(rrs []RR, byType bool) [][]RR {
 	return set
 }
 
-func ReadAndParseZone(filezone string) ([]RR, uint32) {
+func ReadAndParseZone(filezone string, updateSerial bool) ([]RR, uint32) {
 
 	b, err := ioutil.ReadFile(filezone)
 	if err != nil {
@@ -94,7 +94,7 @@ func ReadAndParseZone(filezone string) ([]RR, uint32) {
 	minTTL := uint32(3600)
 
 	zone := string(b)
-	rrs := []RR{}
+	rrs := make([]RR, 0)
 
 	z := NewZoneParser(strings.NewReader(zone), "", "")
 	if err := z.Err(); err != nil {
@@ -109,7 +109,9 @@ func ReadAndParseZone(filezone string) ([]RR, uint32) {
 			soa = rr.(*SOA)
 			minTTL = soa.Minttl
 			/* UPDATING THE SERIAL */
-			rr.(*SOA).Serial = rr.(*SOA).Serial + 2
+			if updateSerial {
+				rr.(*SOA).Serial += 2
+			}
 		}
 	}
 
@@ -204,8 +206,9 @@ func AddNSEC3Records(zone *[]RR, optout bool) {
 	}
 	param.Iterations = 100 // 100 is enough!
 	param.Salt = generateSalt()
+	// Possible library bug: for some reason the library does not parse the value in NSEC3PARAM as octets, but RFC5155 4.2
+	// specifies that the behaviour of this field is the same as NSEC3 case (3.1.4).
 	param.SaltLength = uint8(len(param.Salt))
-
 	apex := ""
 	minttl := uint32(8600)
 
@@ -222,7 +225,7 @@ func AddNSEC3Records(zone *[]RR, optout bool) {
 				apex = rr.Header().Name
 				minttl = rr.(*SOA).Minttl
 				param.Hdr.Ttl = minttl
-				//typemap[TypeNSEC3PARAM] = true
+				typemap[TypeNSEC3PARAM] = true
 			}
 		}
 		if optout && !typemap[TypeDS] && !typemap[TypeDNSKEY] {
@@ -241,7 +244,7 @@ func AddNSEC3Records(zone *[]RR, optout bool) {
 		nsec3.Hash = param.Hash
 		nsec3.Flags = param.Flags
 		nsec3.Iterations = param.Iterations
-		nsec3.SaltLength = uint8(len(param.Salt))
+		nsec3.SaltLength = uint8(len(param.Salt)) / 2 // length is in octets and salt is an hex value.
 		nsec3.Salt = param.Salt
 		hname := HashName(rrs[0].Header().Name, param.Hash,
 			param.Iterations, param.Salt)
@@ -258,7 +261,7 @@ func AddNSEC3Records(zone *[]RR, optout bool) {
 
 		if (last >= 0) { // not the first NSEC3 record
 			set[n+last][0].(*NSEC3).NextDomain = nsec3.Hdr.Name
-			set[n+last][0].(*NSEC3).HashLength = uint8(len(nsec3.Hdr.Name))
+			set[n+last][0].(*NSEC3).HashLength = 20 // It's the length of the hash, not the encoding
 		}
 		last = last + 1
 
@@ -267,7 +270,7 @@ func AddNSEC3Records(zone *[]RR, optout bool) {
 
 	if (last >= 0) {
 		set[n+last][0].(*NSEC3).NextDomain = set[n][0].Header().Name
-		set[n+last][0].(*NSEC3).HashLength = uint8(len(set[n][0].Header().Name))
+		set[n+last][0].(*NSEC3).HashLength = 20 // It's the length of the hash, not the encoding
 
 		for i := n; i < len(set); i++ {
 			set[i][0].Header().Name = set[i][0].Header().Name + "." + apex
