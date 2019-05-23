@@ -153,7 +153,7 @@ func (rs rrSigner) Sign(rand io.Reader, rr []byte, opts crypto.SignerOpts) ([]by
 	return s, nil
 }
 
-func SearchValidKeys(p *Ctx, session SessionHandle) ([]ObjectHandle, []bool) {
+func SearchValidKeys(p *Ctx, session SessionHandle) ([]ObjectHandle, []bool, []time.Time) {
 
 	AllTemplate := []*Attribute{
 		NewAttribute(CKA_LABEL, "dHSM-signer"),
@@ -173,6 +173,7 @@ func SearchValidKeys(p *Ctx, session SessionHandle) ([]ObjectHandle, []bool) {
 
 	valid_keys := []ObjectHandle{0, 0, 0, 0}
 	exists := []bool{false, false, false, false}
+	exp_dates := make([]time.Time, 4)
 
 	if len(objs) > 0 {
 		t := time.Now()
@@ -188,6 +189,7 @@ func SearchValidKeys(p *Ctx, session SessionHandle) ([]ObjectHandle, []bool) {
 				start := string(attr[2].Value)
 				end := string(attr[3].Value)
 				valid := (start <= sToday && sToday <= end)
+				endTime, _ := time.Parse("20060102", end)
 
 				fmt.Fprintf(os.Stderr, "Checking key class %v id %s and valid %t\n", class, id, valid)
 
@@ -197,6 +199,7 @@ func SearchValidKeys(p *Ctx, session SessionHandle) ([]ObjectHandle, []bool) {
 							fmt.Fprintf(os.Stderr, "Found valid Public ZSK\n")
 							valid_keys[0] = o
 							exists[0] = true
+							exp_dates[0] = endTime
 						}
 					}
 					if (id == "ksk") {
@@ -204,6 +207,7 @@ func SearchValidKeys(p *Ctx, session SessionHandle) ([]ObjectHandle, []bool) {
 							fmt.Fprintf(os.Stderr, "Found valid Public KSK\n")
 							valid_keys[2] = o
 							exists[2] = true
+							exp_dates[2] = endTime
 						}
 					}
 				}
@@ -213,6 +217,7 @@ func SearchValidKeys(p *Ctx, session SessionHandle) ([]ObjectHandle, []bool) {
 							fmt.Fprintf(os.Stderr, "Found valid Private ZSK\n")
 							valid_keys[1] = o
 							exists[1] = true
+							exp_dates[1] = endTime
 						}
 					}
 					if (id == "ksk") {
@@ -220,6 +225,7 @@ func SearchValidKeys(p *Ctx, session SessionHandle) ([]ObjectHandle, []bool) {
 							fmt.Fprintf(os.Stderr, "Found valid Private KSK\n")
 							valid_keys[3] = o
 							exists[3] = true
+							exp_dates[3] = endTime
 						}
 					}
 				}
@@ -228,7 +234,7 @@ func SearchValidKeys(p *Ctx, session SessionHandle) ([]ObjectHandle, []bool) {
 	} else {
 		fmt.Fprintf(os.Stderr, "No keys found :-/")
 	}
-	return valid_keys, exists
+	return valid_keys, exists, exp_dates
 }
 
 func DestroyAllKeys(p *Ctx, session SessionHandle) {

@@ -127,17 +127,16 @@ func CreateNewDNSKEY(zone string, f uint16, a uint8, ttl uint32, k string) *DNSK
 	return key
 }
 
-func CreateNewRRSIG(zone string, key RR) *RRSIG {
+func CreateNewRRSIG(zone string, key RR, expdate time.Time, ttl uint32) *RRSIG {
 
 	k := key.(*DNSKEY)
 
 	rrsig := &RRSIG{Algorithm: k.Algorithm}
-	rrsig.Hdr.Ttl = k.Hdr.Ttl
+	rrsig.Hdr.Ttl = ttl
 	rrsig.SignerName = strings.ToLower(zone)
 	rrsig.KeyTag = k.KeyTag()
 	rrsig.Inception = uint32(time.Now().Unix())
-	rrsig.Expiration = rrsig.Inception + (60 * 60 * 24 * 365) // change to key exp
-
+	rrsig.Expiration = uint32(expdate.Unix())
 	return rrsig
 }
 

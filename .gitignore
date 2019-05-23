@@ -4,3 +4,7 @@
 *.txt
 # binary
 dhsm-signer
+# scripts that should not be here
+*.sh
+# shared objects that should not be here
+*.so
