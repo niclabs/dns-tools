@@ -16,7 +16,7 @@ Features:
     - [ ] SHA512
 - [x] Reuse keys
 - [x] Delete keys
-- [ ] Save zone to file
+- [x] Save zone to file
 
 Bugs:
 
