@@ -50,7 +50,7 @@ func findObject(p *Ctx, session SessionHandle, template []*(Attribute)) []Object
 func generateRSAKeyPair(p *Ctx, session SessionHandle, tokenLabel string, tokenPersistent bool, bits int) (ObjectHandle, ObjectHandle) {
 
 	today := time.Now()
-	nextyear := today.AddDate(1, 0, 0)
+	expiration := today.AddDate(1, 0, 0)
 
 	publicKeyTemplate := []*Attribute{
 		NewAttribute(CKA_CLASS, CKO_PUBLIC_KEY),
@@ -59,7 +59,7 @@ func generateRSAKeyPair(p *Ctx, session SessionHandle, tokenLabel string, tokenP
 		NewAttribute(CKA_KEY_TYPE, CKK_RSA),
 		NewAttribute(CKA_TOKEN, tokenPersistent),
 		NewAttribute(CKA_START_DATE, today),
-		NewAttribute(CKA_END_DATE, nextyear),
+		NewAttribute(CKA_END_DATE, expiration),
 		NewAttribute(CKA_VERIFY, true),
 		NewAttribute(CKA_PUBLIC_EXPONENT, []byte{1, 0, 1}),
 		NewAttribute(CKA_MODULUS_BITS, bits),
@@ -72,11 +72,9 @@ func generateRSAKeyPair(p *Ctx, session SessionHandle, tokenLabel string, tokenP
 		NewAttribute(CKA_KEY_TYPE, CKK_RSA),
 		NewAttribute(CKA_TOKEN, tokenPersistent),
 		NewAttribute(CKA_START_DATE, today),
-		NewAttribute(CKA_END_DATE, nextyear),
+		NewAttribute(CKA_END_DATE, expiration),
 		NewAttribute(CKA_SIGN, true),
 		NewAttribute(CKA_SENSITIVE, true),
-		//    NewAttribute(CKA_PRIVATE, true),
-		//    NewAttribute(CKA_EXTRACTABLE, true),
 	}
 
 	pbk, pvk, e := p.GenerateKeyPair(session,
