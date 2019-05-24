@@ -65,7 +65,6 @@ func main() {
 	)
 
 	if (nsec3) {
-		fmt.Printf("%v", optout)
 		AddNSEC3Records(&rrzone, optout)
 	} else {
 		AddNSECRecords(&rrzone)
