@@ -92,6 +92,7 @@ func VerifyFile(reader io.Reader, logger *log.Logger) (err error) {
 				expDate.Format("2006-01-02 15:04:05"),
 			)
 			logger.Printf("%s\n", err)
+			return
 		}
 		if set[0].Header().Rrtype == dns.TypeDNSKEY {
 			err = sig.Verify(pksk, set)
