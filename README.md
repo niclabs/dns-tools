@@ -1,4 +1,4 @@
-# dhsm-signer
+    # dhsm-signer
 DNS zone Signer for HSMs (using PKCS11)
 
 req: go version go1.12.3 linux/amd64
