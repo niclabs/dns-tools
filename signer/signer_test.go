@@ -42,6 +42,7 @@ func sign(t *testing.T, signArgs *signer.SignArgs) (*os.File, error) {
 	_, err = session.Sign(signArgs)
 	if err != nil {
 		t.Errorf("Error signing example: %s", err)
+		session.End()
 		return nil, err
 	}
 	if err := session.End(); err != nil {

@@ -158,6 +158,8 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 			if err != nil {
 				return
 			}
+		}
+		if keys.PrivateZSK != nil {
 			err = session.ExpireKey(keys.PrivateZSK.Handle)
 			if err != nil {
 				return
@@ -188,6 +190,8 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 			if err != nil {
 				return
 			}
+		}
+		if keys.PrivateKSK != nil {
 			err = session.ExpireKey(keys.PrivateKSK.Handle)
 			if err != nil {
 				return
