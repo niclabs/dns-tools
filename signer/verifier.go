@@ -3,7 +3,8 @@ package signer
 import (
 	"fmt"
 	"github.com/miekg/dns"
-	"os"
+	"io"
+	"log"
 	"time"
 )
 
@@ -14,12 +15,11 @@ type RRSigTuple struct {
 }
 
 // VerifyFile verifies the signatures in an already signed zone file.
-func VerifyFile(filepath string) error {
-	rrZone, _, err := readAndParseZone(filepath, false)
+func VerifyFile(reader io.Reader, logger *log.Logger) (err error) {
+	rrZone, _, err := readAndParseZone(reader, false)
 	if err != nil {
-		return err
+		return
 	}
-
 	rrSets := rrZone.CreateRRSet(true)
 
 	rrSigTuples := make(map[string]*RRSigTuple)
@@ -36,8 +36,8 @@ func VerifyFile(filepath string) error {
 					pzsk = key1
 					pksk = key2
 				} else if key1.Flags == 257 {
-					pksk = key2
-					pzsk = key1
+					pzsk = key2
+					pksk = key1
 				}
 			}
 			firstRR := set[0]
@@ -66,38 +66,43 @@ func VerifyFile(filepath string) error {
 	}
 
 	if pzsk == nil || pksk == nil {
-		return fmt.Errorf("couldn't find dnskeys")
+		err = fmt.Errorf("couldn't find dnskeys")
+		return err
 	}
 
 	// Checking each RRset RRSignature.
 	for setName, tuple := range rrSigTuples {
 		sig := tuple.RRSig
 		set := tuple.RRSet
+		if len(set) == 0 {
+			err = fmt.Errorf("the RRSet %s has no elements", setName)
+			return
+		}
 		if sig == nil {
-			return fmt.Errorf("the set %s doesnt have a signature", setName)
+			err = fmt.Errorf("the RRSet %s does not have a Signature", setName)
 		}
 		if set == nil {
-			return fmt.Errorf("the sig %s doesnt have a set", setName)
+			err = fmt.Errorf("the Signature %s does not have a RRSet", setName)
 		}
 		expDate := time.Unix(int64(sig.Expiration), 0)
 		if expDate.Before(time.Now()) {
-			_, _ = fmt.Fprintf(os.Stderr, "the sig %s is already expired. Exp date: %s", expDate.Format("2006-01-02 15:04:05"))
+			err = fmt.Errorf(
+				"the Signature for RRSet %s has already expired. Expiration date: %s",
+				setName,
+				expDate.Format("2006-01-02 15:04:05"),
+			)
+			logger.Printf("%s\n", err)
 		}
 		if set[0].Header().Rrtype == dns.TypeDNSKEY {
-			// use pksk to verify
-			if err := sig.Verify(pksk, set); err != nil {
-				_, _ = fmt.Fprintf(os.Stderr, "on set %s, error: %s\n", setName, err)
-			} else {
-				_, _ = fmt.Fprintf(os.Stderr, "%s is ok\n", setName)
-			}
+			err = sig.Verify(pksk, set)
 		} else {
-			// use pzsk to verify
-			if err := sig.Verify(pzsk, set); err != nil {
-				_, _ = fmt.Fprintf(os.Stderr, "on set %s, error: %s\n", setName, err)
-			} else {
-				_, _ = fmt.Fprintf(os.Stderr, "%s is ok\n", setName)
-			}
+			err = sig.Verify(pzsk, set)
+		}
+		if err != nil {
+			logger.Printf("[Error] (%s) %s  \n", err, setName)
+		} else {
+			logger.Printf("[ OK  ] %s\n", setName)
 		}
 	}
-	return nil
+	return
 }

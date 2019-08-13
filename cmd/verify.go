@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/niclabs/dhsm-signer/signer"
 	"github.com/spf13/cobra"
 	"os"
@@ -16,16 +15,19 @@ var verifyCmd = &cobra.Command{
 	Use:   "verify",
 	Short: "Verifies a signed file.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		file, _ := cmd.Flags().GetString("file")
-		_, err := os.Stat(file)
-		if err != nil {
-			if os.IsNotExist(err) {
-				return fmt.Errorf("File %s doesn't exist\n", file)
-			} else {
-				return fmt.Errorf("Error reading %s: %s \n", file, err)
-			}
+
+		filepath, _ := cmd.Flags().GetString("file")
+
+		if err := signer.FilesExist(filepath); err != nil {
+			return err
 		}
-		if err := signer.VerifyFile(file); err != nil {
+
+		file, err := os.Open(filepath)
+		if err != nil {
+			return err
+		}
+
+		if err := signer.VerifyFile(file, Log); err != nil {
 			return err
 		}
 		Log.Printf("File verified successfully.")

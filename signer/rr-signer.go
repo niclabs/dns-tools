@@ -19,12 +19,12 @@ var pkcs1Prefix = map[crypto.Hash][]byte{
 // RRSigner Implements crypto.Signer Interface.
 type RRSigner struct {
 	Session *Session            // PKCS#11 Session
-	SK, PK  *Key // Secret and Public Key handles
+	SK, PK  pkcs11.ObjectHandle // Secret and Public Key handles
 }
 
 // Public returns the signer public key.
 func (rs RRSigner) Public() crypto.PublicKey {
-	return rs.PK.Handle
+	return rs.PK
 }
 
 // Sign signs the content from the reader and returns a signature, or an error if it fails.
@@ -41,7 +41,7 @@ func (rs RRSigner) Sign(rand io.Reader, rr []byte, opts crypto.SignerOpts) ([]by
 	mechanisms := []*pkcs11.Mechanism{
 		pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS, nil),
 	}
-	err := rs.Session.Ctx.SignInit(rs.Session.Handle, mechanisms, rs.SK.Handle)
+	err := rs.Session.Ctx.SignInit(rs.Session.Handle, mechanisms, rs.SK)
 	if err != nil {
 		return nil, err
 	}

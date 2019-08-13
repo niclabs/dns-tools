@@ -19,10 +19,10 @@ var resetKeysCmd = &cobra.Command{
 		p11lib, _ := cmd.Flags().GetString("p11lib")
 		key, _ := cmd.Flags().GetString("user-key")
 		label, _ := cmd.Flags().GetString("key-label")
-		if err := FilesExist(p11lib); err != nil {
+		if err := signer.FilesExist(p11lib); err != nil {
 			return err
 		}
-		s, err := signer.NewSession(p11lib, key, label)
+		s, err := signer.NewSession(p11lib, key, label, Log)
 		if err != nil {
 			return err
 		}

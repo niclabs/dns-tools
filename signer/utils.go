@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/miekg/dns"
 	"github.com/miekg/pkcs11"
+	"io"
 	"math/rand"
 	"os"
 	"sort"
@@ -13,14 +14,10 @@ import (
 
 // readAndParseZone parses a DNS zone file and returns an array of RRs and the zone minTTL.
 // It also updates the serial in the SOA record if updateSerial is true.
-func readAndParseZone(file string, updateSerial bool) (RRArray, uint32, error) {
-	fileReader, err := os.Open(file)
-	if err != nil {
-		return nil, 0, err
-	}
+func readAndParseZone(reader io.Reader, updateSerial bool) (RRArray, uint32, error) {
 	minTTL := uint32(3600)
 	rrs := make(RRArray, 0)
-	zone := dns.NewZoneParser(fileReader, "", "")
+	zone := dns.NewZoneParser(reader, "", "")
 	if err := zone.Err(); err != nil {
 		return nil, 0, err
 	}
@@ -44,7 +41,7 @@ func readAndParseZone(file string, updateSerial bool) (RRArray, uint32, error) {
 func CreateNewDNSKEY(zone string, flags uint16, algorithm uint8, ttl uint32, publicKey string) *dns.DNSKEY {
 	return &dns.DNSKEY{
 		Flags:     flags,
-		Protocol:  3,
+		Protocol:  3, // RFC4034 2.1.2
 		Algorithm: algorithm,
 		Hdr: dns.RR_Header{
 			Name:   zone,
@@ -94,4 +91,15 @@ func removeDuplicates(objs []pkcs11.ObjectHandle) []pkcs11.ObjectHandle {
 		}
 	}
 	return result
+}
+
+// FilesExist returns an error if any of the paths received as args does not point to a readable file.
+func FilesExist(filepaths ...string) error {
+	for _, path := range filepaths {
+		_, err := os.Stat(path)
+		if err != nil || os.IsNotExist(err) {
+			return fmt.Errorf("File %s doesn't exist or it has not reading permissions\n", path)
+		}
+	}
+	return nil
 }

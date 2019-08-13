@@ -3,7 +3,7 @@ package signer
 import (
 	"fmt"
 	"github.com/miekg/dns"
-	"os"
+	"io"
 	"sort"
 	"strings"
 )
@@ -47,24 +47,29 @@ func (rrArray RRArray) Less(i, j int) bool {
 	}
 }
 
-// PrintZone prints on stdout all the RRs on the array.
+// WriteZone prints on writer all the RRs on the array.
 // The format of the text printed is the format of a DNS zone.
-func (rrArray RRArray) PrintZone() {
+func (rrArray RRArray) WriteZone(writer io.Writer) error {
 	for _, rr := range rrArray {
-		fmt.Println(rr)
+		if _, err := fmt.Fprintln(writer, rr); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // CreateRRSet groups the RRs by label and class if byType is false, or label, class and type if byType is true
 // NSEC/NSEC3 uses the version with byType = false, and RRSIG uses the other version.
-func (rrArray RRArray) CreateRRSet(byType bool) RRSet {
+func (rrArray RRArray) CreateRRSet(byType bool) (set RRSet) {
 	// RRsets are RR grouped by label and class for NSEC/NSEC3
 	// and by label, class, type for RRSIG:
 	// An RRSIG record contains the signature for an RRset with a particular
 	// name, class, and type. RFC4034
-
+	set = make(RRSet, 0, 32)
+	if len(rrArray) == 0 {
+		return
+	}
 	rr := rrArray[0]
-	set := make(RRSet, 0, 32)
 	set = append(set, make(RRArray, 0, 32))
 	set[0] = append(set[0], rr)
 	i := 0
@@ -78,7 +83,7 @@ func (rrArray RRArray) CreateRRSet(byType bool) RRSet {
 		}
 		set[i] = append(set[i], rrArray[k])
 	}
-	return set
+	return
 }
 
 // AddNSECRecords edits an RRArray and adds the respective NSEC records to it.
@@ -119,7 +124,8 @@ func (rrArray *RRArray) AddNSECRecords() {
 
 // AddNSECRecords edits an RRArray and adds the respective NSEC3 records to it.
 // If optOut is true, it sets the flag for NSEC3PARAM RR, following RFC5155 section 6.
-func (rrArray *RRArray) AddNSEC3Records(optOut bool) {
+// It returns an error if there is a colission on the hashes.
+func (rrArray *RRArray) AddNSEC3Records(optOut bool) error {
 	set := rrArray.CreateRRSet(false)
 
 	h := make(map[string]bool)
@@ -168,7 +174,7 @@ func (rrArray *RRArray) AddNSEC3Records(optOut bool) {
 		sort.Slice(typeArray, func(i, j int) bool {
 			return typeArray[i] < typeArray[j]
 		})
-		
+
 		nsec3 := &dns.NSEC3{}
 		nsec3.Hdr.Class = dns.ClassINET
 		nsec3.Hdr.Rrtype = dns.TypeNSEC3
@@ -212,9 +218,8 @@ func (rrArray *RRArray) AddNSEC3Records(optOut bool) {
 		*rrArray = append(*rrArray, param)
 		sort.Sort(*rrArray)
 	}
-
-	if collision { // all again
-		_, _ = fmt.Fprintf(os.Stderr, "Collision detected, NSEC3-ing all again\n")
-		rrArray.AddNSEC3Records(optOut)
+	if collision {
+		return fmt.Errorf("collision detected")
 	}
+	return nil
 }

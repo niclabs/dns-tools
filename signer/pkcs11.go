@@ -1,4 +1,0 @@
-package signer
-
-import "C"
-
