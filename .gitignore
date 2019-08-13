@@ -8,3 +8,7 @@ dhsm-signer
 *.sh
 # shared objects that should not be here
 *.so
+# Databases
+*.com
+*.com.signed
+*sqlite3
