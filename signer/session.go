@@ -153,6 +153,7 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 
 	if args.CreateKeys {
 		defaultExpDate := time.Now().AddDate(1, 0, 0)
+		var public, private pkcs11.ObjectHandle
 		if keys.PublicZSK != nil {
 			err = session.ExpireKey(keys.PublicZSK.Handle)
 			if err != nil {
@@ -164,27 +165,26 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 			if err != nil {
 				return
 			}
-		} else {
-			session.Log.Printf("generating zsk\n")
-			var public, private pkcs11.ObjectHandle
-			public, private, err = session.GenerateRSAKeyPair(
-				"zsk",
-				true,
-				defaultExpDate,
-				1024,
-			)
-			if err != nil {
-				return
-			}
-			keys.PublicZSK = &Key{
-				Handle:  public,
-				ExpDate: defaultExpDate,
-			}
-			keys.PrivateZSK = &Key{
-				Handle:  private,
-				ExpDate: defaultExpDate,
-			}
 		}
+		session.Log.Printf("generating zsk\n")
+		public, private, err = session.GenerateRSAKeyPair(
+			"zsk",
+			true,
+			defaultExpDate,
+			1024,
+		)
+		if err != nil {
+			return
+		}
+		keys.PublicZSK = &Key{
+			Handle:  public,
+			ExpDate: defaultExpDate,
+		}
+		keys.PrivateZSK = &Key{
+			Handle:  private,
+			ExpDate: defaultExpDate,
+		}
+
 		if keys.PublicKSK != nil {
 			err = session.ExpireKey(keys.PublicKSK.Handle)
 			if err != nil {
@@ -196,26 +196,24 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 			if err != nil {
 				return
 			}
-		} else {
-			session.Log.Printf("generating ksk\n")
-			var public, private pkcs11.ObjectHandle
-			public, private, err = session.GenerateRSAKeyPair(
-				"ksk",
-				true,
-				defaultExpDate,
-				2048,
-			)
-			if err != nil {
-				return
-			}
-			keys.PublicKSK = &Key{
-				Handle:  public,
-				ExpDate: defaultExpDate,
-			}
-			keys.PrivateKSK = &Key{
-				Handle:  private,
-				ExpDate: defaultExpDate,
-			}
+		}
+		session.Log.Printf("generating ksk\n")
+		public, private, err = session.GenerateRSAKeyPair(
+			"ksk",
+			true,
+			defaultExpDate,
+			2048,
+		)
+		if err != nil {
+			return
+		}
+		keys.PublicKSK = &Key{
+			Handle:  public,
+			ExpDate: defaultExpDate,
+		}
+		keys.PrivateKSK = &Key{
+			Handle:  private,
+			ExpDate: defaultExpDate,
 		}
 		session.Log.Printf("keys generated.\n")
 	}
@@ -302,6 +300,7 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 	}
 	err = rrDNSKeySig.Verify(ksk, rrDNSKeys)
 	if err != nil {
+		err = fmt.Errorf("cannot check ksk RRSig: %s", err)
 		return
 	}
 

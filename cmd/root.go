@@ -16,7 +16,7 @@ func init() {
 var Log *log.Logger
 
 var rootCmd = &cobra.Command{
-	Use:   "dns-zone-signer",
+	Use:   "dhsm-signer",
 	Short: "Signs a DNS zone using a PKCS11 Device",
 	Long: `Allows to sign a DNS zone using a PKCS#11 device.
 	
