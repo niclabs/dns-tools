@@ -142,7 +142,7 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 	if args.Zone[len(args.Zone)-1] != '.' {
 		args.Zone = args.Zone + "."
 	}
-	rrZone, minTTL, err := readAndParseZone(args.File, true)
+	rrZone, minTTL, err := ReadAndParseZone(args.File, true)
 	if err != nil {
 		return
 	}
@@ -245,20 +245,20 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 	ksk := CreateNewDNSKEY(
 		args.Zone,
 		257,
-		8, // RSA/SHA256 (https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml)
+		8,      // RSA/SHA256 (https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml)
 		minTTL, // SOA -> minimum TTL
 		base64.StdEncoding.EncodeToString(kskBytes),
 	)
 
 	if args.NSEC3 {
 		for {
-			if err := rrZone.AddNSEC3Records(args.OptOut); err == nil {
+			if err := rrZone.AddNSEC3Records(args.Zone, args.OptOut); err == nil {
 				break
 			}
 			session.Log.Printf("Collision detected, NSEC3-ing all again\n")
 		}
 	} else {
-		rrZone.AddNSECRecords()
+		rrZone.AddNSECRecords(args.Zone)
 	}
 
 	session.Log.Printf("Start signing...\n")
@@ -274,7 +274,7 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 		SK:      keys.PrivateKSK.Handle,
 	}
 
-	rrSet := rrZone.CreateRRSet(true)
+	rrSet := rrZone.CreateRRSet(args.Zone, true)
 
 	for _, v := range rrSet {
 		rrSig := CreateNewRRSIG(args.Zone, zsk, args.SignExpDate, v[0].Header().Ttl)
@@ -309,7 +309,7 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 	sort.Sort(rrZone)
 	ds = ksk.ToDS(1)
 	session.Log.Printf("DS: %s\n", ds) // SHA256
-	err = rrZone.WriteZone(args.Output);
+	err = rrZone.WriteZone(args.Output)
 	return
 }
 

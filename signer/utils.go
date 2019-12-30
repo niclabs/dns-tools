@@ -12,9 +12,9 @@ import (
 	"time"
 )
 
-// readAndParseZone parses a DNS zone file and returns an array of RRs and the zone minTTL.
+// ReadAndParseZone parses a DNS zone file and returns an array of RRs and the zone minTTL.
 // It also updates the serial in the SOA record if updateSerial is true.
-func readAndParseZone(reader io.Reader, updateSerial bool) (RRArray, uint32, error) {
+func ReadAndParseZone(reader io.Reader, updateSerial bool) (RRArray, uint32, error) {
 	minTTL := uint32(3600)
 	rrs := make(RRArray, 0)
 	zone := dns.NewZoneParser(reader, "", "")

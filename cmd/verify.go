@@ -10,7 +10,9 @@ import (
 
 func init() {
 	verifyCmd.Flags().StringP("file", "f", "", "Full path to zone file to be verified")
+	signCmd.Flags().StringP("zone", "z", "", "Zone name")
 	viper.BindPFlag("file", verifyCmd.Flags().Lookup("file"))
+	viper.BindPFlag("zone", verifyCmd.Flags().Lookup("zone"))
 }
 
 var verifyCmd = &cobra.Command{
@@ -19,11 +21,14 @@ var verifyCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		filepath :=  viper.GetString("file")
+		zone :=  viper.GetString("zone")
 
 		if len(filepath) == 0 {
 			return fmt.Errorf("input file path not specified")
 		}
-
+		if len(zone) == 0 {
+			return fmt.Errorf("zone not specified")
+		}
 
 		if err := signer.FilesExist(filepath); err != nil {
 			return err
@@ -34,7 +39,7 @@ var verifyCmd = &cobra.Command{
 			return err
 		}
 
-		if err := signer.VerifyFile(file, Log); err != nil {
+		if err := signer.VerifyFile(zone, file, Log); err != nil {
 			return err
 		}
 		Log.Printf("File verified successfully.")

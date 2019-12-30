@@ -12,7 +12,7 @@ import (
 // It implements Swapper interface, and is sortable.
 type RRArray []dns.RR
 
-// RRSet is an array of RRArrays.
+// RRArray is an array of RRArrays.
 type RRSet []RRArray
 
 // Len returns the length of an RRArray.
@@ -60,36 +60,33 @@ func (rrArray RRArray) WriteZone(writer io.Writer) error {
 
 // CreateRRSet groups the RRs by label and class if byType is false, or label, class and type if byType is true
 // NSEC/NSEC3 uses the version with byType = false, and RRSIG uses the other version.
-func (rrArray RRArray) CreateRRSet(byType bool) (set RRSet) {
+// It assumes the rrarray is sorted.
+func (rrArray RRArray) CreateRRSet(zone string, byType bool) (set RRSet) {
 	// RRsets are RR grouped by label and class for NSEC/NSEC3
 	// and by label, class, type for RRSIG:
 	// An RRSIG record contains the signature for an RRset with a particular
 	// name, class, and type. RFC4034
-	set = make(RRSet, 0, 32)
-	if len(rrArray) == 0 {
-		return
-	}
-	rr := rrArray[0]
-	set = append(set, make(RRArray, 0, 32))
-	set[0] = append(set[0], rr)
-	i := 0
-	for k := 1; k < len(rrArray); k++ {
-		h0 := rr.Header()
-		h1 := rrArray[k].Header()
-		if !(h0.Class == h1.Class && strings.ToLower(h0.Name) == strings.ToLower(h1.Name) && (!byType || h0.Rrtype == h1.Rrtype)) {
-			i = i + 1
-			rr = rrArray[k]
-			set = append(set, make(RRArray, 0, 32))
+	set = make(RRSet, 0)
+	nsNames := getAllNSNames(rrArray)
+	var lastRR dns.RR
+	for _, rr := range rrArray {
+		if isSignable(rr, zone, nsNames) {
+			if !sameRRSet(lastRR, rr, byType) {
+				// create new set
+				set = append(set, make(RRArray, 0))
+			}
+			// append to latest set
+			set[len(set)-1] = append(set[len(set)-1], rr)
 		}
-		set[i] = append(set[i], rrArray[k])
+		lastRR = rr
 	}
-	return
+	return set
 }
 
 // AddNSECRecords edits an RRArray and adds the respective NSEC records to it.
-func (rrArray *RRArray) AddNSECRecords() {
+func (rrArray *RRArray) AddNSECRecords(zone string) {
 
-	set := rrArray.CreateRRSet(false)
+	set := rrArray.CreateRRSet(zone, false)
 
 	n := len(set)
 	for i, rrs := range set {
@@ -125,8 +122,8 @@ func (rrArray *RRArray) AddNSECRecords() {
 // AddNSECRecords edits an RRArray and adds the respective NSEC3 records to it.
 // If optOut is true, it sets the flag for NSEC3PARAM RR, following RFC5155 section 6.
 // It returns an error if there is a colission on the hashes.
-func (rrArray *RRArray) AddNSEC3Records(optOut bool) error {
-	set := rrArray.CreateRRSet(false)
+func (rrArray *RRArray) AddNSEC3Records(zone string, optOut bool) error {
+	set := rrArray.CreateRRSet(zone, false)
 
 	h := make(map[string]bool)
 	collision := false
@@ -222,4 +219,47 @@ func (rrArray *RRArray) AddNSEC3Records(optOut bool) error {
 		return fmt.Errorf("collision detected")
 	}
 	return nil
+}
+
+func getAllNSNames(rrArray RRArray) map[string]struct{} {
+	m := make(map[string]struct{})
+	for _, elem := range rrArray {
+		if _, ok := elem.(*dns.NS); ok {
+			m[dns.Fqdn(elem.Header().Name)] = struct{}{}
+		}
+	}
+	return m
+}
+
+// isSignable returns true if the rr requires to be signed.
+// The design of DNSSEC stipulates that delegations (non-apex NS records)
+// are not signed, and neither are any glue records.
+func isSignable(rr dns.RR, zone string, nsNames map[string]struct{}) bool {
+	rrName := dns.Fqdn(rr.Header().Name)
+	if _, ok := nsNames[rrName]; ok &&
+		rrName != dns.Fqdn(zone) {
+		return false
+	}
+	// It could be a IPv6 glue, too
+	return true
+}
+
+// sameRRSet returns true if both rrs provided should be on the same RRSet.
+func sameRRSet(rr1, rr2 dns.RR, byType bool) bool {
+	if rr1 == nil || rr2 == nil {
+		return false
+	}
+	return rr1.Header().Class == rr2.Header().Class &&
+		strings.ToLower(dns.Fqdn(rr1.Header().Name)) == strings.ToLower(dns.Fqdn(rr2.Header().Name)) &&
+		(!byType || rr1.Header().Rrtype == rr2.Header().Rrtype)
+}
+
+// IsSignable checks if all the rrs are signable (they should be).
+func (rrArray RRArray) IsSignable(zone string, nsNames map[string]struct{}) bool {
+	for _, rr := range rrArray {
+		if !isSignable(rr, zone, nsNames) {
+			return false
+		}
+	}
+	return true
 }
