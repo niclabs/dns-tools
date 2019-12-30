@@ -1,15 +1,19 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/niclabs/dhsm-signer/signer"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func init() {
 	resetKeysCmd.Flags().StringP("p11lib", "p", "", "Full path to PKCS11 lib file")
 	resetKeysCmd.Flags().StringP("user-key", "k", "1234", "HSM User Login Key (default is 1234)")
 	resetKeysCmd.Flags().StringP("key-label", "l", "dHSM-signer", "Label of HSM Signer Key")
-	_ = resetKeysCmd.MarkFlagRequired("p11lib")
+	viper.BindPFlag("p11lib", resetKeysCmd.Flags().Lookup("p11lib"))
+	viper.BindPFlag("user-key", resetKeysCmd.Flags().Lookup("user-key"))
+	viper.BindPFlag("key-label", resetKeysCmd.Flags().Lookup("key-label"))
 }
 
 var resetKeysCmd = &cobra.Command{
@@ -17,8 +21,13 @@ var resetKeysCmd = &cobra.Command{
 	Short: "Deletes all the keys registered in the HSM with specified key label",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		p11lib, _ := cmd.Flags().GetString("p11lib")
-		key, _ := cmd.Flags().GetString("user-key")
-		label, _ := cmd.Flags().GetString("key-label")
+
+		if len(p11lib) == 0 {
+			return fmt.Errorf("p11lib not specified")
+		}
+
+		key := viper.GetString("user-key")
+		label := viper.GetString("key-label")
 		if err := signer.FilesExist(p11lib); err != nil {
 			return err
 		}

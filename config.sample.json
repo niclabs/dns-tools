@@ -1,0 +1,12 @@
+{
+  "p11lib": "/etc/dtc/dtd.so",
+  "user-key": "1234",
+  "key-label": "HSM",
+  "file": "/home/niclabs/zone.db",
+  "output": "/home/niclabs/zone-signed.db",
+  "create-keys": true,
+  "nsec3": true,
+  "opt-out": true,
+  "expiration-date": "20300101",
+  "zone": "example.com"
+}

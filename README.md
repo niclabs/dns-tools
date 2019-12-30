@@ -71,6 +71,16 @@ The folowing command removes the created keys with an specific tag, using the  [
 ./dhsm-signer reset-keys -p ./dtc.so
 ```
 
+## Config File
+
+You can create a json config file with the structure of `config.sample.json` to set the variables.
+The config file will be looked for at the following locations:
+
+ * `/etc/dhsm-signer/config.json`
+ * `./config.json` (Current location)
+
+You can also set the config file path using `--config` flag.
+
 ## Features
 
 - [x] Read zone

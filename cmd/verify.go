@@ -1,14 +1,16 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/niclabs/dhsm-signer/signer"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"os"
 )
 
 func init() {
 	verifyCmd.Flags().StringP("file", "f", "", "Full path to zone file to be verified")
-	_ = verifyCmd.MarkFlagRequired("file")
+	viper.BindPFlag("file", verifyCmd.Flags().Lookup("file"))
 }
 
 var verifyCmd = &cobra.Command{
@@ -16,7 +18,12 @@ var verifyCmd = &cobra.Command{
 	Short: "Verifies a signed file.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		filepath, _ := cmd.Flags().GetString("file")
+		filepath :=  viper.GetString("file")
+
+		if len(filepath) == 0 {
+			return fmt.Errorf("input file path not specified")
+		}
+
 
 		if err := signer.FilesExist(filepath); err != nil {
 			return err

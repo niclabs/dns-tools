@@ -12,3 +12,4 @@ dhsm-signer
 *.com
 *.com.signed
 *sqlite3
+config.json
