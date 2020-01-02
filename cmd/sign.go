@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/niclabs/dhsm-signer/signer"
+	"github.com/niclabs/hsm-tools/signer"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
@@ -21,7 +21,7 @@ func init() {
 	signCmd.Flags().StringP("expiration-date", "e", "", "Expiration Date, in YYYYMMDD format. Default is one more year from now.")
 	signCmd.Flags().StringP("p11lib", "p", "", "Full path to PKCS11 lib file")
 	signCmd.Flags().StringP("user-key", "k", "1234", "HSM User Login Key (default is 1234)")
-	signCmd.Flags().StringP("key-label", "l", "dHSM-signer", "Label of HSM Signer Key")
+	signCmd.Flags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer Key")
 
 	viper.BindPFlag("p11lib", signCmd.Flags().Lookup("p11lib"))
 	viper.BindPFlag("user-key", signCmd.Flags().Lookup("user-key"))

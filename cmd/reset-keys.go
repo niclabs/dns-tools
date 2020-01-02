@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/niclabs/dhsm-signer/signer"
+	"github.com/niclabs/hsm-tools/signer"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -10,7 +10,7 @@ import (
 func init() {
 	resetKeysCmd.Flags().StringP("p11lib", "p", "", "Full path to PKCS11 lib file")
 	resetKeysCmd.Flags().StringP("user-key", "k", "1234", "HSM User Login Key (default is 1234)")
-	resetKeysCmd.Flags().StringP("key-label", "l", "dHSM-signer", "Label of HSM Signer Key")
+	resetKeysCmd.Flags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer Key")
 	viper.BindPFlag("p11lib", resetKeysCmd.Flags().Lookup("p11lib"))
 	viper.BindPFlag("user-key", resetKeysCmd.Flags().Lookup("user-key"))
 	viper.BindPFlag("key-label", resetKeysCmd.Flags().Lookup("key-label"))

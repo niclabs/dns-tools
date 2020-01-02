@@ -1,4 +1,4 @@
-module github.com/niclabs/dhsm-signer
+module github.com/niclabs/hsm-tools
 
 go 1.12
 

@@ -2,7 +2,7 @@ package signer_test
 
 import (
 	"github.com/miekg/dns"
-	"github.com/niclabs/dhsm-signer/signer"
+	"github.com/niclabs/hsm-tools/signer"
 	"log"
 	"os"
 	"strings"
@@ -13,7 +13,7 @@ import (
 // Using default softHSM configuration. Change it if necessary.
 const p11Lib = "/usr/lib/softhsm/libsofthsm2.so"
 const key = "1234"
-const label = "dHSM-Test"
+const label = "HSM-Test"
 const zone = "example.com"
 const fileString = `
 example.com.			86400	IN	SOA		ns1.example.com. hostmaster.example.com. 2019052103 10800 15 604800 10800

@@ -12,7 +12,7 @@ var cfgFile string
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is /etc/dhsm-signer/config.toml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is /etc/hsm-tools/config.toml)")
 	rootCmd.AddCommand(signCmd)
 	rootCmd.AddCommand(verifyCmd)
 	rootCmd.AddCommand(resetKeysCmd)
@@ -22,11 +22,11 @@ func init() {
 var Log *log.Logger
 
 var rootCmd = &cobra.Command{
-	Use:   "dhsm-signer",
+	Use:   "hsm-tools",
 	Short: "Signs a DNS zone using a PKCS11 Device",
 	Long: `Allows to sign a DNS zone using a PKCS#11 device.
 	
-	For more information, visit "https://github.com/niclabs/dhsm-signer".`,
+	For more information, visit "https://github.com/niclabs/hsm-tools".`,
 }
 
 func Execute() {
@@ -41,7 +41,7 @@ func initConfig() {
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 	} else {
-		viper.AddConfigPath("/etc/dhsm-signer/")
+		viper.AddConfigPath("/etc/hsm-tools/")
 		viper.AddConfigPath("./")
 		viper.SetConfigName("config")
 	}
