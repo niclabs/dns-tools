@@ -82,12 +82,6 @@ var signCmd = &cobra.Command{
 		defer file.Close()
 		args.File = file
 
-		s, err := signer.NewSession(p11lib, key, label, Log)
-		if err != nil {
-			return err
-		}
-		defer s.End()
-
 		if len(expDateStr) > 0 {
 			parsedDate, err := time.Parse("20160102", expDateStr)
 			if err != nil {
@@ -107,6 +101,12 @@ var signCmd = &cobra.Command{
 			args.Output = os.Stdout
 		}
 
+		/* SIGNATURE: PKCS11 CASE */
+		s, err := signer.NewSession(p11lib, key, label, Log)
+		if err != nil {
+			return err
+		}
+		defer s.End()
 		if _, err := s.Sign(&args); err != nil {
 			return err
 		}
