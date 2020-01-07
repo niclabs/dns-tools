@@ -43,6 +43,7 @@ type SignArgs struct {
 	CreateKeys  bool      // If True, the sign process creates new keys for the signature.
 	NSEC3       bool      // If true, the zone is signed using NSEC3
 	OptOut      bool      // If true and NSEC3 is true, the zone is signed using OptOut NSEC3 flag.
+	MinTTL 	    uint32 // Signature keys
 }
 
 // NewSession creates a new session, using the pkcs#11 library defined in the arguments.
@@ -135,20 +136,13 @@ func (session *Session) DestroyAllKeys() error {
 	return nil
 }
 
-// Sign signs a zone file and outputs the result into out path (if its length is more than zero).
-// It also dumps the new signed filezone to the standard output.
-func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
+// GetKeys get the public key string and private key habdler from HSM
+// returns: key handlers, ZSK and KSK
 
-	if args.Zone[len(args.Zone)-1] != '.' {
-		args.Zone = args.Zone + "."
-	}
-	rrZone, minTTL, err := ReadAndParseZone(args.File, true)
-	if err != nil {
-		return
-	}
+func (session *Session) GetKeys(args *SignArgs) (*ValidKeys, *dns.DNSKEY, *dns.DNSKEY, error) {
 	keys, err := session.SearchValidKeys()
 	if err != nil {
-		return
+		return nil, nil, nil, err
 	}
 
 	if args.CreateKeys {
@@ -157,13 +151,13 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 		if keys.PublicZSK != nil {
 			err = session.ExpireKey(keys.PublicZSK.Handle)
 			if err != nil {
-				return
+				return nil, nil, nil, err
 			}
 		}
 		if keys.PrivateZSK != nil {
 			err = session.ExpireKey(keys.PrivateZSK.Handle)
 			if err != nil {
-				return
+				return nil, nil, nil, err
 			}
 		}
 		session.Log.Printf("generating zsk\n")
@@ -174,7 +168,7 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 			1024,
 		)
 		if err != nil {
-			return
+			return nil, nil, nil, err
 		}
 		keys.PublicZSK = &Key{
 			Handle:  public,
@@ -188,13 +182,13 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 		if keys.PublicKSK != nil {
 			err = session.ExpireKey(keys.PublicKSK.Handle)
 			if err != nil {
-				return
+				return nil, nil, nil, err
 			}
 		}
 		if keys.PrivateKSK != nil {
 			err = session.ExpireKey(keys.PrivateKSK.Handle)
 			if err != nil {
-				return
+				return nil, nil, nil, err
 			}
 		}
 		session.Log.Printf("generating ksk\n")
@@ -205,7 +199,7 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 			2048,
 		)
 		if err != nil {
-			return
+			return nil, nil, nil, err
 		}
 		keys.PublicKSK = &Key{
 			Handle:  public,
@@ -220,15 +214,19 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 
 	if keys.PublicZSK == nil || keys.PublicKSK == nil {
 		err = fmt.Errorf(
-			"valid keys not found. If you have not keys stored in the HSM," +
-				" you can create a new pair with --create-keys flag",
+			"valid keys not found. If you have not keys stored " +
+                        "in the HSM, you can create a new pair with " +
+                        "--create-keys flag",
 		)
-		return
+		return nil, nil, nil, err
 	}
+
+        // ok, we create DNSKEYS
+        minTTL := args.MinTTL
 
 	zskBytes, err := session.GetKeyBytes(keys.PublicZSK.Handle)
 	if err != nil {
-		return
+		return nil, nil, nil, err
 	}
 	zsk := CreateNewDNSKEY(
 		args.Zone,
@@ -240,7 +238,7 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 
 	kskBytes, err := session.GetKeyBytes(keys.PublicKSK.Handle)
 	if err != nil {
-		return
+		return nil, nil, nil, err
 	}
 	ksk := CreateNewDNSKEY(
 		args.Zone,
@@ -249,6 +247,28 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 		minTTL, // SOA -> minimum TTL
 		base64.StdEncoding.EncodeToString(kskBytes),
 	)
+
+	return keys, zsk, ksk, nil
+}
+
+// Sign signs a zone file and outputs the result into out path (if its length is more than zero).
+// It also dumps the new signed filezone to the standard output.
+func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
+
+	if args.Zone[len(args.Zone)-1] != '.' {
+		args.Zone = args.Zone + "."
+	}
+	rrZone, minTTL, err := ReadAndParseZone(args.File, true)
+	if err != nil {
+		return nil, err
+	}
+	args.MinTTL = minTTL
+
+	keys, zsk, ksk, err := session.GetKeys(args)
+
+	if err != nil {
+		return nil, err
+	}
 
 	if args.NSEC3 {
 		for {
@@ -281,12 +301,12 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 		err = rrSig.Sign(zskSigner, v)
 		if err != nil {
 			err = fmt.Errorf("cannot sign RRSig: %s", err)
-			return
+			return nil, err
 		}
 		err = rrSig.Verify(zsk, v)
 		if err != nil {
 			err = fmt.Errorf("cannot check RRSig: %s", err)
-			return
+			return nil, err
 		}
 		rrZone = append(rrZone, rrSig)
 	}
@@ -296,12 +316,12 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 	rrDNSKeySig := CreateNewRRSIG(args.Zone, ksk, args.SignExpDate, ksk.Hdr.Ttl)
 	err = rrDNSKeySig.Sign(kskSigner, rrDNSKeys)
 	if err != nil {
-		return
+		return nil, err
 	}
 	err = rrDNSKeySig.Verify(ksk, rrDNSKeys)
 	if err != nil {
 		err = fmt.Errorf("cannot check ksk RRSig: %s", err)
-		return
+		return nil, err
 	}
 
 	rrZone = append(rrZone, zsk, ksk, rrDNSKeySig)
@@ -310,7 +330,7 @@ func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 	ds = ksk.ToDS(1)
 	session.Log.Printf("DS: %s\n", ds) // SHA256
 	err = rrZone.WriteZone(args.Output)
-	return
+	return ds, err
 }
 
 // FindObject returns an object from the HSM following an specific template.
