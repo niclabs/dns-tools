@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/miekg/dns"
 	"github.com/miekg/pkcs11"
-	"io"
 	"math/rand"
 	"os"
 	"sort"
@@ -14,19 +13,24 @@ import (
 
 // ReadAndParseZone parses a DNS zone file and returns an array of RRs and the zone minTTL.
 // It also updates the serial in the SOA record if updateSerial is true.
-func ReadAndParseZone(reader io.Reader, updateSerial bool) (RRArray, uint32, error) {
-	minTTL := uint32(3600)
+func ReadAndParseZone(args *SignArgs, updateSerial bool) (RRArray, error) {
+
 	rrs := make(RRArray, 0)
-	zone := dns.NewZoneParser(reader, "", "")
+
+        if args.Zone[len(args.Zone)-1] != '.' {
+                args.Zone = args.Zone + "."
+        }
+
+	zone := dns.NewZoneParser(args.File, "", "")
 	if err := zone.Err(); err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 	for rr, ok := zone.Next(); ok; rr, ok = zone.Next() {
 		rrs = append(rrs, rr)
 		if rr.Header().Rrtype == dns.TypeSOA {
 			var soa *dns.SOA
 			soa = rr.(*dns.SOA)
-			minTTL = soa.Minttl
+			args.MinTTL = soa.Minttl
 			// UPDATING THE SERIAL
 			if updateSerial {
 				rr.(*dns.SOA).Serial += 2
@@ -34,7 +38,7 @@ func ReadAndParseZone(reader io.Reader, updateSerial bool) (RRArray, uint32, err
 		}
 	}
 	sort.Sort(rrs)
-	return rrs, minTTL, nil
+	return rrs, nil
 }
 
 // CreateNewDNSKEY creates a new DNSKEY RR, using the parameters provided.

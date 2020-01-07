@@ -16,7 +16,11 @@ type RRSigTuple struct {
 
 // VerifyFile verifies the signatures in an already signed zone file.
 func VerifyFile(zone string, reader io.Reader, logger *log.Logger) (err error) {
-	rrZone, _, err := ReadAndParseZone(reader, false)
+	var args *SignArgs
+        args.Zone = zone
+	args.File = reader
+
+	rrZone, err := ReadAndParseZone(args, false)
 	if err != nil {
 		return
 	}

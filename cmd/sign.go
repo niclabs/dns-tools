@@ -101,12 +101,31 @@ var signCmd = &cobra.Command{
 			args.Output = os.Stdout
 		}
 
-		/* SIGNATURE: PKCS11 CASE */
+
+                /* READ ZONE */
+		args.RRs, err = signer.ReadAndParseZone(&args, true)
+	        if err != nil {
+        	        return err
+        	}
+
+		/* 
+		SIGNATURE: PKCS11 CASE 
+                */
+
+		/* INIT */
 		s, err := signer.NewSession(p11lib, key, label, Log)
 		if err != nil {
 			return err
 		}
 		defer s.End()
+
+		/* GET KEYS */
+        	err = s.GetKeys(&args)
+        	if err != nil {
+                	return err
+        	}
+
+		/* SIGN MY ANGLE OF MUSIC! */
 		if _, err := s.Sign(&args); err != nil {
 			return err
 		}
