@@ -6,10 +6,25 @@ import (
 	"github.com/miekg/pkcs11"
 	"math/rand"
 	"os"
+	"io"
 	"sort"
 	"strings"
 	"time"
 )
+
+// SignArgs contains all the args needed to sign a file.
+type SignArgs struct {
+        Zone        string    // Zone name
+        File        io.Reader // File path
+        Output      io.Writer // Out path
+        SignExpDate time.Time // Expiration date for the signature.
+        CreateKeys  bool      // If True, the sign process creates new keys for the signature.
+        NSEC3       bool      // If true, the zone is signed using NSEC3
+        OptOut      bool      // If true and NSEC3 is true, the zone is signed using OptOut NSEC3 flag.
+        MinTTL      uint32 // Min TTL ;-)
+        RRs         RRArray     // RRs
+}
+
 
 // ReadAndParseZone parses a DNS zone file and returns an array of RRs and the zone minTTL.
 // It also updates the serial in the SOA record if updateSerial is true.

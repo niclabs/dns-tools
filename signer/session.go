@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/miekg/dns"
 	"github.com/miekg/pkcs11"
-	"io"
+//	"io"
 	"log"
 	"sort"
 	"time"
@@ -35,17 +35,10 @@ type ValidKeys struct {
 }
 
 // SignArgs contains all the args needed to sign a file.
-type SignArgs struct {
-	Zone        string    // Zone name
-	File        io.Reader // File path
-	Output      io.Writer // Out path
-	SignExpDate time.Time // Expiration date for the signature.
-	CreateKeys  bool      // If True, the sign process creates new keys for the signature.
-	NSEC3       bool      // If true, the zone is signed using NSEC3
-	OptOut      bool      // If true and NSEC3 is true, the zone is signed using OptOut NSEC3 flag.
-	MinTTL 	    uint32 // Min TTL ;-)
-	RRs	    RRArray	// RRs
-        Keys	    *ValidKeys // SIgnature keys
+// SessionSignArgs extend it for the session
+type SessionSignArgs struct {
+	*SignArgs
+        Keys	    *ValidKeys // Signature keys
         Zsk	    *dns.DNSKEY  // ZSK
         Ksk	    *dns.DNSKEY  // KSK
 }
@@ -143,7 +136,7 @@ func (session *Session) DestroyAllKeys() error {
 // GetKeys get the public key string and private key habdler from HSM
 // returns: error, if any
 
-func (session *Session) GetKeys(args *SignArgs) (error) {
+func (session *Session) GetKeys(args *SessionSignArgs) (error) {
 	keys, err := session.SearchValidKeys()
 	if err != nil {
 		return err
@@ -257,7 +250,7 @@ func (session *Session) GetKeys(args *SignArgs) (error) {
 
 // Sign signs a zone file and outputs the result into out path (if its length is more than zero).
 // It also dumps the new signed filezone to the standard output.
-func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
+func (session *Session) Sign(args *SessionSignArgs) (ds *dns.DS, err error) {
 
 	session.Log.Printf("Start signing...\n")
 	zskSigner := RRSigner{

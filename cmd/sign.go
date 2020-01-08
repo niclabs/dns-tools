@@ -119,14 +119,15 @@ var signCmd = &cobra.Command{
 		}
 		defer s.End()
 
+		/* ADD NSEC or NSEC3 */
+		signer.AddNSEC13(&args)
+
+		args := signer.SessionSignArgs{SignArgs:&args,}
 		/* GET KEYS */
         	err = s.GetKeys(&args)
         	if err != nil {
                 	return err
         	}
-
-		/* ADD NSEC or NSEC3 */
-		signer.AddNSEC13(&args)
 
 		/* SIGN MY ANGLE OF MUSIC! */
 		if _, err := s.Sign(&args); err != nil {

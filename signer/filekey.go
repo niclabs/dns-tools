@@ -7,10 +7,10 @@ import (
         "fmt"
         "github.com/miekg/dns"
         "io"
-        "log"
         "sort"
         "time"
 */
+        "log"
 )
 
 type FileKey struct {
