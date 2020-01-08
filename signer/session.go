@@ -259,17 +259,6 @@ func (session *Session) GetKeys(args *SignArgs) (error) {
 // It also dumps the new signed filezone to the standard output.
 func (session *Session) Sign(args *SignArgs) (ds *dns.DS, err error) {
 
-	if args.NSEC3 {
-		for {
-			if err := args.RRs.AddNSEC3Records(args.Zone, args.OptOut); err == nil {
-				break
-			}
-			session.Log.Printf("Collision detected, NSEC3-ing all again\n")
-		}
-	} else {
-		args.RRs.AddNSECRecords(args.Zone)
-	}
-
 	session.Log.Printf("Start signing...\n")
 	zskSigner := RRSigner{
 		Session: session,

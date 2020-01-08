@@ -41,6 +41,18 @@ func ReadAndParseZone(args *SignArgs, updateSerial bool) (RRArray, error) {
 	return rrs, nil
 }
 
+func AddNSEC13(args *SignArgs)  {
+	if args.NSEC3 {
+                for {
+                        if err := args.RRs.AddNSEC3Records(args.Zone, args.OptOut); err == nil {
+                                break
+                        }
+                }
+        } else {
+                args.RRs.AddNSECRecords(args.Zone)
+        }
+}
+
 // CreateNewDNSKEY creates a new DNSKEY RR, using the parameters provided.
 func CreateNewDNSKEY(zone string, flags uint16, algorithm uint8, ttl uint32, publicKey string) *dns.DNSKEY {
 	return &dns.DNSKEY{
