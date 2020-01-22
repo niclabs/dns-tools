@@ -91,7 +91,7 @@ You can also set the config file path using `--config` flag.
 - [x] Create keys in HSM
 - [x] Sign using PKCS11 (for HSMs):
     - [x] RSA
-    - [ ] ECDSAP
+    - [ ] ECDSA
     - [ ] SHA-1
     - [ ] SHA128
     - [x] SHA256
