@@ -14,7 +14,7 @@ import (
 const p11Lib = "/usr/lib/softhsm/libsofthsm2.so"
 const key = "1234"
 const label = "HSM-Test"
-const zone = "example.com"
+const zone = "example.com."
 const fileString = `
 example.com.			86400	IN	SOA		ns1.example.com. hostmaster.example.com. 2019052103 10800 15 604800 10800
 delegate.example.com. 	86400 	IN 	NS 		other.domain.com.
@@ -29,10 +29,15 @@ yo.example.com.			86400	IN	A		127.0.0.3
 
 var Log = log.New(os.Stderr, "[Testing]", log.Ldate|log.Ltime)
 
-func sign(t *testing.T, signArgs *signer.SignArgs) (*os.File, error) {
-	session, err := signer.NewSession(p11Lib, key, label, Log)
+func sign(t *testing.T, signArgs *signer.SignArgs, algorithm string) (*os.File, error) {
+	session, err := signer.NewSession(p11Lib, key, label, algorithm, Log)
+	if err != nil {
+		return nil, err
+	}
 	reader, writer, err := os.Pipe()
-
+	if err != nil {
+		return nil, err
+	}
 	signArgs.File = strings.NewReader(fileString)
 	signArgs.Output = writer
 
@@ -42,8 +47,11 @@ func sign(t *testing.T, signArgs *signer.SignArgs) (*os.File, error) {
 		return nil, err
 	}
 	_ = session.DestroyAllKeys()
-
-	_, err = session.Sign(signArgs)
+	args := &signer.SessionSignArgs{SignArgs: signArgs}
+	if err := session.GetKeys(args); err != nil {
+		t.Errorf("error getting keys: %s", err)
+	}
+	_, err = session.Sign(args)
 	if err != nil {
 		t.Errorf("Error signing example: %s", err)
 		return nil, err
@@ -55,14 +63,15 @@ func sign(t *testing.T, signArgs *signer.SignArgs) (*os.File, error) {
 	return reader, nil
 }
 
-func TestSession_Sign(t *testing.T) {
+func TestSession_SignRSA(t *testing.T) {
 	out, err := sign(t, &signer.SignArgs{
 		Zone:       zone,
 		CreateKeys: true,
 		NSEC3:      false,
 		OptOut:     false,
-	})
+	}, "rsa")
 	if err != nil {
+		t.Errorf("signing failed: %s", err)
 		return
 	}
 	defer out.Close()
@@ -73,13 +82,13 @@ func TestSession_Sign(t *testing.T) {
 	return
 }
 
-func TestSession_SignNSEC3(t *testing.T) {
+func TestSession_SignRSANSEC3(t *testing.T) {
 	out, err := sign(t, &signer.SignArgs{
 		Zone:       zone,
 		CreateKeys: true,
 		NSEC3:      true,
 		OptOut:     false,
-	})
+	}, "rsa")
 	if err != nil {
 		return
 	}
@@ -91,13 +100,13 @@ func TestSession_SignNSEC3(t *testing.T) {
 	return
 }
 
-func TestSession_SignNSEC3OptOut(t *testing.T) {
+func TestSession_SignRSANSEC3OptOut(t *testing.T) {
 	out, err := sign(t, &signer.SignArgs{
 		Zone:       zone,
 		CreateKeys: true,
 		NSEC3:      true,
 		OptOut:     true,
-	})
+	}, "rsa")
 	if err != nil {
 		return
 	}
@@ -116,7 +125,7 @@ func TestSession_ExpiredSig(t *testing.T) {
 		SignExpDate: time.Now().AddDate(-1, 0, 0),
 		NSEC3:       false,
 		OptOut:      false,
-	})
+	}, "rsa")
 	if err != nil {
 		return
 	}
@@ -129,18 +138,19 @@ func TestSession_ExpiredSig(t *testing.T) {
 }
 
 func TestSession_NoDelegation(t *testing.T) {
-	out, err := sign(t, &signer.SignArgs{
+	args := &signer.SignArgs{
 		Zone:        zone,
 		CreateKeys:  true,
 		SignExpDate: time.Now().AddDate(-1, 0, 0),
 		NSEC3:       false,
 		OptOut:      false,
-	})
+	}
+	out, err := sign(t, args, "rsa")
 	if err != nil {
 		return
 	}
 	defer out.Close()
-	rrZone, _, err := signer.ReadAndParseZone(out, false)
+	rrZone, err := signer.ReadAndParseZone(args, false)
 
 	for _, rr := range rrZone {
 		_, isNSEC := rr.(*dns.NSEC)

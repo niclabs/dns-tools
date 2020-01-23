@@ -1,12 +1,11 @@
 package signer
 
 import (
-	"encoding/base64"
 	"encoding/binary"
 	"fmt"
 	"github.com/miekg/dns"
 	"github.com/miekg/pkcs11"
-//	"io"
+	//	"io"
 	"log"
 	"sort"
 	"time"
@@ -18,7 +17,8 @@ type Session struct {
 	Ctx    *pkcs11.Ctx          // PKCS#11 Context
 	Handle pkcs11.SessionHandle // Session Handle
 	Label  string               // Key Label
-	Log    *log.Logger          // Logger (for output)
+	SignAlgorithm
+	Log *log.Logger // Logger (for output)
 }
 
 // Key represents a structure with a handle and an expiration date.
@@ -38,14 +38,14 @@ type ValidKeys struct {
 // SessionSignArgs extend it for the session
 type SessionSignArgs struct {
 	*SignArgs
-        Keys	    *ValidKeys // Signature keys
-        Zsk	    *dns.DNSKEY  // ZSK
-        Ksk	    *dns.DNSKEY  // KSK
+	Keys *ValidKeys  // Signature keys
+	ZSK  *dns.DNSKEY // ZSK
+	KSK  *dns.DNSKEY // KSK
 }
 
 // NewSession creates a new session, using the pkcs#11 library defined in the arguments.
 // The arguments also define the HSM user key and the label the keys will use when created or retrieved.
-func NewSession(p11lib, key, label string, log *log.Logger) (*Session, error) {
+func NewSession(p11lib, key, label string, signAlgorithm string, log *log.Logger) (*Session, error) {
 	p := pkcs11.New(p11lib)
 	if p == nil {
 		return nil, fmt.Errorf("Error initializing %s: file not found\n", p11lib)
@@ -66,11 +66,16 @@ func NewSession(p11lib, key, label string, log *log.Logger) (*Session, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Error login with provided key: %s\n", err)
 	}
+	algorithm, ok := StringToSignAlgorithm[signAlgorithm]
+	if !ok {
+		return nil, fmt.Errorf("error with provided sign algorithm: not found")
+	}
 	return &Session{
-		Ctx:    p,
-		Handle: session,
-		Label:  label,
-		Log:    log,
+		Ctx:           p,
+		Handle:        session,
+		Label:         label,
+		Log:           log,
+		SignAlgorithm: algorithm,
 	}, nil
 }
 
@@ -98,7 +103,6 @@ func (session *Session) DestroyAllKeys() error {
 		return fmt.Errorf("session not initialized")
 	}
 	deleteTemplate := []*pkcs11.Attribute{
-		//NewAttribute(CKA_KEY_TYPE, CKK_RSA),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, session.Label),
 	}
 	objects, err := session.FindObject(deleteTemplate)
@@ -133,118 +137,108 @@ func (session *Session) DestroyAllKeys() error {
 	return nil
 }
 
-// GetKeys get the public key string and private key habdler from HSM
-// returns: error, if any
-
-func (session *Session) GetKeys(args *SessionSignArgs) (error) {
+// GetKeys get the public key string and private key habdler from HSM.
+// returns an error, if any.
+func (session *Session) GetKeys(args *SessionSignArgs) error {
 	keys, err := session.SearchValidKeys()
 	if err != nil {
 		return err
 	}
 
 	if args.CreateKeys {
-		defaultExpDate := time.Now().AddDate(1, 0, 0)
-		var public, private pkcs11.ObjectHandle
-		if keys.PublicZSK != nil {
-			err = session.ExpireKey(keys.PublicZSK.Handle)
-			if err != nil {
-				return err
-			}
-		}
-		if keys.PrivateZSK != nil {
-			err = session.ExpireKey(keys.PrivateZSK.Handle)
-			if err != nil {
-				return err
-			}
-		}
-		session.Log.Printf("generating zsk\n")
-		public, private, err = session.GenerateRSAKeyPair(
-			"zsk",
-			true,
-			defaultExpDate,
-			1024,
-		)
-		if err != nil {
+		if err := session.expireKeys(keys); err != nil {
 			return err
 		}
-		keys.PublicZSK = &Key{
-			Handle:  public,
-			ExpDate: defaultExpDate,
-		}
-		keys.PrivateZSK = &Key{
-			Handle:  private,
-			ExpDate: defaultExpDate,
-		}
-
-		if keys.PublicKSK != nil {
-			err = session.ExpireKey(keys.PublicKSK.Handle)
-			if err != nil {
-				return err
-			}
-		}
-		if keys.PrivateKSK != nil {
-			err = session.ExpireKey(keys.PrivateKSK.Handle)
-			if err != nil {
-				return err
-			}
-		}
-		session.Log.Printf("generating ksk\n")
-		public, private, err = session.GenerateRSAKeyPair(
-			"ksk",
-			true,
-			defaultExpDate,
-			2048,
-		)
-		if err != nil {
+		if err := session.generateKeys(keys); err != nil {
 			return err
 		}
-		keys.PublicKSK = &Key{
-			Handle:  public,
-			ExpDate: defaultExpDate,
-		}
-		keys.PrivateKSK = &Key{
-			Handle:  private,
-			ExpDate: defaultExpDate,
-		}
-		session.Log.Printf("keys generated.\n")
 	}
+	args.Keys = keys
 
-	if keys.PublicZSK == nil || keys.PublicKSK == nil {
+	if args.Keys.PublicZSK == nil || args.Keys.PublicKSK == nil {
 		err = fmt.Errorf(
 			"valid keys not found. If you have not keys stored " +
-                        "in the HSM, you can create a new pair with " +
-                        "--create-keys flag",
+				"in the HSM, you can create a new pair with " +
+				"--create-keys flag",
 		)
 		return err
 	}
-        args.Keys = keys
+	args.Keys = keys
 
-        // ok, we create DNSKEYS
+	// ok, we create DNSKEYS
+	return loadRSASigningKeys(session, args)
+}
 
-	zskBytes, err := session.GetKeyBytes(keys.PublicZSK.Handle)
+func (session *Session) expireKeys(keys *ValidKeys) error {
+	if keys.PublicZSK != nil {
+		err := session.ExpireKey(keys.PublicZSK.Handle)
+		if err != nil {
+			return err
+		}
+	}
+	if keys.PrivateZSK != nil {
+		err := session.ExpireKey(keys.PrivateZSK.Handle)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (session *Session) generateKeys(keys *ValidKeys) error {
+	defaultExpDate := time.Now().AddDate(1, 0, 0) // TODO: allow to config this?
+	session.Log.Printf("generating zsk\n")
+	public, private, err := generateRSAKeyPair(
+		session,
+		"zsk",
+		true,
+		defaultExpDate,
+		1024,
+	)
 	if err != nil {
 		return err
 	}
-	args.Zsk = CreateNewDNSKEY(
-		args.Zone,
-		256,
-		8, // RSA/SHA256 (https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml)
-		args.MinTTL,
-		base64.StdEncoding.EncodeToString(zskBytes),
-	)
+	keys.PublicZSK = &Key{
+		Handle:  public,
+		ExpDate: defaultExpDate,
+	}
+	keys.PrivateZSK = &Key{
+		Handle:  private,
+		ExpDate: defaultExpDate,
+	}
 
-	kskBytes, err := session.GetKeyBytes(keys.PublicKSK.Handle)
+	if keys.PublicKSK != nil {
+		err = session.ExpireKey(keys.PublicKSK.Handle)
+		if err != nil {
+			return err
+		}
+	}
+	if keys.PrivateKSK != nil {
+		err = session.ExpireKey(keys.PrivateKSK.Handle)
+		if err != nil {
+			return err
+		}
+	}
+	session.Log.Printf("generating ksk\n")
+	public, private, err = generateRSAKeyPair(
+		session,
+		"ksk",
+		true,
+		defaultExpDate,
+		2048,
+	)
 	if err != nil {
 		return err
 	}
-	args.Ksk = CreateNewDNSKEY(
-		args.Zone,
-		257,
-		8,      // RSA/SHA256 (https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml)
-		args.MinTTL, // SOA -> minimum TTL
-		base64.StdEncoding.EncodeToString(kskBytes),
-	)
-
+	keys.PublicKSK = &Key{
+		Handle:  public,
+		ExpDate: defaultExpDate,
+	}
+	keys.PrivateKSK = &Key{
+		Handle:  private,
+		ExpDate: defaultExpDate,
+	}
+	session.Log.Printf("keys generated.\n")
 	return nil
 }
 
@@ -253,31 +247,21 @@ func (session *Session) GetKeys(args *SessionSignArgs) (error) {
 func (session *Session) Sign(args *SessionSignArgs) (ds *dns.DS, err error) {
 
 	session.Log.Printf("Start signing...\n")
-	zskSigner := RRSigner{
-		Session: session,
-		PK:      args.Keys.PublicZSK.Handle,
-		SK:      args.Keys.PrivateZSK.Handle,
-	}
-
-	kskSigner := RRSigner{
-		Session: session,
-		PK:      args.Keys.PublicKSK.Handle,
-		SK:      args.Keys.PrivateKSK.Handle,
-	}
+	zskSigner, kskSigner := createRSASigners(session, args)
 
 	rrSet := args.RRs.CreateRRSet(args.Zone, true)
 
 	for _, v := range rrSet {
-		rrSig := CreateNewRRSIG(args.Zone, 
-					args.Zsk, 
-					args.SignExpDate, 
-					v[0].Header().Ttl)
+		rrSig := CreateNewRRSIG(args.Zone,
+			args.ZSK,
+			args.SignExpDate,
+			v[0].Header().Ttl)
 		err = rrSig.Sign(zskSigner, v)
 		if err != nil {
 			err = fmt.Errorf("cannot sign RRSig: %s", err)
 			return nil, err
 		}
-		err = rrSig.Verify(args.Zsk, v)
+		err = rrSig.Verify(args.ZSK, v)
 		if err != nil {
 			err = fmt.Errorf("cannot check RRSig: %s", err)
 			return nil, err
@@ -285,26 +269,26 @@ func (session *Session) Sign(args *SessionSignArgs) (ds *dns.DS, err error) {
 		args.RRs = append(args.RRs, rrSig)
 	}
 
-	rrDNSKeys := RRArray{args.Zsk, args.Ksk}
+	rrDNSKeys := RRArray{args.ZSK, args.KSK}
 
-	rrDNSKeySig := CreateNewRRSIG(args.Zone, 
-				      args.Ksk, 
-				      args.SignExpDate, 
-				      args.Ksk.Hdr.Ttl)
+	rrDNSKeySig := CreateNewRRSIG(args.Zone,
+		args.KSK,
+		args.SignExpDate,
+		args.KSK.Hdr.Ttl)
 	err = rrDNSKeySig.Sign(kskSigner, rrDNSKeys)
 	if err != nil {
 		return nil, err
 	}
-	err = rrDNSKeySig.Verify(args.Ksk, rrDNSKeys)
+	err = rrDNSKeySig.Verify(args.KSK, rrDNSKeys)
 	if err != nil {
 		err = fmt.Errorf("cannot check ksk RRSig: %s", err)
 		return nil, err
 	}
 
-	args.RRs = append(args.RRs, args.Zsk, args.Ksk, rrDNSKeySig)
+	args.RRs = append(args.RRs, args.ZSK, args.KSK, rrDNSKeySig)
 
 	sort.Sort(args.RRs)
-	ds = args.Ksk.ToDS(1)
+	ds = args.KSK.ToDS(1)
 	session.Log.Printf("DS: %s\n", ds) // SHA256
 	err = args.RRs.WriteZone(args.Output)
 	return ds, err
@@ -328,86 +312,6 @@ func (session *Session) FindObject(template []*pkcs11.Attribute) ([]pkcs11.Objec
 		return nil, err
 	}
 	return removeDuplicates(obj), nil
-}
-
-// GenerateRSAKeyPair creates a RSA key pair, or returns an error if it cannot create the key pair.
-func (session *Session) GenerateRSAKeyPair(tokenLabel string, tokenPersistent bool, expDate time.Time, bits int) (pkcs11.ObjectHandle, pkcs11.ObjectHandle, error) {
-	if session == nil || session.Ctx == nil {
-		return 0, 0, fmt.Errorf("session not initialized")
-	}
-	today := time.Now()
-	publicKeyTemplate := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, session.Label),
-		pkcs11.NewAttribute(pkcs11.CKA_ID, []byte(tokenLabel)),
-		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
-		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, tokenPersistent),
-		pkcs11.NewAttribute(pkcs11.CKA_START_DATE, today),
-		pkcs11.NewAttribute(pkcs11.CKA_END_DATE, expDate),
-		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
-		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, []byte{1, 0, 1}),
-		pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, bits),
-	}
-
-	privateKeyTemplate := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, session.Label),
-		pkcs11.NewAttribute(pkcs11.CKA_ID, []byte(tokenLabel)),
-		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
-		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, tokenPersistent),
-		pkcs11.NewAttribute(pkcs11.CKA_START_DATE, today),
-		pkcs11.NewAttribute(pkcs11.CKA_END_DATE, expDate),
-		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
-		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
-	}
-
-	pubKey, privKey, err := session.Ctx.GenerateKeyPair(
-		session.Handle,
-		[]*pkcs11.Mechanism{
-			pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_KEY_PAIR_GEN, nil),
-		},
-		publicKeyTemplate,
-		privateKeyTemplate,
-	)
-	if err != nil {
-		return 0, 0, err
-	}
-	return pubKey, privKey, nil
-}
-
-// GetKeyBytes returns the bytes of the key identified by the handle in the format specified by RFC3110.
-func (session *Session) GetKeyBytes(object pkcs11.ObjectHandle) ([]byte, error) {
-	if session == nil || session.Ctx == nil {
-		return nil, fmt.Errorf("session not initialized")
-	}
-	var n uint32
-
-	PKTemplate := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, nil),
-		pkcs11.NewAttribute(pkcs11.CKA_MODULUS, nil),
-	}
-
-	attr, err := session.Ctx.GetAttributeValue(session.Handle, object, PKTemplate)
-	if err != nil {
-		return nil, err
-	}
-
-	n = uint32(len(attr[0].Value))
-	a := make([]byte, 4)
-	binary.BigEndian.PutUint32(a, n)
-	// Stores as BigEndian, read as LittleEndian, what could go wrong?
-	if n < 256 {
-		a = a[3:]
-	} else if n <= 512 {
-		a = a[1:]
-	} else {
-		return nil, fmt.Errorf("invalid exponent length. Its size must be between 1 and 4096 bits")
-	}
-
-	a = append(a, attr[0].Value...)
-	a = append(a, attr[1].Value...)
-
-	return a, nil
 }
 
 // SearchValidKeys returns an array with the valid keys stored in the HSM.

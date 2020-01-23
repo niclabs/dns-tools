@@ -16,6 +16,7 @@ func init() {
 	signCmd.Flags().StringP("output", "o", "", "Output for the signed zone file")
 	signCmd.Flags().StringP("zone", "z", "", "Zone name")
 	signCmd.Flags().BoolP("create-keys", "c", false, "Creates a new pair of keys, outdating all valid keys.")
+	signCmd.Flags().StringP("sign-algorithm", "a", "rsa", "Algorithm used in signing")
 	signCmd.Flags().BoolP("nsec3", "3", false, "Use NSEC3 instead of NSEC (default: NSEC)")
 	signCmd.Flags().BoolP("opt-out", "x", false, "Use NSEC3 with opt-out")
 	signCmd.Flags().StringP("expiration-date", "e", "", "Expiration Date, in YYYYMMDD format. Default is one more year from now.")
@@ -31,6 +32,7 @@ func init() {
 	viper.BindPFlag("output", signCmd.Flags().Lookup("output"))
 	viper.BindPFlag("zone", signCmd.Flags().Lookup("zone"))
 	viper.BindPFlag("create-keys", signCmd.Flags().Lookup("create-keys"))
+	viper.BindPFlag("sign-algorithm", signCmd.Flags().Lookup("sign-algorithm"))
 	viper.BindPFlag("nsec3", signCmd.Flags().Lookup("nsec3"))
 	viper.BindPFlag("opt-out", signCmd.Flags().Lookup("opt-out"))
 	viper.BindPFlag("expiration-date", signCmd.Flags().Lookup("expiration-date"))
@@ -46,13 +48,13 @@ var signCmd = &cobra.Command{
 		nsec3 := viper.GetBool("nsec3")
 		optOut := viper.GetBool("opt-out")
 
-
 		filepath := viper.GetString("file")
 		out := viper.GetString("output")
 		p11lib := viper.GetString("p11lib")
 		key := viper.GetString("user-key")
 		label := viper.GetString("key-label")
 		expDateStr := viper.GetString("expiration-date")
+		algorithm := viper.GetString("sign-algorithm")
 
 		if len(filepath) == 0 {
 			return fmt.Errorf("input file path not specified")
@@ -88,6 +90,8 @@ var signCmd = &cobra.Command{
 				return fmt.Errorf("cannot parse expiration date: %s", err)
 			}
 			args.SignExpDate = parsedDate
+		} else {
+			args.SignExpDate = time.Now().AddDate(1, 0, 0)
 		}
 
 		if len(out) > 0 {
@@ -101,19 +105,18 @@ var signCmd = &cobra.Command{
 			args.Output = os.Stdout
 		}
 
-
-                /* READ ZONE */
+		/* READ ZONE */
 		args.RRs, err = signer.ReadAndParseZone(&args, true)
-	        if err != nil {
-        	        return err
-        	}
+		if err != nil {
+			return err
+		}
 
-		/* 
-		SIGNATURE: PKCS11 CASE 
-                */
+		/*
+			SIGNATURE: PKCS11 CASE
+		*/
 
 		/* INIT */
-		s, err := signer.NewSession(p11lib, key, label, Log)
+		s, err := signer.NewSession(p11lib, key, label, algorithm, Log)
 		if err != nil {
 			return err
 		}
@@ -122,15 +125,15 @@ var signCmd = &cobra.Command{
 		/* ADD NSEC or NSEC3 */
 		signer.AddNSEC13(&args)
 
-		args := signer.SessionSignArgs{SignArgs:&args,}
+		sessionArgs := &signer.SessionSignArgs{SignArgs: &args}
 		/* GET KEYS */
-        	err = s.GetKeys(&args)
-        	if err != nil {
-                	return err
-        	}
+		err = s.GetKeys(sessionArgs)
+		if err != nil {
+			return err
+		}
 
 		/* SIGN MY ANGLE OF MUSIC! */
-		if _, err := s.Sign(&args); err != nil {
+		if _, err := s.Sign(sessionArgs); err != nil {
 			return err
 		}
 		Log.Printf("File signed successfully.")

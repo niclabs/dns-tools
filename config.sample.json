@@ -5,6 +5,7 @@
   "file": "/home/niclabs/zone.db",
   "output": "/home/niclabs/zone-signed.db",
   "create-keys": true,
+  "sign-algorithm": "rsa",
   "nsec3": true,
   "opt-out": true,
   "expiration-date": "20300101",

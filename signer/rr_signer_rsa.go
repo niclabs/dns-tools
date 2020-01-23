@@ -16,19 +16,19 @@ var pkcs1Prefix = map[crypto.Hash][]byte{
 	crypto.SHA512: {0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03, 0x05, 0x00, 0x04, 0x40},
 }
 
-// RRSigner Implements crypto.Signer Interface.
-type RRSigner struct {
+// RRSignerRSA Implements crypto.Signer Interface.
+type RRSignerRSA struct {
 	Session *Session            // PKCS#11 Session
 	SK, PK  pkcs11.ObjectHandle // Secret and Public Key handles
 }
 
 // Public returns the signer public key.
-func (rs RRSigner) Public() crypto.PublicKey {
+func (rs RRSignerRSA) Public() crypto.PublicKey {
 	return rs.PK
 }
 
 // Sign signs the content from the reader and returns a signature, or an error if it fails.
-func (rs RRSigner) Sign(rand io.Reader, rr []byte, opts crypto.SignerOpts) ([]byte, error) {
+func (rs RRSignerRSA) Sign(rand io.Reader, rr []byte, opts crypto.SignerOpts) ([]byte, error) {
 	if rs.Session == nil || rs.Session.Ctx == nil {
 		return nil, fmt.Errorf("session not initialized")
 	}

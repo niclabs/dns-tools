@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/miekg/dns"
 	"github.com/miekg/pkcs11"
+	"io"
 	"math/rand"
 	"os"
-	"io"
 	"sort"
 	"strings"
 	"time"
@@ -14,17 +14,16 @@ import (
 
 // SignArgs contains all the args needed to sign a file.
 type SignArgs struct {
-        Zone        string    // Zone name
-        File        io.Reader // File path
-        Output      io.Writer // Out path
-        SignExpDate time.Time // Expiration date for the signature.
-        CreateKeys  bool      // If True, the sign process creates new keys for the signature.
-        NSEC3       bool      // If true, the zone is signed using NSEC3
-        OptOut      bool      // If true and NSEC3 is true, the zone is signed using OptOut NSEC3 flag.
-        MinTTL      uint32 // Min TTL ;-)
-        RRs         RRArray     // RRs
+	Zone        string    // Zone name
+	File        io.Reader // File path
+	Output      io.Writer // Out path
+	SignExpDate time.Time // Expiration date for the signature.
+	CreateKeys  bool      // If True, the sign process creates new keys for the signature.
+	NSEC3       bool      // If true, the zone is signed using NSEC3
+	OptOut      bool      // If true and NSEC3 is true, the zone is signed using OptOut NSEC3 flag.
+	MinTTL      uint32    // Min TTL ;-)
+	RRs         RRArray   // RRs
 }
-
 
 // ReadAndParseZone parses a DNS zone file and returns an array of RRs and the zone minTTL.
 // It also updates the serial in the SOA record if updateSerial is true.
@@ -32,9 +31,9 @@ func ReadAndParseZone(args *SignArgs, updateSerial bool) (RRArray, error) {
 
 	rrs := make(RRArray, 0)
 
-        if args.Zone[len(args.Zone)-1] != '.' {
-                args.Zone = args.Zone + "."
-        }
+	if args.Zone[len(args.Zone)-1] != '.' {
+		args.Zone = args.Zone + "."
+	}
 
 	zone := dns.NewZoneParser(args.File, "", "")
 	if err := zone.Err(); err != nil {
@@ -56,16 +55,16 @@ func ReadAndParseZone(args *SignArgs, updateSerial bool) (RRArray, error) {
 	return rrs, nil
 }
 
-func AddNSEC13(args *SignArgs)  {
+func AddNSEC13(args *SignArgs) {
 	if args.NSEC3 {
-                for {
-                        if err := args.RRs.AddNSEC3Records(args.Zone, args.OptOut); err == nil {
-                                break
-                        }
-                }
-        } else {
-                args.RRs.AddNSECRecords(args.Zone)
-        }
+		for {
+			if err := args.RRs.AddNSEC3Records(args.Zone, args.OptOut); err == nil {
+				break
+			}
+		}
+	} else {
+		args.RRs.AddNSECRecords(args.Zone)
+	}
 }
 
 // CreateNewDNSKEY creates a new DNSKEY RR, using the parameters provided.

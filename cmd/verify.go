@@ -20,8 +20,8 @@ var verifyCmd = &cobra.Command{
 	Short: "Verifies a signed file.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
-		filepath :=  viper.GetString("file")
-		zone :=  viper.GetString("zone")
+		filepath := viper.GetString("file")
+		zone := viper.GetString("zone")
 
 		if len(filepath) == 0 {
 			return fmt.Errorf("input file path not specified")
