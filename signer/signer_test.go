@@ -11,9 +11,9 @@ import (
 )
 
 // Using default softHSM configuration. Change it if necessary.
-const p11Lib = "/usr/lib/softhsm/libsofthsm2.so"
+const p11Lib = "/home/eriveros/go/src/dtc/dtc.so"
 const key = "1234"
-const label = "HSM-Test"
+const label = "dHSM-Test"
 const zone = "example.com."
 const fileString = `
 example.com.			86400	IN	SOA		ns1.example.com. hostmaster.example.com. 2019052103 10800 15 604800 10800
@@ -50,6 +50,7 @@ func sign(t *testing.T, signArgs *signer.SignArgs, algorithm string) (*os.File, 
 	args := &signer.SessionSignArgs{SignArgs: signArgs}
 	if err := session.GetKeys(args); err != nil {
 		t.Errorf("error getting keys: %s", err)
+		return nil, err
 	}
 	_, err = session.Sign(args)
 	if err != nil {
@@ -107,6 +108,61 @@ func TestSession_SignRSANSEC3OptOut(t *testing.T) {
 		NSEC3:      true,
 		OptOut:     true,
 	}, "rsa")
+	if err != nil {
+		return
+	}
+	defer out.Close()
+	if err := signer.VerifyFile(zone, out, Log); err != nil {
+		t.Errorf("Error verifying output: %s", err)
+		return
+	}
+	return
+}
+
+func TestSession_SignECDSA(t *testing.T) {
+	out, err := sign(t, &signer.SignArgs{
+		Zone:       zone,
+		CreateKeys: true,
+		NSEC3:      false,
+		OptOut:     false,
+	}, "ecdsa")
+	if err != nil {
+		t.Errorf("signing failed: %s", err)
+		return
+	}
+	defer out.Close()
+	if err := signer.VerifyFile(zone, out, Log); err != nil {
+		t.Errorf("Error verifying output: %s", err)
+		return
+	}
+	return
+}
+
+func TestSession_SignECDSANSEC3(t *testing.T) {
+	out, err := sign(t, &signer.SignArgs{
+		Zone:       zone,
+		CreateKeys: true,
+		NSEC3:      true,
+		OptOut:     false,
+	}, "ecdsa")
+	if err != nil {
+		return
+	}
+	defer out.Close()
+	if err := signer.VerifyFile(zone, out, Log); err != nil {
+		t.Errorf("Error verifying output: %s", err)
+		return
+	}
+	return
+}
+
+func TestSession_SignECDSANSEC3OptOut(t *testing.T) {
+	out, err := sign(t, &signer.SignArgs{
+		Zone:       zone,
+		CreateKeys: true,
+		NSEC3:      true,
+		OptOut:     true,
+	}, "ecdsa")
 	if err != nil {
 		return
 	}

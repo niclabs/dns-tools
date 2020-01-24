@@ -2,36 +2,37 @@ package signer
 
 import (
 	"crypto"
-	"encoding/binary"
+	"crypto/elliptic"
+	"encoding/asn1"
 	"fmt"
 	"github.com/miekg/pkcs11"
 	"time"
 )
 
-// generateRSAKeyPair creates a RSA key pair, or returns an error if it cannot create the key pair.
-func generateRSAKeyPair(session *Session, tokenLabel string, tokenPersistent bool, expDate time.Time, bits int) (pkcs11.ObjectHandle, pkcs11.ObjectHandle, error) {
+// generateECDSAKeyPair creates a ECDSA key pair, or returns an error if it cannot create the key pair.
+func generateECDSAKeyPair(session *Session, tokenLabel string, tokenPersistent bool, expDate time.Time) (pkcs11.ObjectHandle, pkcs11.ObjectHandle, error) {
 	if session == nil || session.Ctx == nil {
 		return 0, 0, fmt.Errorf("session not initialized")
 	}
 	today := time.Now()
+	ecParams, _ := asn1.Marshal(asn1.ObjectIdentifier{1, 2, 840, 10045, 3, 1, 7}) // P-256 params
 	publicKeyTemplate := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
+		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, session.Label),
 		pkcs11.NewAttribute(pkcs11.CKA_ID, []byte(tokenLabel)),
-		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, tokenPersistent),
 		pkcs11.NewAttribute(pkcs11.CKA_START_DATE, today),
 		pkcs11.NewAttribute(pkcs11.CKA_END_DATE, expDate),
 		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
-		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, []byte{1, 0, 1}),
-		pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, bits),
+		pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, ecParams),
 	}
 
 	privateKeyTemplate := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, session.Label),
 		pkcs11.NewAttribute(pkcs11.CKA_ID, []byte(tokenLabel)),
-		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
+		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
 		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, tokenPersistent),
 		pkcs11.NewAttribute(pkcs11.CKA_START_DATE, today),
 		pkcs11.NewAttribute(pkcs11.CKA_END_DATE, expDate),
@@ -42,7 +43,7 @@ func generateRSAKeyPair(session *Session, tokenLabel string, tokenPersistent boo
 	pubKey, privKey, err := session.Ctx.GenerateKeyPair(
 		session.Handle,
 		[]*pkcs11.Mechanism{
-			pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_KEY_PAIR_GEN, nil),
+			pkcs11.NewMechanism(pkcs11.CKM_ECDSA_KEY_PAIR_GEN, nil),
 		},
 		publicKeyTemplate,
 		privateKeyTemplate,
@@ -53,50 +54,51 @@ func generateRSAKeyPair(session *Session, tokenLabel string, tokenPersistent boo
 	return pubKey, privKey, nil
 }
 
-
-func getRSAPubKeyBytes(session *Session, object pkcs11.ObjectHandle) ([]byte, error) {
+func getECDSAPubKeyBytes(session *Session, object pkcs11.ObjectHandle) ([]byte, error) {
 	if session == nil || session.Ctx == nil {
 		return nil, fmt.Errorf("session not initialized")
 	}
-	var n uint32
-
 	PKTemplate := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, nil),
-		pkcs11.NewAttribute(pkcs11.CKA_MODULUS, nil),
+		pkcs11.NewAttribute(pkcs11.CKA_EC_POINT, nil),
 	}
 
 	attr, err := session.Ctx.GetAttributeValue(session.Handle, object, PKTemplate)
 	if err != nil {
 		return nil, err
 	}
-
-	n = uint32(len(attr[0].Value))
-	a := make([]byte, 4)
-	binary.BigEndian.PutUint32(a, n)
-	// Stores as BigEndian, read as LittleEndian, what could go wrong?
-	if n < 256 {
-		a = a[3:]
-	} else if n <= 512 {
-		a = a[1:]
-	} else {
-		return nil, fmt.Errorf("invalid exponent length. Its size must be between 1 and 4096 bits")
+	if len(attr) == 0 {
+		return nil, fmt.Errorf("Attribute not found")
 	}
-
-	a = append(a, attr[0].Value...)
-	a = append(a, attr[1].Value...)
-
-	return a, nil
-
+	// asn1 -> elliptic-marshaled
+	asn1Encoded := make([]byte, 0)
+	rest, err := asn1.Unmarshal(attr[0].Value, &asn1Encoded)
+	if len(rest) > 0 {
+		return nil, fmt.Errorf("corrupted public key")
+	}
+	if err != nil {
+		return nil, err
+	}
+	x, y := elliptic.Unmarshal(elliptic.P256(), asn1Encoded)
+	if x == nil {
+		return nil, fmt.Errorf("error decoding point")
+	}
+	// elliptic-marshaled -> elliptic.pubkey
+	bytesPoint := make([]byte, 64) // two 32 bit unsigned numbers
+	xBytes, yBytes := x.Bytes(), y.Bytes()
+	copy(bytesPoint[32-len(xBytes):32], xBytes)
+	copy(bytesPoint[64-len(yBytes):64], yBytes)
+	return bytesPoint, nil
+	// elliptic.pubkey -> {x|y}
 }
 
-func createRSASigners(session *Session, args *SessionSignArgs) (crypto.Signer, crypto.Signer) {
-	zskSigner := RRSignerRSA{
+func createECDSASigners(session *Session, args *SessionSignArgs) (crypto.Signer, crypto.Signer) {
+	zskSigner := RRSignerECDSA{
 		Session: session,
 		PK:      args.Keys.PublicZSK.Handle,
 		SK:      args.Keys.PrivateZSK.Handle,
 	}
 
-	kskSigner := RRSignerRSA{
+	kskSigner := RRSignerECDSA{
 		Session: session,
 		PK:      args.Keys.PublicKSK.Handle,
 		SK:      args.Keys.PrivateKSK.Handle,

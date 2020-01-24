@@ -1,6 +1,8 @@
 package signer
 
 import (
+	"crypto"
+	"encoding/base64"
 	"encoding/binary"
 	"fmt"
 	"github.com/miekg/dns"
@@ -166,7 +168,45 @@ func (session *Session) GetKeys(args *SessionSignArgs) error {
 	args.Keys = keys
 
 	// ok, we create DNSKEYS
-	return loadRSASigningKeys(session, args)
+	return session.loadSigningKeys(args)
+}
+
+func (session *Session) loadSigningKeys(args *SessionSignArgs) error {
+	zskBytes, err := session.getPubKeyBytes(args.Keys.PublicZSK.Handle)
+	if err != nil {
+		return err
+	}
+	args.ZSK = CreateNewDNSKEY(
+		args.Zone,
+		256,
+		uint8(session.SignAlgorithm), // (https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml)
+		args.MinTTL,
+		base64.StdEncoding.EncodeToString(zskBytes),
+	)
+
+	kskBytes, err := session.getPubKeyBytes(args.Keys.PublicKSK.Handle)
+	if err != nil {
+		return err
+	}
+	args.KSK = CreateNewDNSKEY(
+		args.Zone,
+		257,
+		uint8(session.SignAlgorithm),           // (https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml)
+		args.MinTTL, // SOA -> minimum TTL
+		base64.StdEncoding.EncodeToString(kskBytes),
+	)
+	return nil
+}
+
+func (session *Session) getPubKeyBytes(object pkcs11.ObjectHandle) ([]byte, error) {
+	switch session.SignAlgorithm {
+	case RSA_SHA256:
+		return getRSAPubKeyBytes(session, object)
+	case ECDSA_P256_SHA256:
+		return getECDSAPubKeyBytes(session, object)
+	default:
+		return nil, fmt.Errorf("undefined sign algorithm")
+	}
 }
 
 func (session *Session) expireKeys(keys *ValidKeys) error {
@@ -182,19 +222,28 @@ func (session *Session) expireKeys(keys *ValidKeys) error {
 			return err
 		}
 	}
+	if keys.PublicKSK != nil {
+		err := session.ExpireKey(keys.PublicKSK.Handle)
+		if err != nil {
+			return err
+		}
+	}
+	if keys.PrivateKSK != nil {
+		err := session.ExpireKey(keys.PrivateKSK.Handle)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func (session *Session) generateKeys(keys *ValidKeys) error {
 	defaultExpDate := time.Now().AddDate(1, 0, 0) // TODO: allow to config this?
 	session.Log.Printf("generating zsk\n")
-	public, private, err := generateRSAKeyPair(
-		session,
+	public, private, err := session.generateKeyPair(
 		"zsk",
 		true,
-		defaultExpDate,
-		1024,
-	)
+		defaultExpDate)
 	if err != nil {
 		return err
 	}
@@ -207,26 +256,11 @@ func (session *Session) generateKeys(keys *ValidKeys) error {
 		ExpDate: defaultExpDate,
 	}
 
-	if keys.PublicKSK != nil {
-		err = session.ExpireKey(keys.PublicKSK.Handle)
-		if err != nil {
-			return err
-		}
-	}
-	if keys.PrivateKSK != nil {
-		err = session.ExpireKey(keys.PrivateKSK.Handle)
-		if err != nil {
-			return err
-		}
-	}
 	session.Log.Printf("generating ksk\n")
-	public, private, err = generateRSAKeyPair(
-		session,
+	public, private, err = session.generateKeyPair(
 		"ksk",
 		true,
-		defaultExpDate,
-		2048,
-	)
+		defaultExpDate)
 	if err != nil {
 		return err
 	}
@@ -242,13 +276,42 @@ func (session *Session) generateKeys(keys *ValidKeys) error {
 	return nil
 }
 
+func (session *Session) generateKeyPair(label string, tokenPersistent bool, expDate time.Time) (pk, sk pkcs11.ObjectHandle, err error) {
+	switch session.SignAlgorithm {
+	case RSA_SHA256:
+		bitSize := 1024
+		if label == "ksk" {
+			bitSize = 2048
+		}
+		return generateRSAKeyPair(
+			session,
+			label,
+			tokenPersistent,
+			expDate,
+			bitSize,
+		)
+	case ECDSA_P256_SHA256:
+		return generateECDSAKeyPair(
+			session,
+			label,
+			tokenPersistent,
+			expDate,
+		)
+	default:
+		err = fmt.Errorf("undefined sign algorithm")
+		return
+	}
+}
+
 // Sign signs a zone file and outputs the result into out path (if its length is more than zero).
 // It also dumps the new signed filezone to the standard output.
 func (session *Session) Sign(args *SessionSignArgs) (ds *dns.DS, err error) {
 
 	session.Log.Printf("Start signing...\n")
-	zskSigner, kskSigner := createRSASigners(session, args)
-
+	zskSigner, kskSigner, err := session.createSigners(args)
+	if err != nil {
+		return nil, err
+	}
 	rrSet := args.RRs.CreateRRSet(args.Zone, true)
 
 	for _, v := range rrSet {
@@ -292,6 +355,18 @@ func (session *Session) Sign(args *SessionSignArgs) (ds *dns.DS, err error) {
 	session.Log.Printf("DS: %s\n", ds) // SHA256
 	err = args.RRs.WriteZone(args.Output)
 	return ds, err
+}
+
+func (session *Session) createSigners(args *SessionSignArgs) (zsk, ksk crypto.Signer, err error) {
+	switch session.SignAlgorithm {
+	case RSA_SHA256:
+		zsk, ksk = createRSASigners(session, args)
+	case ECDSA_P256_SHA256:
+		zsk, ksk = createECDSASigners(session, args)
+	default:
+		err = fmt.Errorf("undefined sign algorithm")
+	}
+	return
 }
 
 // FindObject returns an object from the HSM following an specific template.
