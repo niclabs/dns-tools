@@ -10,8 +10,8 @@ import (
 )
 
 // generateECDSAKeyPair creates a ECDSA key pair, or returns an error if it cannot create the key pair.
-func generateECDSAKeyPair(session *Session, tokenLabel string, tokenPersistent bool, expDate time.Time) (pkcs11.ObjectHandle, pkcs11.ObjectHandle, error) {
-	if session == nil || session.Ctx == nil {
+func generateECDSAKeyPair(session *PKCS11Session, tokenLabel string, tokenPersistent bool, expDate time.Time) (pkcs11.ObjectHandle, pkcs11.ObjectHandle, error) {
+	if session == nil || session.P11Context == nil {
 		return 0, 0, fmt.Errorf("session not initialized")
 	}
 	today := time.Now()
@@ -40,7 +40,7 @@ func generateECDSAKeyPair(session *Session, tokenLabel string, tokenPersistent b
 		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
 	}
 
-	pubKey, privKey, err := session.Ctx.GenerateKeyPair(
+	pubKey, privKey, err := session.P11Context.GenerateKeyPair(
 		session.Handle,
 		[]*pkcs11.Mechanism{
 			pkcs11.NewMechanism(pkcs11.CKM_ECDSA_KEY_PAIR_GEN, nil),
@@ -54,15 +54,15 @@ func generateECDSAKeyPair(session *Session, tokenLabel string, tokenPersistent b
 	return pubKey, privKey, nil
 }
 
-func getECDSAPubKeyBytes(session *Session, object pkcs11.ObjectHandle) ([]byte, error) {
-	if session == nil || session.Ctx == nil {
+func getECDSAPubKeyBytes(session *PKCS11Session, object pkcs11.ObjectHandle) ([]byte, error) {
+	if session == nil || session.P11Context == nil {
 		return nil, fmt.Errorf("session not initialized")
 	}
 	PKTemplate := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_EC_POINT, nil),
 	}
 
-	attr, err := session.Ctx.GetAttributeValue(session.Handle, object, PKTemplate)
+	attr, err := session.P11Context.GetAttributeValue(session.Handle, object, PKTemplate)
 	if err != nil {
 		return nil, err
 	}
@@ -91,17 +91,17 @@ func getECDSAPubKeyBytes(session *Session, object pkcs11.ObjectHandle) ([]byte, 
 	// elliptic.pubkey -> {x|y}
 }
 
-func createECDSASigners(session *Session, args *SessionSignArgs) (crypto.Signer, crypto.Signer) {
+func createECDSASigners(session *PKCS11Session, keys *SignatureKeys) (crypto.Signer, crypto.Signer) {
 	zskSigner := RRSignerECDSA{
 		Session: session,
-		PK:      args.Keys.PublicZSK.Handle,
-		SK:      args.Keys.PrivateZSK.Handle,
+		PK:      keys.PublicZSK.Handle,
+		SK:      keys.PrivateZSK.Handle,
 	}
 
 	kskSigner := RRSignerECDSA{
 		Session: session,
-		PK:      args.Keys.PublicKSK.Handle,
-		SK:      args.Keys.PrivateKSK.Handle,
+		PK:      keys.PublicKSK.Handle,
+		SK:      keys.PrivateKSK.Handle,
 	}
 	return zskSigner, kskSigner
 }

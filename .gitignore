@@ -1,15 +1,15 @@
 # goland
 .idea/
-# possible zone file (txt) 
+# possible zone files
 *.txt
+*.com
+*.com.signed
 # binary
-dhsm-signer
+hsm-tools
 # scripts that should not be here
 *.sh
 # shared objects that should not be here
 *.so
 # Databases
-*.com
-*.com.signed
 *sqlite3
-configble.json
+config.json

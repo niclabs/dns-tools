@@ -12,7 +12,7 @@ func init() {
 	verifyCmd.Flags().StringP("file", "f", "", "Full path to zone file to be verified")
 	signCmd.Flags().StringP("zone", "z", "", "Zone name")
 	viper.BindPFlag("file", verifyCmd.Flags().Lookup("file"))
-	viper.BindPFlag("zone", verifyCmd.Flags().Lookup("zone"))
+	viper.BindPFlag("zone", signCmd.Flags().Lookup("zone"))
 }
 
 var verifyCmd = &cobra.Command{
@@ -30,7 +30,7 @@ var verifyCmd = &cobra.Command{
 			return fmt.Errorf("zone not specified")
 		}
 
-		if err := signer.FilesExist(filepath); err != nil {
+		if err := filesExist(filepath); err != nil {
 			return err
 		}
 

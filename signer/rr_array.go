@@ -47,9 +47,9 @@ func (rrArray RRArray) Less(i, j int) bool {
 	}
 }
 
-// WriteZone prints on writer all the RRs on the array.
+// writeZone prints on writer all the RRs on the array.
 // The format of the text printed is the format of a DNS zone.
-func (rrArray RRArray) WriteZone(writer io.Writer) error {
+func (rrArray RRArray) writeZone(writer io.Writer) error {
 	for _, rr := range rrArray {
 		if _, err := fmt.Fprintln(writer, rr); err != nil {
 			return err
@@ -58,10 +58,10 @@ func (rrArray RRArray) WriteZone(writer io.Writer) error {
 	return nil
 }
 
-// CreateRRSet groups the RRs by label and class if byType is false, or label, class and type if byType is true
+// createRRSet groups the RRs by label and class if byType is false, or label, class and type if byType is true
 // NSEC/NSEC3 uses the version with byType = false, and RRSIG uses the other version.
 // It assumes the rrarray is sorted.
-func (rrArray RRArray) CreateRRSet(zone string, byType bool) (set RRSet) {
+func (rrArray RRArray) createRRSet(zone string, byType bool) (set RRSet) {
 	// RRsets are RR grouped by label and class for NSEC/NSEC3
 	// and by label, class, type for RRSIG:
 	// An RRSIG record contains the signature for an RRset with a particular
@@ -83,10 +83,10 @@ func (rrArray RRArray) CreateRRSet(zone string, byType bool) (set RRSet) {
 	return set
 }
 
-// AddNSECRecords edits an RRArray and adds the respective NSEC records to it.
-func (rrArray *RRArray) AddNSECRecords(zone string) {
+// addNSECRecords edits an RRArray and adds the respective NSEC records to it.
+func (rrArray *RRArray) addNSECRecords(zone string) {
 
-	set := rrArray.CreateRRSet(zone, false)
+	set := rrArray.createRRSet(zone, false)
 
 	n := len(set)
 	for i, rrs := range set {
@@ -119,11 +119,11 @@ func (rrArray *RRArray) AddNSECRecords(zone string) {
 	sort.Sort(*rrArray)
 }
 
-// AddNSECRecords edits an RRArray and adds the respective NSEC3 records to it.
+// addNSECRecords edits an RRArray and adds the respective NSEC3 records to it.
 // If optOut is true, it sets the flag for NSEC3PARAM RR, following RFC5155 section 6.
 // It returns an error if there is a colission on the hashes.
-func (rrArray *RRArray) AddNSEC3Records(zone string, optOut bool) error {
-	set := rrArray.CreateRRSet(zone, false)
+func (rrArray *RRArray) addNSEC3Records(zone string, optOut bool) error {
+	set := rrArray.createRRSet(zone, false)
 
 	h := make(map[string]bool)
 	collision := false
@@ -254,8 +254,8 @@ func sameRRSet(rr1, rr2 dns.RR, byType bool) bool {
 		(!byType || rr1.Header().Rrtype == rr2.Header().Rrtype)
 }
 
-// IsSignable checks if all the rrs are signable (they should be).
-func (rrArray RRArray) IsSignable(zone string, nsNames map[string]struct{}) bool {
+// isSignable checks if all the rrs are signable (they should be).
+func (rrArray RRArray) isSignable(zone string, nsNames map[string]struct{}) bool {
 	for _, rr := range rrArray {
 		if !isSignable(rr, zone, nsNames) {
 			return false

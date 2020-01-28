@@ -20,7 +20,7 @@ func init() {
 }
 
 var resetKeysCmd = &cobra.Command{
-	Use:   "reset-keys",
+	Use:   "reset-pkcs11-keys",
 	Short: "Deletes all the keys registered in the HSM with specified key label and algorithm",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		p11lib, _ := cmd.Flags().GetString("p11lib")
@@ -32,15 +32,20 @@ var resetKeysCmd = &cobra.Command{
 		key := viper.GetString("user-key")
 		label := viper.GetString("key-label")
 		algorithm := viper.GetString("sign-algorithm")
-		if err := signer.FilesExist(p11lib); err != nil {
+		if err := filesExist(p11lib); err != nil {
 			return err
 		}
-		s, err := signer.NewSession(p11lib, key,  label, algorithm, Log)
+		ctx, err := signer.NewContext(&signer.ContextConfig{
+			Label:         label,
+			SignAlgorithm: algorithm,
+			Key:           key,
+
+		}, Log)
 		if err != nil {
 			return err
 		}
-		defer s.End()
-		if err := s.DestroyAllKeys(); err != nil {
+		if err = ctx.PKCS11DestroyKeys(p11lib); err != nil {
+			Log.Printf("Error destroying keys.")
 			return err
 		}
 		Log.Printf("All keys destroyed.")

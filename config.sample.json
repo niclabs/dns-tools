@@ -9,5 +9,5 @@
   "nsec3": true,
   "opt-out": true,
   "expiration-date": "20300101",
-  "zone": "example.com"
+  "zone": "example.com."
 }

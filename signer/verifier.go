@@ -16,16 +16,18 @@ type RRSigTuple struct {
 
 // VerifyFile verifies the signatures in an already signed zone file.
 func VerifyFile(zone string, reader io.Reader, logger *log.Logger) (err error) {
-	args := new(SignArgs)
-	args.Zone = zone
-	args.File = reader
+	Context := &Context{
+		ContextConfig: &ContextConfig{
+			Zone: zone,
+		},
+		File: reader,
+	}
 
-	rrZone, err := ReadAndParseZone(args, false)
-	if err != nil {
+	if err = Context.ReadAndParseZone(false); err != nil {
 		return
 	}
-	rrSet := rrZone.CreateRRSet(zone, true)
-	nsNames := getAllNSNames(rrZone)
+	rrSet := Context.RRs.createRRSet(zone, true)
+	nsNames := getAllNSNames(Context.RRs)
 
 	rrSigTuples := make(map[string]*RRSigTuple)
 
@@ -33,7 +35,7 @@ func VerifyFile(zone string, reader io.Reader, logger *log.Logger) (err error) {
 
 	// Pairing each RRArray with its RRSig
 	for _, rrArray := range rrSet {
-		if len(rrArray) > 0 && rrArray.IsSignable(zone, nsNames) {
+		if len(rrArray) > 0 && rrArray.isSignable(zone, nsNames) {
 			if rrArray[0].Header().Rrtype == dns.TypeDNSKEY {
 				key1 := rrArray[0].(*dns.DNSKEY)
 				key2 := rrArray[1].(*dns.DNSKEY)

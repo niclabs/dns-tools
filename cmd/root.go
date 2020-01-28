@@ -51,3 +51,15 @@ func initConfig() {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
 	}
 }
+
+
+// filesExist returns an error if any of the paths received as args does not point to a readable file.
+func filesExist(filepaths ...string) error {
+	for _, path := range filepaths {
+		_, err := os.Stat(path)
+		if err != nil || os.IsNotExist(err) {
+			return fmt.Errorf("File %s doesn't exist or it has not reading permissions\n", path)
+		}
+	}
+	return nil
+}

@@ -4,68 +4,10 @@ import (
 	"fmt"
 	"github.com/miekg/dns"
 	"github.com/miekg/pkcs11"
-	"io"
 	"math/rand"
-	"os"
-	"sort"
 	"strings"
 	"time"
 )
-
-// SignArgs contains all the args needed to sign a file.
-type SignArgs struct {
-	Zone        string    // Zone name
-	File        io.Reader // File path
-	Output      io.Writer // Out path
-	SignExpDate time.Time // Expiration date for the signature.
-	CreateKeys  bool      // If True, the sign process creates new keys for the signature.
-	NSEC3       bool      // If true, the zone is signed using NSEC3
-	OptOut      bool      // If true and NSEC3 is true, the zone is signed using OptOut NSEC3 flag.
-	MinTTL      uint32    // Min TTL ;-)
-	RRs         RRArray   // RRs
-}
-
-// ReadAndParseZone parses a DNS zone file and returns an array of RRs and the zone minTTL.
-// It also updates the serial in the SOA record if updateSerial is true.
-func ReadAndParseZone(args *SignArgs, updateSerial bool) (RRArray, error) {
-
-	rrs := make(RRArray, 0)
-
-	if args.Zone[len(args.Zone)-1] != '.' {
-		args.Zone = args.Zone + "."
-	}
-
-	zone := dns.NewZoneParser(args.File, "", "")
-	if err := zone.Err(); err != nil {
-		return nil, err
-	}
-	for rr, ok := zone.Next(); ok; rr, ok = zone.Next() {
-		rrs = append(rrs, rr)
-		if rr.Header().Rrtype == dns.TypeSOA {
-			var soa *dns.SOA
-			soa = rr.(*dns.SOA)
-			args.MinTTL = soa.Minttl
-			// UPDATING THE SERIAL
-			if updateSerial {
-				rr.(*dns.SOA).Serial += 2
-			}
-		}
-	}
-	sort.Sort(rrs)
-	return rrs, nil
-}
-
-func AddNSEC13(args *SignArgs) {
-	if args.NSEC3 {
-		for {
-			if err := args.RRs.AddNSEC3Records(args.Zone, args.OptOut); err == nil {
-				break
-			}
-		}
-	} else {
-		args.RRs.AddNSECRecords(args.Zone)
-	}
-}
 
 // CreateNewDNSKEY creates a new DNSKEY RR, using the parameters provided.
 func CreateNewDNSKEY(zone string, flags uint16, algorithm uint8, ttl uint32, publicKey string) *dns.DNSKEY {
@@ -121,15 +63,4 @@ func removeDuplicates(objs []pkcs11.ObjectHandle) []pkcs11.ObjectHandle {
 		}
 	}
 	return result
-}
-
-// FilesExist returns an error if any of the paths received as args does not point to a readable file.
-func FilesExist(filepaths ...string) error {
-	for _, path := range filepaths {
-		_, err := os.Stat(path)
-		if err != nil || os.IsNotExist(err) {
-			return fmt.Errorf("File %s doesn't exist or it has not reading permissions\n", path)
-		}
-	}
-	return nil
 }
