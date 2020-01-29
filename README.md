@@ -42,7 +42,8 @@ the command has three modes:
     * `--nsec3 (-3)` Uses NSEC3 for zone signing, as specified in [RFC5155](https://tools.ietf.org/html/rfc5155). If not activated, it uses NSEC.
     * `--optout (-o)` Uses Opt-out, as specified in [RFC5155](https://tools.ietf.org/html/rfc5155).
     * `--p11lib (-p)` selects the library to use as pkcs11 HSM driver.
-    * `--user-key (-k)` HSM key, if not specified, the default is `1234`
+    * `--user-key (-k)` HSM key, if not specified, the default is `1234`.
+    * `--sign-algorithm (-a)` Sign algorithm used. It can be 'rsa' or 'ecdsa'.
     * `--zone (-z)` Zone name
 * **Verify** Allows to verify a previously signed key. It only receives one parameter, `--file (-f)`, that is used as the input file for verification.
 * **Reset Keys** Deletes all the keys from the HSM. Is a very dangerous command. It uses some parameters from `sign`, as `-p`, `l` and `k`.
