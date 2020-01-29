@@ -15,7 +15,7 @@ const key = "1234"
 const rsaLabel = "dHSM-Test"
 const zone = "example.com."
 
-const createkeys = false
+const createkeys = true
 
 const fileString = `
 example.com.			86400	IN	SOA		ns1.example.com. hostmaster.example.com. 2019052103 10800 15 604800 10800
