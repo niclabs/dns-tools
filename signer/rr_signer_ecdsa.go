@@ -24,7 +24,7 @@ func (rs RRSignerECDSA) Sign(_ io.Reader, rr []byte, _ crypto.SignerOpts) ([]byt
 		return nil, fmt.Errorf("session not initialized")
 	}
 	mechanisms := []*pkcs11.Mechanism{
-		pkcs11.NewMechanism(pkcs11.CKM_ECDSA_SHA256, nil),
+		pkcs11.NewMechanism(pkcs11.CKM_ECDSA, nil),
 	}
 	err := rs.Session.P11Context.SignInit(rs.Session.Handle, mechanisms, rs.SK)
 	if err != nil {

@@ -58,12 +58,12 @@ func (rrArray RRArray) writeZone(writer io.Writer) error {
 	return nil
 }
 
-// createRRSet groups the RRs by label and class if byType is false, or label, class and type if byType is true
+// createRRSet groups the RRs by rsaLabel and class if byType is false, or rsaLabel, class and type if byType is true
 // NSEC/NSEC3 uses the version with byType = false, and RRSIG uses the other version.
 // It assumes the rrarray is sorted.
 func (rrArray RRArray) createRRSet(zone string, byType bool) (set RRSet) {
-	// RRsets are RR grouped by label and class for NSEC/NSEC3
-	// and by label, class, type for RRSIG:
+	// RRsets are RR grouped by rsaLabel and class for NSEC/NSEC3
+	// and by rsaLabel, class, type for RRSIG:
 	// An RRSIG record contains the signature for an RRset with a particular
 	// name, class, and type. RFC4034
 	set = make(RRSet, 0)

@@ -100,7 +100,7 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 }
 
 // NewPKCS11Session creates a new session, using the pkcs#11 library defined in the arguments.
-// The arguments also define the HSM user key and the label the keys will use when created or retrieved.
+// The arguments also define the HSM user key and the rsaLabel the keys will use when created or retrieved.
 func (ctx *Context) NewPKCS11Session(p11lib string) (*PKCS11Session, error) {
 	p := pkcs11.New(p11lib)
 	if p == nil {

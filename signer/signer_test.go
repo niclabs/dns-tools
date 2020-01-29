@@ -12,7 +12,7 @@ import (
 // Using default softHSM configuration. Change it if necessary.
 const p11Lib = "/home/eriveros/go/src/dtc/dtc.so"
 const key = "1234"
-const label = "dHSM-Test"
+const rsaLabel = "dHSM-Test"
 const zone = "example.com."
 
 const createkeys = false
@@ -40,6 +40,8 @@ func sign(t *testing.T, ctx *signer.Context) (*os.File, error) {
 	}
 	ctx.File = strings.NewReader(fileString)
 	ctx.Output = writer
+	defer writer.Close()
+
 
 	if err = ctx.ReadAndParseZone(true); err != nil {
 		return nil, err
@@ -48,30 +50,24 @@ func sign(t *testing.T, ctx *signer.Context) (*os.File, error) {
 	// Session init
 	session, err := ctx.NewPKCS11Session(p11Lib)
 	if err != nil {
-		return nil, err
-	}
-
-	defer writer.Close()
-	if err != nil {
 		t.Errorf("Error creating new session: %s", err)
 		return nil, err
 	}
 	if ctx.CreateKeys {
-		_ = session.DestroyAllKeys()
+		if err = session.DestroyAllKeys(); err != nil {
+			t.Errorf("Error destroying old keys: %s", err)
+			return nil, err
+		}
 	}
 	_, err = session.Sign()
 	if err != nil {
 		t.Errorf("Error signing example: %s", err)
 		return nil, err
 	}
-	if err := session.End(); err != nil {
-		t.Errorf("Error ending session: %s", err)
-		return nil, err
-	}
 	return reader, nil
 }
 
-func TestSession_SignRSA(t *testing.T) {
+func TestSession_RSASign(t *testing.T) {
 	out, err := sign(t, &signer.Context{
 		ContextConfig: &signer.ContextConfig{
 			Zone:          zone,
@@ -80,12 +76,13 @@ func TestSession_SignRSA(t *testing.T) {
 			OptOut:        false,
 			SignAlgorithm: "rsa",
 			Key:           key,
-			Label:         label,
+			Label:         rsaLabel,
 		},
 		Log: Log,
 	})
 	if err != nil {
 		t.Errorf("signing failed: %s", err)
+		return
 	}
 	defer out.Close()
 	if err := signer.VerifyFile(zone, out, Log); err != nil {
@@ -94,7 +91,7 @@ func TestSession_SignRSA(t *testing.T) {
 	return
 }
 
-func TestSession_SignRSANSEC3(t *testing.T) {
+func TestSession_RSASignNSEC3(t *testing.T) {
 	out, err := sign(t, &signer.Context{
 		ContextConfig: &signer.ContextConfig{
 			Zone:          zone,
@@ -103,11 +100,12 @@ func TestSession_SignRSANSEC3(t *testing.T) {
 			OptOut:        false,
 			SignAlgorithm: "rsa",
 			Key:           key,
-			Label:         label,
+			Label:         rsaLabel,
 		},
 		Log: Log,
 	})
 	if err != nil {
+		t.Errorf("signing failed: %s", err)
 		return
 	}
 	defer out.Close()
@@ -117,7 +115,7 @@ func TestSession_SignRSANSEC3(t *testing.T) {
 	return
 }
 
-func TestSession_SignRSANSEC3OptOut(t *testing.T) {
+func TestSession_RSASignNSEC3OptOut(t *testing.T) {
 	out, err := sign(t, &signer.Context{
 		ContextConfig: &signer.ContextConfig{
 			Zone:          zone,
@@ -126,11 +124,12 @@ func TestSession_SignRSANSEC3OptOut(t *testing.T) {
 			OptOut:        true,
 			SignAlgorithm: "rsa",
 			Key:           key,
-			Label:         label,
+			Label:         rsaLabel,
 		},
 		Log: Log,
 	})
 	if err != nil {
+		t.Errorf("signing failed: %s", err)
 		return
 	}
 	defer out.Close()
@@ -141,7 +140,7 @@ func TestSession_SignRSANSEC3OptOut(t *testing.T) {
 }
 
 
-func TestSession_SignECDSA(t *testing.T) {
+func TestSession_ECDSASign(t *testing.T) {
 	out, err := sign(t, &signer.Context{
 		ContextConfig: &signer.ContextConfig{
 			Zone:          zone,
@@ -150,34 +149,12 @@ func TestSession_SignECDSA(t *testing.T) {
 			OptOut:        false,
 			SignAlgorithm: "ecdsa",
 			Key:           key,
-			Label:         label,
+			Label:         rsaLabel,
 		},
 		Log: Log,
 	})
 	if err != nil {
 		t.Errorf("signing failed: %s", err)
-	}
-	defer out.Close()
-	if err := signer.VerifyFile(zone, out, Log); err != nil {
-		t.Errorf("Error verifying output: %s", err)
-	}
-	return
-}
-
-func TestSession_SignECDSANSEC3(t *testing.T) {
-	out, err := sign(t, &signer.Context{
-		ContextConfig: &signer.ContextConfig{
-			Zone:          zone,
-			CreateKeys:    createkeys,
-			NSEC3:         true,
-			OptOut:        false,
-			SignAlgorithm: "rsa",
-			Key:           key,
-			Label:         label,
-		},
-		Log: Log,
-	})
-	if err != nil {
 		return
 	}
 	defer out.Close()
@@ -187,7 +164,31 @@ func TestSession_SignECDSANSEC3(t *testing.T) {
 	return
 }
 
-func TestSession_SignECDSANSEC3OptOut(t *testing.T) {
+func TestSession_ECDSASignNSEC3(t *testing.T) {
+	out, err := sign(t, &signer.Context{
+		ContextConfig: &signer.ContextConfig{
+			Zone:          zone,
+			CreateKeys:    createkeys,
+			NSEC3:         true,
+			OptOut:        false,
+			SignAlgorithm: "rsa",
+			Key:           key,
+			Label:         rsaLabel,
+		},
+		Log: Log,
+	})
+	if err != nil {
+		t.Errorf("signing failed: %s", err)
+		return
+	}
+	defer out.Close()
+	if err := signer.VerifyFile(zone, out, Log); err != nil {
+		t.Errorf("Error verifying output: %s", err)
+	}
+	return
+}
+
+func TestSession_ECDSASignNSEC3OptOut(t *testing.T) {
 	out, err := sign(t, &signer.Context{
 		ContextConfig: &signer.ContextConfig{
 			Zone:          zone,
@@ -196,11 +197,12 @@ func TestSession_SignECDSANSEC3OptOut(t *testing.T) {
 			OptOut:        true,
 			SignAlgorithm: "rsa",
 			Key:           key,
-			Label:         label,
+			Label:         rsaLabel,
 		},
 		Log: Log,
 	})
 	if err != nil {
+		t.Errorf("signing failed: %s", err)
 		return
 	}
 	defer out.Close()
@@ -219,12 +221,13 @@ func TestSession_ExpiredSig(t *testing.T) {
 			OptOut:        false,
 			SignAlgorithm: "rsa",
 			Key:           key,
-			Label:         label,
+			Label:         rsaLabel,
 		},
 		Log: Log,
 		SignExpDate: time.Now().AddDate(-1, 0, 0),
 	})
 	if err != nil {
+		t.Errorf("signing failed: %s", err)
 		return
 	}
 	defer out.Close()

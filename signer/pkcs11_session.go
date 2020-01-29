@@ -117,7 +117,7 @@ func (session *PKCS11Session) End() error {
 	return nil
 }
 
-// DestroyAllKeys destroys all the keys using the label defined in the session struct.
+// DestroyAllKeys destroys all the keys using the rsaLabel defined in the session struct.
 func (session *PKCS11Session) DestroyAllKeys() error {
 	if session == nil || session.P11Context == nil {
 		return fmt.Errorf("session not initialized")
@@ -145,14 +145,14 @@ func (session *PKCS11Session) DestroyAllKeys() error {
 			} else if uint(attr[2].Value[0]) == pkcs11.CKO_PRIVATE_KEY {
 				class = "private"
 			}
-			session.Log.Printf("Deleting key with label=%s, id=%s and type=%s\n", string(attr[0].Value), string(attr[1].Value), class)
+			session.Log.Printf("Deleting key with rsaLabel=%s, id=%s and type=%s\n", string(attr[0].Value), string(attr[1].Value), class)
 
 			if e := session.P11Context.DestroyObject(session.Handle, object); e != nil {
 				session.Log.Printf("Destroy Key failed %s\n", e)
 			}
 		}
 	} else {
-		return fmt.Errorf("no keys found")
+		return nil
 	}
 	return nil
 }
