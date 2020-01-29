@@ -53,7 +53,7 @@ the command has three modes:
 The following command signs a zone with NSEC3, using the file name `example.com` and creates a new file with the name `example.com.signed`, using the [DTC](https://github.com/niclabs/dtc) library. If there are not keys on the HSM, it creates them.
 
 ```
-./hsm-tools sign -p ./dtc.so -f ./example.com -3 -z example.com -o example.com.signed -c
+./hsm-tools sign pkcs11 -p ./dtc.so -f ./example.com -3 -z example.com -o example.com.signed -c
 ```
 
 Some arguments were omited, so they are set by their default value.
@@ -91,7 +91,7 @@ You can also set the config file path using `--config` flag.
 - [x] Create keys in HSM
 - [x] Sign using PKCS11 (for HSMs):
     - [x] RSA
-    - [ ] ECDSA
+    - [x] ECDSA
     - [ ] SHA-1
     - [ ] SHA128
     - [x] SHA256

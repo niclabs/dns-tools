@@ -20,7 +20,8 @@ func init() {
 	signCmd.PersistentFlags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer Key")
 
 	pkcs11Cmd.PersistentFlags().StringP("p11lib", "p", "", "Full path to PKCS11 lib file")
-	fileCmd.PersistentFlags().StringP("keyfile", "K", "", "Full path to key file")
+	// TODO: implement file signing
+	// fileCmd.PersistentFlags().StringP("keyfile", "K", "", "Full path to key file")
 
 
 	viper.BindPFlag("user-key", signCmd.PersistentFlags().Lookup("user-key"))
@@ -41,7 +42,7 @@ func init() {
 
 
 	signCmd.AddCommand(pkcs11Cmd)
-	signCmd.AddCommand(fileCmd)
+	//signCmd.AddCommand(fileCmd)
 }
 
 var signCmd = &cobra.Command{
