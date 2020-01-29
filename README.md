@@ -24,7 +24,7 @@ To compile it, you need to have `Go` installed on your machine. You can find how
 Then, you need to clone, execute and build the repository: 
 
 ```
-git clone https://github.com/niclabs/hsm-tools --branch v1.0
+git clone https://github.com/niclabs/hsm-tools --branch v1.1.0
 cd hsm-tools
 go build
 ```
