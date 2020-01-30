@@ -40,7 +40,6 @@ func resetPKCS11Keys(cmd *cobra.Command, args []string) error {
 		Label:         label,
 		SignAlgorithm: algorithm,
 		Key:           key,
-
 	}, Log)
 	if err != nil {
 		return err

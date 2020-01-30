@@ -37,6 +37,9 @@ type SignatureKeys struct {
 // Sign signs a zone file and outputs the result into out path (if its length is more than zero).
 // It also dumps the new signed filezone to the standard output.
 func (session *PKCS11Session) Sign() (ds *dns.DS, err error) {
+	if session.Output == nil {
+		return nil, fmt.Errorf("no output defined on context")
+	}
 
 	keys, err := session.getKeys()
 	if err != nil {

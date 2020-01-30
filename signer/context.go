@@ -37,19 +37,22 @@ type ContextConfig struct {
 }
 
 // NewContext creates a new context based on a configuration structure. It also receives a logger to log errors.
-func NewContext(config *ContextConfig, log *log.Logger) (*Context, error) {
-	file, err := os.Open(config.FilePath)
-	if err != nil {
-		return nil, err
-	}
+func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error) {
 
-	ctx := &Context{
+	ctx = &Context{
 		ContextConfig: config,
 		Log:           log,
 		SignExpDate:   time.Now().AddDate(1, 0, 0),
 		Output:        os.Stdout,
-		File:          file,
 	}
+
+	if len(config.FilePath) == 0 {
+		ctx.File, err = os.Open(config.FilePath)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	if len(config.ExpDateStr) > 0 {
 		parsedDate, err := time.Parse("20160102", config.ExpDateStr)
 		if err != nil {
@@ -71,6 +74,11 @@ func NewContext(config *ContextConfig, log *log.Logger) (*Context, error) {
 // ReadAndParseZone parses a DNS zone file and returns an array of RRs and the zone minTTL.
 // It also updates the serial in the SOA record if updateSerial is true.
 func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
+
+	if ctx.File == nil {
+		return fmt.Errorf("no file defined on context")
+	}
+
 	rrs := make(RRArray, 0)
 
 	if ctx.Zone[len(ctx.Zone)-1] != '.' {
