@@ -9,8 +9,8 @@ import (
 
 func init() {
 	signCmd.PersistentFlags().StringP("file", "f", "", "Full path to zone file to be signed")
-	signCmd.PersistentFlags().StringP("output", "o", "", "Output for the signed zone file")
 	signCmd.PersistentFlags().StringP("zone", "z", "", "Zone name")
+	signCmd.PersistentFlags().StringP("output", "o", "", "Output for the signed zone file")
 	signCmd.PersistentFlags().BoolP("create-keys", "c", false, "Creates a new pair of keys, outdating all valid keys.")
 	signCmd.PersistentFlags().StringP("sign-algorithm", "a", "rsa", "Algorithm used in signing")
 	signCmd.PersistentFlags().BoolP("nsec3", "3", false, "Use NSEC3 instead of NSEC (default: NSEC)")
@@ -18,7 +18,6 @@ func init() {
 	signCmd.PersistentFlags().StringP("expiration-date", "e", "", "Expiration Date, in YYYYMMDD format. Default is one more year from now.")
 	signCmd.PersistentFlags().StringP("user-key", "k", "1234", "HSM User Login Key (default is 1234)")
 	signCmd.PersistentFlags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer Key")
-
 	pkcs11Cmd.PersistentFlags().StringP("p11lib", "p", "", "Full path to PKCS11 lib file")
 
 	signCmd.AddCommand(pkcs11Cmd)

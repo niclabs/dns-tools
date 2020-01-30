@@ -10,7 +10,7 @@ import (
 
 func init() {
 	verifyCmd.Flags().StringP("file", "f", "", "Full path to zone file to be verified")
-	signCmd.Flags().StringP("zone", "z", "", "Zone name")
+	verifyCmd.Flags().StringP("zone", "z", "", "Zone name")
 }
 
 var verifyCmd = &cobra.Command{
