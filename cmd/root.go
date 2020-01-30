@@ -15,7 +15,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is /etc/hsm-tools/config.toml)")
 	rootCmd.AddCommand(signCmd)
 	rootCmd.AddCommand(verifyCmd)
-	rootCmd.AddCommand(resetKeysCmd)
+	rootCmd.AddCommand(resetPKCS11KeysCmd)
 	Log = log.New(os.Stderr, "", 0)
 }
 

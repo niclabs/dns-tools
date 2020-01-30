@@ -67,12 +67,12 @@ The following command verifies the previously created key.
 ./hsm-tools verify -f ./example.com.signed
 ```
 
-## How to delete keys
+## How to delete PKCS11 keys
 
 The folowing command removes the created keys with an specific tag, using the  [DTC](https://github.com/niclabs/dtc) library
 
 ```
-./hsm-tools reset-keys -p ./dtc.so
+./hsm-tools reset-pkcs11-keys -p ./dtc.so
 ```
 
 ## Config File

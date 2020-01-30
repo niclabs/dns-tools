@@ -8,20 +8,20 @@ import (
 )
 
 func init() {
-	resetKeysCmd.Flags().StringP("p11lib", "p", "", "Full path to PKCS11 lib file")
-	resetKeysCmd.Flags().StringP("user-key", "k", "1234", "HSM User Login Key (default is 1234)")
-	resetKeysCmd.Flags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer Key")
+	resetPKCS11KeysCmd.Flags().StringP("p11lib", "p", "", "Full path to PKCS11 lib file")
+	resetPKCS11KeysCmd.Flags().StringP("user-key", "k", "1234", "HSM User Login Key (default is 1234)")
+	resetPKCS11KeysCmd.Flags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer Key")
 	signCmd.Flags().StringP("sign-algorithm", "a", "rsa", "Algorithm of key to reset")
 }
 
-var resetKeysCmd = &cobra.Command{
+var resetPKCS11KeysCmd = &cobra.Command{
 	Use:   "reset-pkcs11-keys",
 	Short: "Deletes all the keys registered in the HSM with specified key label and algorithm",
-	RunE: resetKeys,
+	RunE:  resetPKCS11Keys,
 }
 
 
-func resetKeys(cmd *cobra.Command, args []string) error {
+func resetPKCS11Keys(cmd *cobra.Command, args []string) error {
 	if err := viper.BindPFlags(cmd.Flags()); err != nil {
 		return err
 	}
