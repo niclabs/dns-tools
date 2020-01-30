@@ -129,10 +129,7 @@ func (ctx *Context) NewPKCS11Session(p11lib string) (*PKCS11Session, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Error login with provided key: %s\n", err)
 	}
-	algorithm, ok := StringToSignAlgorithm[ctx.SignAlgorithm]
-	if !ok {
-		return nil, fmt.Errorf("error with provided sign algorithm: not found")
-	}
+	algorithm, _ := StringToSignAlgorithm[ctx.SignAlgorithm] // It could be nil
 	return &PKCS11Session{
 		Context:       ctx,
 		P11Context:    p,
