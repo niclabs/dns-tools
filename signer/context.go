@@ -14,11 +14,11 @@ import (
 // Context contains the state of a zone signing process.
 type Context struct {
 	*ContextConfig
-	SignExpDate time.Time   // Expiration date for the signature.
-	File        io.Reader   // File path
-	Output      io.Writer   // Out path
-	RRs         RRArray     // RRs
-	Log         *log.Logger // Logger
+	SignExpDate time.Time      // Expiration date for the signature.
+	File        io.Reader      // File path
+	Output      io.WriteCloser // Out path
+	RRs         RRArray        // RRs
+	Log         *log.Logger    // Logger
 }
 
 // ContextConfig contains the common args to sign and verify files
@@ -32,16 +32,16 @@ type ContextConfig struct {
 	SignAlgorithm string // Signature algorithm
 	Key           string // Signature key
 	ExpDateStr    string // Expiration Date in String
+	FilePath      string // Output Path
 	OutputPath    string // Output Path
 }
 
 // NewContext creates a new context based on a configuration structure. It also receives a logger to log errors.
 func NewContext(config *ContextConfig, log *log.Logger) (*Context, error) {
-	file, err := os.Open(config.OutputPath)
+	file, err := os.Open(config.FilePath)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
 
 	ctx := &Context{
 		ContextConfig: config,
@@ -63,7 +63,6 @@ func NewContext(config *ContextConfig, log *log.Logger) (*Context, error) {
 		if err != nil {
 			return nil, fmt.Errorf("couldn't create out file in path %s: %s", config.OutputPath, err)
 		}
-		defer writer.Close()
 		ctx.Output = writer
 	}
 	return ctx, nil
@@ -168,11 +167,12 @@ func (ctx *Context) PKCS11DestroyKeys(p11lib string) (err error) {
 	return nil
 }
 
+// FileSign signs a file.
 func (ctx *Context) FileSign(filelib string) (err error) {
 	panic("not implemented")
 }
 
-
+// AddNSEC13 adds NSEC 1 and 3 RRs to the RR list.
 func (ctx *Context) AddNSEC13() {
 	if ctx.NSEC3 {
 		for {
@@ -183,4 +183,14 @@ func (ctx *Context) AddNSEC13() {
 	} else {
 		ctx.RRs.addNSECRecords(ctx.Zone)
 	}
+}
+
+func (ctx *Context) Close() error {
+	if ctx.Output != nil {
+		err := ctx.Output.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

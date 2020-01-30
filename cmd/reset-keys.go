@@ -45,6 +45,8 @@ func resetKeys(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	defer ctx.Close()
+
 	if err = ctx.PKCS11DestroyKeys(p11lib); err != nil {
 		Log.Printf("Error destroying keys.")
 		return err

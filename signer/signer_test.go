@@ -1,10 +1,10 @@
 package signer_test
 
 import (
+	"bytes"
 	"github.com/niclabs/hsm-tools/signer"
 	"log"
 	"os"
-	"strings"
 	"testing"
 	"time"
 )
@@ -36,7 +36,7 @@ func sign(t *testing.T, ctx *signer.Context) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx.File = strings.NewReader(fileString)
+	ctx.File = bytes.NewBufferString(fileString)
 	ctx.Output = writer
 	defer writer.Close()
 

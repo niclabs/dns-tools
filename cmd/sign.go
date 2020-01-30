@@ -53,6 +53,7 @@ func runPKCS11(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+	defer ctx.Close()
 	p11lib := viper.GetString("p11lib")
 	if len(p11lib) == 0 {
 		return fmt.Errorf("p11lib not specified")
@@ -75,6 +76,7 @@ func runFile(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	ctx, err := newContext()
+	defer ctx.Close()
 	if err != nil {
 		return err
 	}
@@ -132,6 +134,7 @@ func newContext() (*signer.Context, error) {
 		SignAlgorithm: signAlgorithm,
 		Key:           key,
 		ExpDateStr:    expDateStr,
-		OutputPath:    filepath,
+		FilePath:      filepath,
+		OutputPath:    out,
 	}, Log)
 }
