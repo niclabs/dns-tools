@@ -72,8 +72,10 @@ The following command verifies the previously created key.
 The folowing command removes the created keys with an specific tag, using the  [DTC](https://github.com/niclabs/dtc) library
 
 ```
-./hsm-tools reset-pkcs11-keys -p ./dtc.so
+./hsm-tools reset-pkcs11-keys -p ./dtc.so -a <ALGORITHM>
 ```
+
+Where `ALGORITHM` is the algorithm of the keys you want to delete (rsa, ecdsa).
 
 ## Config File
 
