@@ -31,13 +31,11 @@ func resetPKCS11Keys(cmd *cobra.Command, args []string) error {
 
 	key := viper.GetString("user-key")
 	label := viper.GetString("key-label")
-	algorithm := viper.GetString("sign-algorithm")
 	if err := filesExist(p11lib); err != nil {
 		return err
 	}
 	ctx, err := signer.NewContext(&signer.ContextConfig{
 		Label:         label,
-		SignAlgorithm: algorithm,
 		Key:           key,
 	}, Log)
 	if err != nil {
