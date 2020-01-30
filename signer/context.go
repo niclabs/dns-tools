@@ -161,9 +161,6 @@ func (ctx *Context) PKCS11Sign(p11lib string) (err error) {
 
 // PKCS11DestroyKeys destroys the keys from a HSM using the given PKCS11 library.
 func (ctx *Context) PKCS11DestroyKeys(p11lib string) (err error) {
-	if err = ctx.ReadAndParseZone(true); err != nil {
-		return err
-	}
 	session, err := ctx.NewPKCS11Session(p11lib)
 	if err != nil {
 		return err
