@@ -46,7 +46,7 @@ func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error
 		Output:        os.Stdout,
 	}
 
-	if len(config.FilePath) == 0 {
+	if len(config.FilePath) > 0 {
 		ctx.File, err = os.Open(config.FilePath)
 		if err != nil {
 			return nil, err
