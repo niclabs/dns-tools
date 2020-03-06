@@ -54,7 +54,7 @@ func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error
 	}
 
 	if len(config.ExpDateStr) > 0 {
-		parsedDate, err := time.Parse("20160102", config.ExpDateStr)
+		parsedDate, err := time.Parse("20060102", config.ExpDateStr)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse expiration date: %s", err)
 		}
