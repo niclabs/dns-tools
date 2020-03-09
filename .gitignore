@@ -12,4 +12,4 @@ hsm-tools
 *.so
 # Databases
 *sqlite3
-config.json
+hsm-tools-config.json

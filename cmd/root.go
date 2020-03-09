@@ -43,7 +43,7 @@ func initConfig() {
 	} else {
 		viper.AddConfigPath("/etc/hsm-tools/")
 		viper.AddConfigPath("./")
-		viper.SetConfigName("config")
+		viper.SetConfigName("hsm-tools-config")
 	}
 
 	viper.AutomaticEnv()
