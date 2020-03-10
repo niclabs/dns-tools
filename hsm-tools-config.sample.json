@@ -1,5 +1,5 @@
 {
-  "p11lib": "/etc/dtc/dtd.so",
+  "p11lib": "/etc/dtc/dtc.so",
   "user-key": "1234",
   "key-label": "HSM",
   "file": "/home/niclabs/zone.db",
