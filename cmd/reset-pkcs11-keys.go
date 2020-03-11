@@ -24,7 +24,7 @@ func resetPKCS11Keys(cmd *cobra.Command, args []string) error {
 	if err := viper.BindPFlags(cmd.Flags()); err != nil {
 		return err
 	}
-	p11lib, _ := cmd.Flags().GetString("p11lib")
+	p11lib := viper.GetString("p11lib")
 	if len(p11lib) == 0 {
 		return fmt.Errorf("p11lib not specified")
 	}
