@@ -72,7 +72,6 @@ func (session *PKCS11Session) Sign() (ds *dns.DS, err error) {
 		err = rrSig.Verify(zsk, v)
 		if err != nil {
 			err = fmt.Errorf("cannot check RRSig: %s", err)
-			return nil, err
 		}
 		session.RRs = append(session.RRs, rrSig)
 	}

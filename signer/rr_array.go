@@ -47,6 +47,32 @@ func (rrArray RRArray) Less(i, j int) bool {
 	}
 }
 
+// Len returns the length of an RRSet.
+func (rrSet RRSet) Len() int {
+	return len(rrSet)
+}
+
+// Swap swaps elements on positions i and j from RRSet
+func (rrSet RRSet) Swap(i, j int) {
+	rrSet[i], rrSet[j] = rrSet[j], rrSet[i]
+}
+
+// Less returns true if the element in the position i of RRSet is less than the element in position j of RRSet.
+func (rrSet RRSet) Less(i, j int) bool {
+	iRRArray := rrSet[i]
+	jRRArray := rrSet[j]
+	if len(iRRArray) == 0 {
+		if len(jRRArray) == 0 {
+			return false
+		} else {
+			return true
+		}
+	}
+	// Create and array to reuse Less method from rrArrays
+	cmpArray := append(make(RRArray, 0), iRRArray[0], jRRArray[0])
+	return cmpArray.Less(0, 1)
+}
+
 // writeZone prints on writer all the RRs on the array.
 // The format of the text printed is the format of a DNS zone.
 func (rrArray RRArray) writeZone(writer io.Writer) error {
@@ -80,6 +106,7 @@ func (rrArray RRArray) createRRSet(zone string, byType bool) (set RRSet) {
 		}
 		lastRR = rr
 	}
+	sort.Sort(set)
 	return set
 }
 
@@ -215,6 +242,7 @@ func (rrArray *RRArray) addNSEC3Records(zone string, optOut bool) error {
 		*rrArray = append(*rrArray, param)
 		sort.Sort(*rrArray)
 	}
+	// Sorting rrSets by name, class and type
 	if collision {
 		return fmt.Errorf("collision detected")
 	}

@@ -23,7 +23,7 @@ func generateRSAKeyPair(session *PKCS11Session, tokenLabel string, tokenPersiste
 		pkcs11.NewAttribute(pkcs11.CKA_START_DATE, today),
 		pkcs11.NewAttribute(pkcs11.CKA_END_DATE, expDate),
 		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
-		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, []byte{0,0,0,0,0,1,0,1}),
+		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, []byte{1,0,1}),
 		pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, bits),
 	}
 
@@ -68,8 +68,12 @@ func getRSAPubKeyBytes(session *PKCS11Session, object pkcs11.ObjectHandle) ([]by
 	if err != nil {
 		return nil, err
 	}
+	expVal := attr[0].Value
+	if len(expVal) > 8 {
+		return nil, fmt.Errorf("exponent length is larger than 8 bits")
+	}
 	v := make([]byte, 8)
-	copy(v, attr[0].Value)
+	copy(v[8 - len(expVal):], expVal)
 	for v[0] == 0 {
 		v = v[1:]
 		if len(v) == 0 {
