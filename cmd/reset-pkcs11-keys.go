@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	resetPKCS11KeysCmd.Flags().StringP("p11lib", "p", "", "Full path to PKCS11 lib file")
+	resetPKCS11KeysCmd.Flags().StringP("p11lib", "p", "", "Full path to PKCS11Type lib file")
 	resetPKCS11KeysCmd.Flags().StringP("user-key", "k", "1234", "HSM User Login Key (default is 1234)")
 	resetPKCS11KeysCmd.Flags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer Key")
 }

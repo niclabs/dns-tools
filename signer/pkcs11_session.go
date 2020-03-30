@@ -21,20 +21,7 @@ type PKCS11Session struct {
 	SignAlgorithm SignAlgorithm
 }
 
-// Key represents a structure with a handle and an expiration date.
-type Key struct {
-	Handle  pkcs11.ObjectHandle // Handle related with the key
-	ExpDate time.Time           // Expiration Date of the key
-}
-
-// SignatureKeys contains the four keys used in zone signing.
-type SignatureKeys struct {
-	PublicZSK, PrivateZSK *Key
-	PublicKSK, PrivateKSK *Key
-}
-
-
-// Sign signs a zone file and outputs the result into out path (if its length is more than zero).
+// PKCS11Sign signs a zone file and outputs the result into out path (if its length is more than zero).
 // It also dumps the new signed filezone to the standard output.
 func (session *PKCS11Session) Sign() (ds *dns.DS, err error) {
 	if session.Output == nil {
@@ -215,7 +202,7 @@ func (session *PKCS11Session) getDNSKEY(keys *SignatureKeys) (zsk, ksk *dns.DNSK
 func (session *PKCS11Session) getPubKeyBytes(object pkcs11.ObjectHandle) ([]byte, error) {
 	switch session.SignAlgorithm {
 	case RSA_SHA256:
-		return getRSAPubKeyBytes(session, object)
+		return getPKCS11RSABytes(session, object)
 	case ECDSA_P256_SHA256:
 		return getECDSAPubKeyBytes(session, object)
 	default:
@@ -297,7 +284,7 @@ func (session *PKCS11Session) generateKeyPair(label string, tokenPersistent bool
 		if label == "ksk" {
 			bitSize = 2048
 		}
-		return generateRSAKeyPair(
+		return generatePKCS11RSAKeyPair(
 			session,
 			label,
 			tokenPersistent,

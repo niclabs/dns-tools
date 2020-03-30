@@ -5,6 +5,7 @@ import (
 	"github.com/niclabs/hsm-tools/signer"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"os"
 )
 
 func init() {
@@ -18,13 +19,13 @@ func init() {
 	signCmd.PersistentFlags().StringP("expiration-date", "e", "", "Expiration Date, in YYYYMMDD format. Default is one more year from now.")
 	signCmd.PersistentFlags().StringP("user-key", "k", "1234", "HSM User Login Key (default is 1234)")
 	signCmd.PersistentFlags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer Key")
-	pkcs11Cmd.PersistentFlags().StringP("p11lib", "p", "", "Full path to PKCS11 lib file")
 
+	pkcs11Cmd.PersistentFlags().StringP("p11lib", "p", "", "Full path to PKCS11Type lib file")
 	signCmd.AddCommand(pkcs11Cmd)
 
-	// TODO: implement file signing
-	// fileCmd.PersistentFlags().StringP("keyfile", "K", "", "Full path to key file")
-	//signCmd.AddCommand(fileCmd)
+	fileCmd.PersistentFlags().StringP("zsk-keyfile", "Z", "", "Full path to ZSK key file")
+	fileCmd.PersistentFlags().StringP("ksk-keyfile", "K", "", "Full path to KSK key file")
+	signCmd.AddCommand(fileCmd)
 }
 
 var signCmd = &cobra.Command{
@@ -61,12 +62,11 @@ func runPKCS11(cmd *cobra.Command, _ []string) error {
 	if err := filesExist(p11lib); err != nil {
 		return err
 	}
-
 	if err := ctx.PKCS11Sign(p11lib); err != nil {
-		ctx.Log.Printf("File could not be signed.")
+		ctx.Log.Printf("file could not be signed.")
 		return err
 	}
-	ctx.Log.Printf("File signed successfully.")
+	ctx.Log.Printf("file signed successfully.")
 	return nil
 }
 
@@ -79,20 +79,34 @@ func runFile(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	keyfile := viper.GetString("keyfile")
-	if len(keyfile) == 0 {
-		return fmt.Errorf("keyfile not specified")
+	zskKeypath := viper.GetString("zkk-keyfile")
+	if len(zskKeypath) == 0 {
+		return fmt.Errorf("ZSK keyfile not specified")
+	}
+	kskKeypath := viper.GetString("zsk-keyfile")
+	if len(kskKeypath) == 0 {
+		return fmt.Errorf("KSK keyfile not specified")
 	}
 
-	if err := filesExist(keyfile); err != nil {
+	if err := filesExist(zskKeypath, kskKeypath); err != nil {
 		return err
 	}
 
-	if err := ctx.FileSign(keyfile); err != nil {
-		ctx.Log.Printf("File could not be signed.")
+	zskFile, err := os.Open(zskKeypath)
+	if err != nil {
 		return err
 	}
-	ctx.Log.Printf("File signed successfully.")
+
+	kskFile, err := os.Open(kskKeypath)
+	if err != nil {
+		return err
+	}
+
+	if err := ctx.FileSign(kskFile, zskFile); err != nil {
+		ctx.Log.Printf("sessionType could not be signed.")
+		return err
+	}
+	ctx.Log.Printf("sessionType signed successfully.")
 	return nil
 }
 

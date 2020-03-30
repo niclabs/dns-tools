@@ -18,7 +18,7 @@ func (rs RRSignerECDSA) Public() crypto.PublicKey {
 	return rs.PK
 }
 
-// Sign signs the content from the reader and returns a signature, or an error if it fails.
+// PKCS11Sign signs the content from the reader and returns a signature, or an error if it fails.
 func (rs RRSignerECDSA) Sign(_ io.Reader, rr []byte, _ crypto.SignerOpts) ([]byte, error) {
 	if rs.Session == nil || rs.Session.P11Context == nil {
 		return nil, fmt.Errorf("session not initialized")

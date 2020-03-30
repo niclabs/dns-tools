@@ -45,6 +45,6 @@ func verify(cmd *cobra.Command, args []string) error {
 	if err := signer.VerifyFile(zone, file, Log); err != nil {
 		return err
 	}
-	Log.Printf("File verified successfully.")
+	Log.Printf("sessionType verified successfully.")
 	return nil
 }

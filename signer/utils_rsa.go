@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-// generateRSAKeyPair creates a RSA key pair, or returns an error if it cannot create the key pair.
-func generateRSAKeyPair(session *PKCS11Session, tokenLabel string, tokenPersistent bool, expDate time.Time, bits int) (pkcs11.ObjectHandle, pkcs11.ObjectHandle, error) {
+// generatePKCS11RSAKeyPair creates a RSA key pair, or returns an error if it cannot create the key pair.
+func generatePKCS11RSAKeyPair(session *PKCS11Session, tokenLabel string, tokenPersistent bool, expDate time.Time, bits int) (pkcs11.ObjectHandle, pkcs11.ObjectHandle, error) {
 	if session == nil || session.P11Context == nil {
 		return 0, 0, fmt.Errorf("session not initialized")
 	}
@@ -53,7 +53,7 @@ func generateRSAKeyPair(session *PKCS11Session, tokenLabel string, tokenPersiste
 	return pubKey, privKey, nil
 }
 
-func getRSAPubKeyBytes(session *PKCS11Session, object pkcs11.ObjectHandle) ([]byte, error) {
+func getPKCS11RSABytes(session *PKCS11Session, object pkcs11.ObjectHandle) ([]byte, error) {
 	if session == nil || session.P11Context == nil {
 		return nil, fmt.Errorf("session not initialized")
 	}
