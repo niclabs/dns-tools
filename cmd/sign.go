@@ -17,8 +17,8 @@ func init() {
 	signCmd.PersistentFlags().BoolP("nsec3", "3", false, "Use NSEC3 instead of NSEC (default: NSEC)")
 	signCmd.PersistentFlags().BoolP("opt-out", "x", false, "Use NSEC3 with opt-out")
 	signCmd.PersistentFlags().StringP("expiration-date", "e", "", "Expiration Date, in YYYYMMDD format. Default is one more year from now.")
-	signCmd.PersistentFlags().StringP("user-key", "k", "1234", "HSM User Login Key (default is 1234)")
-	signCmd.PersistentFlags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer Key")
+	signCmd.PersistentFlags().StringP("user-key", "k", "1234", "HSM User Login PKCS11Key (default is 1234)")
+	signCmd.PersistentFlags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer PKCS11Key")
 
 	pkcs11Cmd.PersistentFlags().StringP("p11lib", "p", "", "Full path to PKCS11Type lib file")
 	signCmd.AddCommand(pkcs11Cmd)
@@ -49,7 +49,11 @@ func runPKCS11(cmd *cobra.Command, _ []string) error {
 	if err := viper.BindPFlags(cmd.Flags()); err != nil {
 		return err
 	}
-	ctx, err := newContext()
+	conf, err := newContextConfig()
+	if err != nil {
+		return err
+	}
+	ctx, err := signer.NewContext(conf, Log)
 	if err != nil {
 		return err
 	}
@@ -62,7 +66,12 @@ func runPKCS11(cmd *cobra.Command, _ []string) error {
 	if err := filesExist(p11lib); err != nil {
 		return err
 	}
-	if err := ctx.PKCS11Sign(p11lib); err != nil {
+	session, err := ctx.NewPKCS11Session(p11lib)
+	if err != nil {
+		return err
+	}
+	defer session.End()
+	if _, err := ctx.Sign(session); err != nil {
 		ctx.Log.Printf("file could not be signed.")
 		return err
 	}
@@ -74,7 +83,11 @@ func runFile(cmd *cobra.Command, _ []string) error {
 	if err := viper.BindPFlags(cmd.Flags()); err != nil {
 		return err
 	}
-	ctx, err := newContext()
+	conf, err := newContextConfig()
+	if err != nil {
+		return err
+	}
+	ctx, err := signer.NewContext(conf, Log)
 	defer ctx.Close()
 	if err != nil {
 		return err
@@ -101,16 +114,19 @@ func runFile(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-
-	if err := ctx.FileSign(kskFile, zskFile); err != nil {
-		ctx.Log.Printf("sessionType could not be signed.")
+	session, err := ctx.NewFileSession(kskFile, zskFile)
+	if err != nil {
+		return err
+	}
+	defer session.End()
+	if _, err := ctx.Sign(session); err != nil {
 		return err
 	}
 	ctx.Log.Printf("sessionType signed successfully.")
 	return nil
 }
 
-func newContext() (*signer.Context, error) {
+func newContextConfig() (*signer.ContextConfig, error) {
 	createKeys := viper.GetBool("create-keys")
 	zone := viper.GetString("zone")
 	nsec3 := viper.GetBool("nsec3")
@@ -137,7 +153,7 @@ func newContext() (*signer.Context, error) {
 		return nil, err
 	}
 
-	return signer.NewContext(&signer.ContextConfig{
+	return &signer.ContextConfig{
 		Zone:          zone,
 		CreateKeys:    createKeys,
 		NSEC3:         nsec3,
@@ -149,5 +165,5 @@ func newContext() (*signer.Context, error) {
 		ExpDateStr:    expDateStr,
 		FilePath:      filepath,
 		OutputPath:    out,
-	}, Log)
+	}, nil
 }

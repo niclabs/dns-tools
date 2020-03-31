@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 )
 
+// readerToKeyPair transforms a reader into a RSA or ECDSA KeyPair
 func readerToKeyPair(r io.Reader) (crypto.PublicKey, crypto.PrivateKey, error) {
 	rawBytes, err := ioutil.ReadAll(r)
 	if err != nil {
@@ -37,28 +38,4 @@ func readerToKeyPair(r io.Reader) (crypto.PublicKey, crypto.PrivateKey, error) {
 	default:
 		return nil, nil, fmt.Errorf("key not supported. It should be a RSA or EC private key only")
 	}
-}
-
-// NewPKCS11Session creates a new session.
-// The arguments also define the HSM user key and the rsaLabel the keys will use when created or retrieved.
-func (ctx *Context) NewFileSession(zsk, ksk io.Reader) (Session, error) {
-
-}
-
-// FileSign signs a zone with two key files.
-func (ctx *Context) FileSign(ksk, zsk io.Reader) (err error) {
-	if err = ctx.ReadAndParseZone(true); err != nil {
-		return err
-	}
-	ctx.AddNSEC13()
-	session, err := ctx.NewFileSession(ksk, zsk)
-	if err != nil {
-		return err
-	}
-	defer session.End()
-	/* SIGN MY ANGLE OF MUSIC! */
-	if _, err := session.Sign(); err != nil {
-		return err
-	}
-	return nil
 }

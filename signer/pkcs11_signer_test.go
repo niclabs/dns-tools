@@ -10,9 +10,9 @@ import (
 )
 
 // Using default softHSM configuration. Change it if necessary.
-const p11Lib = "/home/eriveros/go/src/dtc/dtc.so"
+const p11Lib = "/usr/lib/libsofthsm2.so"
 const key = "1234"
-const rsaLabel = "dHSM-Test"
+const rsaLabel = "hsm"
 const zone = "example.com."
 
 const fileString = `
@@ -39,13 +39,11 @@ func sign(t *testing.T, ctx *signer.Context) (*os.File, error) {
 	ctx.File = bytes.NewBufferString(fileString)
 	ctx.Output = writer
 	defer writer.Close()
-
-	if err = ctx.ReadAndParseZone(true); err != nil {
-		return nil, err
-	}
-	ctx.AddNSEC13()
 	// Session init
 	session, err := ctx.NewPKCS11Session(p11Lib)
+	if err != nil {
+		return nil, err
+	}
 	defer session.End()
 	if err != nil {
 		t.Errorf("Error creating new session: %s", err)
@@ -57,7 +55,7 @@ func sign(t *testing.T, ctx *signer.Context) (*os.File, error) {
 			return nil, err
 		}
 	}
-	_, err = session.Sign()
+	_, err = signer.Sign(session)
 	if err != nil {
 		t.Errorf("Error signing example: %s", err)
 		return nil, err
@@ -93,7 +91,7 @@ func TestSession_RSASignNSEC3(t *testing.T) {
 	out, err := sign(t, &signer.Context{
 		ContextConfig: &signer.ContextConfig{
 			Zone:          zone,
-			CreateKeys:    false,
+			CreateKeys:    true,
 			NSEC3:         true,
 			OptOut:        false,
 			SignAlgorithm: "rsa",
@@ -117,7 +115,7 @@ func TestSession_RSASignNSEC3OptOut(t *testing.T) {
 	out, err := sign(t, &signer.Context{
 		ContextConfig: &signer.ContextConfig{
 			Zone:          zone,
-			CreateKeys:    false,
+			CreateKeys:    true,
 			NSEC3:         true,
 			OptOut:        true,
 			SignAlgorithm: "rsa",
@@ -165,7 +163,7 @@ func TestSession_ECDSASignNSEC3(t *testing.T) {
 	out, err := sign(t, &signer.Context{
 		ContextConfig: &signer.ContextConfig{
 			Zone:          zone,
-			CreateKeys:    false,
+			CreateKeys:    true,
 			NSEC3:         true,
 			OptOut:        false,
 			SignAlgorithm: "ecdsa",
@@ -189,7 +187,7 @@ func TestSession_ECDSASignNSEC3OptOut(t *testing.T) {
 	out, err := sign(t, &signer.Context{
 		ContextConfig: &signer.ContextConfig{
 			Zone:          zone,
-			CreateKeys:    false,
+			CreateKeys:    true,
 			NSEC3:         true,
 			OptOut:        true,
 			SignAlgorithm: "ecdsa",
@@ -213,10 +211,10 @@ func TestSession_ExpiredSig(t *testing.T) {
 	out, err := sign(t, &signer.Context{
 		ContextConfig: &signer.ContextConfig{
 			Zone:          zone,
-			CreateKeys:    false,
+			CreateKeys:    true,
 			NSEC3:         false,
 			OptOut:        false,
-			SignAlgorithm: "ecdsa",
+			SignAlgorithm: "rsa",
 			Key:           key,
 			Label:         rsaLabel,
 		},

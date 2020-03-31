@@ -9,8 +9,8 @@ import (
 
 func init() {
 	resetPKCS11KeysCmd.Flags().StringP("p11lib", "p", "", "Full path to PKCS11Type lib file")
-	resetPKCS11KeysCmd.Flags().StringP("user-key", "k", "1234", "HSM User Login Key (default is 1234)")
-	resetPKCS11KeysCmd.Flags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer Key")
+	resetPKCS11KeysCmd.Flags().StringP("user-key", "k", "1234", "HSM User Login PKCS11Key (default is 1234)")
+	resetPKCS11KeysCmd.Flags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer PKCS11Key")
 }
 
 var resetPKCS11KeysCmd = &cobra.Command{
@@ -43,8 +43,12 @@ func resetPKCS11Keys(cmd *cobra.Command, args []string) error {
 	}
 	defer ctx.Close()
 
-	if err = ctx.PKCS11DestroyKeys(p11lib); err != nil {
-		Log.Printf("Error destroying keys.")
+	session, err := ctx.NewPKCS11Session(p11lib)
+	if err != nil {
+		return err
+	}
+	defer session.End()
+	if err := session.DestroyAllKeys(); err != nil {
 		return err
 	}
 	Log.Printf("All keys destroyed.")

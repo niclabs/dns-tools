@@ -3,6 +3,7 @@ package signer
 import (
 	"fmt"
 	"github.com/miekg/dns"
+	"github.com/miekg/pkcs11"
 	"io"
 	"log"
 	"os"
@@ -35,7 +36,8 @@ type ContextConfig struct {
 	OutputPath    string // Output Path
 }
 
-// NewContext creates a new context based on a configuration structure. It also receives a logger to log errors.
+// NewContext creates a new context based on a configuration structure. It also receives
+// a logger to log errors.
 func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error) {
 
 	ctx = &Context{
@@ -118,6 +120,45 @@ func (ctx *Context) AddNSEC13() {
 	}
 }
 
+// NewPKCS11Session creates a new session.
+// The arguments also define the HSM user key and the rsaLabel the keys will use when created or retrieved.
+func (ctx *Context) NewPKCS11Session(p11lib string) (Session, error) {
+	p := pkcs11.New(p11lib)
+	if p == nil {
+		return nil, fmt.Errorf("Error initializing %s: file not found\n", p11lib)
+	}
+	err := p.Initialize()
+	if err != nil {
+		return nil, fmt.Errorf("Error initializing %s: %s. (Has the .db RW permission?)\n", p11lib, err)
+	}
+	slots, err := p.GetSlotList(true)
+	if err != nil {
+		return nil, fmt.Errorf("Error checking slots: %s\n", err)
+	}
+	session, err := p.OpenSession(slots[0], pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
+	if err != nil {
+		return nil, fmt.Errorf("Error creating session: %s\n", err)
+	}
+	err = p.Login(session, pkcs11.CKU_USER, ctx.Key)
+	if err != nil {
+		return nil, fmt.Errorf("Error login with provided key: %s\n", err)
+	}
+	algorithm, _ := StringToSignAlgorithm[ctx.SignAlgorithm] // It could be nil
+	return &PKCS11Session{
+		ctx:           ctx,
+		P11Context:    p,
+		Handle:        session,
+		SignAlgorithm: algorithm,
+	}, nil
+}
+
+// NewFileSession creates a new File session.
+// The arguments define the readers for the zone signing and key signing keys.
+func (ctx *Context) NewFileSession(zsk, ksk io.Reader) (Session, error) {
+	return nil, nil
+}
+
+// Close closes the output file if it is defined.
 func (ctx *Context) Close() error {
 	if ctx.Output != nil {
 		err := ctx.Output.Close()

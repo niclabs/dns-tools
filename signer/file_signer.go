@@ -13,7 +13,7 @@ import (
 	"log"
 )
 
-type FileKey struct {
+type FileRRSigner struct {
 	ZSKfile string
 	KSKfile string
 	Log     *log.Logger // Logger (for output)
