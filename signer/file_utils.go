@@ -13,6 +13,7 @@ import (
 	"reflect"
 )
 
+
 // readerToKeyPair transforms a reader into a RSA or ECDSA KeyPair
 func readerToPrivateKey(r io.Reader) (crypto.PrivateKey, error) {
 	rawBytes, err := ioutil.ReadAll(r)
@@ -24,7 +25,7 @@ func readerToPrivateKey(r io.Reader) (crypto.PrivateKey, error) {
 		return nil, fmt.Errorf("file should only contain one key block")
 	}
 	if pem == nil {
-		return nil, fmt.Errorf("no valid blocks found")
+		return nil, fmt.Errorf("key file is empty. If you want to create new keys, use --create-keys flag")
 	}
 	switch pem.Type {
 	case "PRIVATE KEY":

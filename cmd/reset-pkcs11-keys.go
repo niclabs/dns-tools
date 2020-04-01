@@ -19,7 +19,6 @@ var resetPKCS11KeysCmd = &cobra.Command{
 	RunE:  resetPKCS11Keys,
 }
 
-
 func resetPKCS11Keys(cmd *cobra.Command, args []string) error {
 	if err := viper.BindPFlags(cmd.Flags()); err != nil {
 		return err
@@ -31,13 +30,6 @@ func resetPKCS11Keys(cmd *cobra.Command, args []string) error {
 
 	key := viper.GetString("user-key")
 	label := viper.GetString("key-label")
-	if len(config.ExpDateStr) > 0 {
-		parsedDate, err := time.Parse("20060102", config.ExpDateStr)
-		if err != nil {
-			return nil, fmt.Errorf("cannot parse expiration date: %s", err)
-		}
-		ctx.SignExpDate = parsedDate
-	}
 	if err := filesExist(p11lib); err != nil {
 		return err
 	}
@@ -46,8 +38,7 @@ func resetPKCS11Keys(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer ctx.Close()
-
-	session, err := ctx.NewPKCS11Session(p11lib, label, key, expDate)
+	session, err := ctx.NewPKCS11Session(label, key, p11lib)
 	if err != nil {
 		return err
 	}

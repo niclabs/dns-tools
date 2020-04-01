@@ -2,6 +2,7 @@ package signer
 
 import (
 	"crypto"
+	"encoding/asn1"
 	"encoding/binary"
 	"fmt"
 	"github.com/miekg/pkcs11"
@@ -48,7 +49,7 @@ func (session *PKCS11Session) GetKeys() (keys *SigKeys, err error) {
 		if err = session.expireKeys(keys); err != nil {
 			return
 		}
-		if err = session.generateKeys(keys); err != nil {
+		if err = session.generateSigners(keys); err != nil {
 			return
 		}
 	}
@@ -145,7 +146,7 @@ func (session *PKCS11Session) expireKeys(keys *SigKeys) error {
 	return session.expirePKCS11Key(keys.kskSigner)
 }
 
-func (session *PKCS11Session) generateKeys(keys *SigKeys) error {
+func (session *PKCS11Session) generateSigners(keys *SigKeys) error {
 	defaultExpDate := time.Now().AddDate(1, 0, 0) // TODO: allow to config this?
 	session.ctx.Log.Printf("generating zsk")
 	public, private, err := session.generateKeyPair(
@@ -190,16 +191,14 @@ func (session *PKCS11Session) generateKeyPair(label string, tokenPersistent bool
 		if label == "ksk" {
 			bitSize = 2048
 		}
-		return generatePKCS11RSAKeyPair(
-			session,
+		return session.genRSAKeyPair(
 			label,
 			tokenPersistent,
 			expDate,
 			bitSize,
 		)
 	case ECDSA_P256_SHA256:
-		return generateECDSAKeyPair(
-			session,
+		return session.genECDSAKeyPair(
 			label,
 			tokenPersistent,
 			expDate,
@@ -349,5 +348,97 @@ func (session *PKCS11Session) expirePKCS11Key(signer crypto.Signer) error {
 		return session.P11Context.SetAttributeValue(session.Handle, pkcs11Signer.SK, expireTemplate)
 	}
 	return nil
+}
+
+
+// genRSAKeyPair creates a RSA key pair, or returns an error if it cannot create the key pair.
+func (session *PKCS11Session) genRSAKeyPair(tokenLabel string, tokenPersistent bool, expDate time.Time, bits int) (pkcs11.ObjectHandle, pkcs11.ObjectHandle, error) {
+	if session == nil || session.P11Context == nil {
+		return 0, 0, fmt.Errorf("session not initialized")
+	}
+	today := time.Now()
+	publicKeyTemplate := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, session.Label),
+		pkcs11.NewAttribute(pkcs11.CKA_ID, []byte(tokenLabel)),
+		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, tokenPersistent),
+		pkcs11.NewAttribute(pkcs11.CKA_START_DATE, today),
+		pkcs11.NewAttribute(pkcs11.CKA_END_DATE, expDate),
+		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
+		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, []byte{1, 0, 1}),
+		pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, bits),
+	}
+
+	privateKeyTemplate := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, session.Label),
+		pkcs11.NewAttribute(pkcs11.CKA_ID, []byte(tokenLabel)),
+		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, tokenPersistent),
+		pkcs11.NewAttribute(pkcs11.CKA_START_DATE, today),
+		pkcs11.NewAttribute(pkcs11.CKA_END_DATE, expDate),
+		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
+		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
+	}
+
+	pubKey, privKey, err := session.P11Context.GenerateKeyPair(
+		session.Handle,
+		[]*pkcs11.Mechanism{
+			pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS_KEY_PAIR_GEN, nil),
+		},
+		publicKeyTemplate,
+		privateKeyTemplate,
+	)
+	if err != nil {
+		return 0, 0, err
+	}
+	return pubKey, privKey, nil
+}
+
+
+// genECDSAKeyPair creates a ECDSA key pair, or returns an error if it cannot create the key pair.
+func (session *PKCS11Session) genECDSAKeyPair(tokenLabel string, tokenPersistent bool, expDate time.Time) (pkcs11.ObjectHandle, pkcs11.ObjectHandle, error) {
+	if session == nil || session.P11Context == nil {
+		return 0, 0, fmt.Errorf("session not initialized")
+	}
+	today := time.Now()
+	ecParams, _ := asn1.Marshal(asn1.ObjectIdentifier{1, 2, 840, 10045, 3, 1, 7}) // P-256 params
+	publicKeyTemplate := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
+		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, session.Label),
+		pkcs11.NewAttribute(pkcs11.CKA_ID, []byte(tokenLabel)),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, tokenPersistent),
+		pkcs11.NewAttribute(pkcs11.CKA_START_DATE, today),
+		pkcs11.NewAttribute(pkcs11.CKA_END_DATE, expDate),
+		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
+		pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, ecParams),
+	}
+
+	privateKeyTemplate := []*pkcs11.Attribute{
+		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PRIVATE_KEY),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, session.Label),
+		pkcs11.NewAttribute(pkcs11.CKA_ID, []byte(tokenLabel)),
+		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, tokenPersistent),
+		pkcs11.NewAttribute(pkcs11.CKA_START_DATE, today),
+		pkcs11.NewAttribute(pkcs11.CKA_END_DATE, expDate),
+		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
+		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
+	}
+
+	pubKey, privKey, err := session.P11Context.GenerateKeyPair(
+		session.Handle,
+		[]*pkcs11.Mechanism{
+			pkcs11.NewMechanism(pkcs11.CKM_ECDSA_KEY_PAIR_GEN, nil),
+		},
+		publicKeyTemplate,
+		privateKeyTemplate,
+	)
+	if err != nil {
+		return 0, 0, err
+	}
+	return pubKey, privKey, nil
 }
 

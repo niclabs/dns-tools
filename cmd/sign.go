@@ -18,7 +18,6 @@ func init() {
 	signCmd.PersistentFlags().BoolP("opt-out", "x", false, "Use NSEC3 with opt-out")
 	signCmd.PersistentFlags().StringP("expiration-date", "e", "", "Expiration Date, in YYYYMMDD format. Default is one more year from now.")
 
-
 	pkcs11Cmd.PersistentFlags().StringP("user-key", "k", "1234", "HSM User Login PKCS11Key (default is 1234)")
 	pkcs11Cmd.PersistentFlags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer PKCS11Key")
 	pkcs11Cmd.PersistentFlags().StringP("p11lib", "p", "", "Full path to PKCS11Type lib file")
@@ -63,11 +62,18 @@ func runPKCS11(cmd *cobra.Command, _ []string) error {
 	if len(p11lib) == 0 {
 		return fmt.Errorf("p11lib not specified")
 	}
-
+	key := viper.GetString("key")
+	if len(key) == 0 {
+		return fmt.Errorf("key not specified")
+	}
+	label := viper.GetString("label")
+	if len(label) == 0 {
+		return fmt.Errorf("label not specified")
+	}
 	if err := filesExist(p11lib); err != nil {
 		return err
 	}
-	session, err := ctx.NewPKCS11Session(p11lib)
+	session, err := ctx.NewPKCS11Session(key, label, p11lib)
 	if err != nil {
 		return err
 	}
@@ -93,7 +99,7 @@ func runFile(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	zskKeypath := viper.GetString("zkk-keyfile")
+	zskKeypath := viper.GetString("ksk-keyfile")
 	if len(zskKeypath) == 0 {
 		return fmt.Errorf("ZSK keyfile not specified")
 	}
@@ -102,16 +108,16 @@ func runFile(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("KSK keyfile not specified")
 	}
 
-	if err := filesExist(zskKeypath, kskKeypath); err != nil {
-		return err
+	fileFlags := os.O_RDWR|os.O_CREATE
+	if ctx.CreateKeys {
+		fileFlags |= os.O_TRUNC // Truncate old file
 	}
 
-	zskFile, err := os.Open(zskKeypath)
+	zskFile, err := os.OpenFile(zskKeypath, fileFlags, 0600)
 	if err != nil {
 		return err
 	}
-
-	kskFile, err := os.Open(kskKeypath)
+	kskFile, err := os.OpenFile(kskKeypath, fileFlags, 0600)
 	if err != nil {
 		return err
 	}
@@ -135,8 +141,6 @@ func newContextConfig() (*signer.ContextConfig, error) {
 
 	filepath := viper.GetString("file")
 	out := viper.GetString("output")
-	key := viper.GetString("user-key")
-	label := viper.GetString("key-label")
 	expDateStr := viper.GetString("expiration-date")
 	signAlgorithm := viper.GetString("sign-algorithm")
 
@@ -160,9 +164,7 @@ func newContextConfig() (*signer.ContextConfig, error) {
 		NSEC3:         nsec3,
 		OptOut:        optOut,
 		MinTTL:        0,
-		Label:         label,
 		SignAlgorithm: signAlgorithm,
-		Key:           key,
 		ExpDateStr:    expDateStr,
 		FilePath:      filepath,
 		OutputPath:    out,

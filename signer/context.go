@@ -155,11 +155,11 @@ func (ctx *Context) NewPKCS11Session(key, label, p11lib string) (Session, error)
 
 // NewFileSession creates a new File session.
 // The arguments define the readers for the zone signing and key signing keys.
-func (ctx *Context) NewFileSession(zsk, ksk io.Reader) (Session, error) {
+func (ctx *Context) NewFileSession(zsk, ksk io.ReadWriteSeeker) (Session, error) {
 	return &FileSession{
-		ctx: ctx,
-		kskReader: ksk,
-		zskReader: zsk,
+		ctx:     ctx,
+		kskFile: ksk,
+		zskFile: zsk,
 	}, nil
 }
 
