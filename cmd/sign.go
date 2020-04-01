@@ -23,8 +23,8 @@ func init() {
 	pkcs11Cmd.PersistentFlags().StringP("p11lib", "p", "", "Full path to PKCS11Type lib file")
 	signCmd.AddCommand(pkcs11Cmd)
 
-	fileCmd.PersistentFlags().StringP("zsk-keyfile", "Z", "", "Full path to ZSK key file")
-	fileCmd.PersistentFlags().StringP("ksk-keyfile", "K", "", "Full path to KSK key file")
+	fileCmd.PersistentFlags().StringP("zsk-keyfile", "Z", "zsk.pem", "Full path to ZSK key file")
+	fileCmd.PersistentFlags().StringP("ksk-keyfile", "K", "ksk.pem", "Full path to KSK key file")
 	signCmd.AddCommand(fileCmd)
 }
 
