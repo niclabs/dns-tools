@@ -1,6 +1,9 @@
 package signer
 
 import (
+	"crypto/elliptic"
+	"encoding/asn1"
+	"encoding/binary"
 	"fmt"
 	"github.com/miekg/dns"
 	"github.com/miekg/pkcs11"
@@ -63,4 +66,57 @@ func removeDuplicates(objs []pkcs11.ObjectHandle) []pkcs11.ObjectHandle {
 		}
 	}
 	return result
+}
+
+// rsaPublicKeyToBytes transforms an RSA Public key to formatted bytes, usable in zone signing
+func rsaPublicKeyToBytes(exponent, modulus []byte) ([]byte, error) {
+	if len(exponent) > 8 {
+		return nil, fmt.Errorf("exponent length is larger than 8 bytes")
+	}
+	if len(exponent) == 0 {
+		return nil, fmt.Errorf("exponent is zero")
+	}
+	n := uint32(len(exponent))
+	a := make([]byte, 4)
+	binary.BigEndian.PutUint32(a, n)
+	// Stores as BigEndian, read as LittleEndian, what could go wrong?
+	if n < 256 {
+		a = a[3:]
+	} else if n <= 512 {
+		a = a[1:]
+	} else {
+		return nil, fmt.Errorf("invalid exponent length. Its size must be between 1 and 4096 bits")
+	}
+
+	a = append(a, exponent...)
+	a = append(a, modulus...)
+
+	return a, nil
+
+}
+
+func ecdsaPublicKeyToBytes(ecPoint []byte) ([]byte, error) {
+	curve := elliptic.P256()
+	curveBytes := 2 * int((curve.Params().BitSize + 7) / 8)
+	// asn1 -> elliptic-marshaled
+	asn1Encoded := make([]byte, 0)
+	rest, err := asn1.Unmarshal(ecPoint, &asn1Encoded)
+	if err != nil {
+		return nil, err
+	}
+	if len(rest) > 0 {
+		return nil, fmt.Errorf("corrupted public key")
+	}
+	x, y := elliptic.Unmarshal(curve, asn1Encoded)
+	if x == nil {
+		return nil, fmt.Errorf("error decoding point")
+	}
+	// elliptic-marshaled -> elliptic.pubkey
+	bytesPoint := make([]byte, curveBytes) // two 32 bit unsigned numbers
+	xBytes, yBytes := x.Bytes(), y.Bytes()
+	copy(bytesPoint[curveBytes/2-len(xBytes):curveBytes/2], xBytes)
+	copy(bytesPoint[curveBytes-len(yBytes):curveBytes], yBytes)
+	return bytesPoint, nil
+	// elliptic.pubkey -> {x|y}
+
 }

@@ -31,19 +31,23 @@ func resetPKCS11Keys(cmd *cobra.Command, args []string) error {
 
 	key := viper.GetString("user-key")
 	label := viper.GetString("key-label")
+	if len(config.ExpDateStr) > 0 {
+		parsedDate, err := time.Parse("20060102", config.ExpDateStr)
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse expiration date: %s", err)
+		}
+		ctx.SignExpDate = parsedDate
+	}
 	if err := filesExist(p11lib); err != nil {
 		return err
 	}
-	ctx, err := signer.NewContext(&signer.ContextConfig{
-		Label:         label,
-		Key:           key,
-	}, Log)
+	ctx, err := signer.NewContext(&signer.ContextConfig{}, Log)
 	if err != nil {
 		return err
 	}
 	defer ctx.Close()
 
-	session, err := ctx.NewPKCS11Session(p11lib)
+	session, err := ctx.NewPKCS11Session(p11lib, label, key, expDate)
 	if err != nil {
 		return err
 	}

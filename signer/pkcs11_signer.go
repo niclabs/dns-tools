@@ -38,7 +38,8 @@ func (rs *PKCS11RRSigner) Sign(rand io.Reader, rr []byte, opts crypto.SignerOpts
 	}
 	var mechanisms []*pkcs11.Mechanism
 	T := make([]byte, 0)
-	switch rs.Session.SignAlgorithm {
+	ctx := rs.Session.Context()
+	switch ctx.SignAlgorithm {
 	case RSA_SHA256:
 		// Inspired in https://github.com/ThalesIgnite/crypto11/blob/38ef75346a1dc2094ffdd919341ef9827fb041c0/rsa.go#L281
 		oid := pkcs1Prefix[opts.HashFunc()]
@@ -64,7 +65,7 @@ func (rs *PKCS11RRSigner) Sign(rand io.Reader, rr []byte, opts crypto.SignerOpts
 	if err != nil {
 		return nil, err
 	}
-	if rs.Session.SignAlgorithm == ECDSA_P256_SHA256 {
+	if ctx.SignAlgorithm == ECDSA_P256_SHA256 {
 		r, s := big.NewInt(0).SetBytes(sig[:32]), big.NewInt(0).SetBytes(sig[32:])
 		sig, err = asn1.Marshal(struct{ R, S *big.Int }{r, s})
 		if err != nil {

@@ -14,11 +14,12 @@ import (
 // Context contains the state of a zone signing process.
 type Context struct {
 	*ContextConfig
-	SignExpDate time.Time      // Expiration date for the signature.
-	File        io.Reader      // sessionType path
-	Output      io.WriteCloser // Out path
-	RRs         RRArray        // RRs
-	Log         *log.Logger    // Logger
+	SignExpDate   time.Time      // Expiration date for the signature.
+	File          io.Reader      // sessionType path
+	Output        io.WriteCloser // Out path
+	RRs           RRArray        // RRs
+	Log           *log.Logger    // Logger
+	SignAlgorithm SignAlgorithm  // Sign Algorithm
 }
 
 // ContextConfig contains the common args to sign and verify files
@@ -28,23 +29,25 @@ type ContextConfig struct {
 	NSEC3         bool   // If true, the zone is signed using NSEC3
 	OptOut        bool   // If true and NSEC3 is true, the zone is signed using OptOut NSEC3 flag.
 	MinTTL        uint32 // Min TTL ;-)
-	Label         string // Signature Label
 	SignAlgorithm string // Signature algorithm
-	Key           string // Signature key
-	ExpDateStr    string // Expiration Date in String
 	FilePath      string // Output Path
 	OutputPath    string // Output Path
+	ExpDateStr    string // Signature Expiration Date in String
 }
 
 // NewContext creates a new context based on a configuration structure. It also receives
 // a logger to log errors.
 func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error) {
-
+	algorithm, ok := StringToSignAlgorithm[config.SignAlgorithm] // It could be nil
+	if !ok {
+		return nil, fmt.Errorf("algorithm is not defined in config")
+	}
 	ctx = &Context{
 		ContextConfig: config,
 		Log:           log,
 		SignExpDate:   time.Now().AddDate(1, 0, 0),
 		Output:        os.Stdout,
+		SignAlgorithm: algorithm,
 	}
 
 	if len(config.FilePath) > 0 {
@@ -122,7 +125,7 @@ func (ctx *Context) AddNSEC13() {
 
 // NewPKCS11Session creates a new session.
 // The arguments also define the HSM user key and the rsaLabel the keys will use when created or retrieved.
-func (ctx *Context) NewPKCS11Session(p11lib string) (Session, error) {
+func (ctx *Context) NewPKCS11Session(key, label, p11lib string) (Session, error) {
 	p := pkcs11.New(p11lib)
 	if p == nil {
 		return nil, fmt.Errorf("Error initializing %s: file not found\n", p11lib)
@@ -139,23 +142,25 @@ func (ctx *Context) NewPKCS11Session(p11lib string) (Session, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Error creating session: %s\n", err)
 	}
-	err = p.Login(session, pkcs11.CKU_USER, ctx.Key)
+	err = p.Login(session, pkcs11.CKU_USER, key)
 	if err != nil {
 		return nil, fmt.Errorf("Error login with provided key: %s\n", err)
 	}
-	algorithm, _ := StringToSignAlgorithm[ctx.SignAlgorithm] // It could be nil
 	return &PKCS11Session{
-		ctx:           ctx,
-		P11Context:    p,
-		Handle:        session,
-		SignAlgorithm: algorithm,
+		ctx:        ctx,
+		P11Context: p,
+		Handle:     session,
 	}, nil
 }
 
 // NewFileSession creates a new File session.
 // The arguments define the readers for the zone signing and key signing keys.
 func (ctx *Context) NewFileSession(zsk, ksk io.Reader) (Session, error) {
-	return nil, nil
+	return &FileSession{
+		ctx: ctx,
+		kskReader: ksk,
+		zskReader: zsk,
+	}, nil
 }
 
 // Close closes the output file if it is defined.

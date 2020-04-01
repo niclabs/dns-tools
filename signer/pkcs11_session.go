@@ -14,7 +14,8 @@ type PKCS11Session struct {
 	ctx           *Context             // HSM Tools Context
 	P11Context    *pkcs11.Ctx          // PKCS#11 Context
 	Handle        pkcs11.SessionHandle // PKCS11Session Handle
-	SignAlgorithm SignAlgorithm
+	Label         string // Signature Label
+	Key           string // Signature key
 }
 
 // Returns the session context
@@ -22,27 +23,57 @@ func (session *PKCS11Session) Context() *Context {
 	return session.ctx
 }
 
-// Returns the session algorithm
-func (session *PKCS11Session) Algorithm() SignAlgorithm {
-	return session.SignAlgorithm
+
+
+// GetKeys get the public key string and private key habdler from HSM.
+// returns an error, if any.
+func (session *PKCS11Session) GetKeys() (keys *SigKeys, err error) {
+	ctx := session.Context()
+	keys, err = session.searchValidKeys()
+	if err != nil {
+		if err == NoValidKeys {
+			if !ctx.CreateKeys {
+				err = fmt.Errorf("no valid keys and --create-keys disabled." +
+					"Try again using --create-keys flag")
+				return
+			}
+		} else {
+			err = fmt.Errorf("corrupted hsm state (%s)."+
+				" Please reset the keys or create new ones with "+
+				"--create-keys flag", err)
+			return
+		}
+	}
+	if ctx.CreateKeys {
+		if err = session.expireKeys(keys); err != nil {
+			return
+		}
+		if err = session.generateKeys(keys); err != nil {
+			return
+		}
+	}
+	return
 }
 
-// End finishes a session execution, logging out and clossing the session.
-func (session *PKCS11Session) End() error {
-	if session.P11Context == nil {
-		return fmt.Errorf("session not initialized")
+// Returns bytestrings of public zsk and ksk keys.
+func (session *PKCS11Session) GetPublicKeyBytes(keys *SigKeys) (zskBytes, kskBytes []byte, err error) {
+	var keyFun func(signer crypto.Signer) ([]byte, error)
+	ctx := session.Context()
+	switch ctx.SignAlgorithm {
+	case RSA_SHA256:
+		keyFun = session.getRSAPubKeyBytes
+	case ECDSA_P256_SHA256:
+		keyFun = session.getECDSAPubKeyBytes
+	default:
+		err = fmt.Errorf("undefined sign algorithm")
+		return
 	}
-	if err := session.P11Context.Logout(session.Handle); err != nil {
-		return err
+	zskBytes, err = keyFun(keys.zskSigner)
+	if err != nil {
+		return
 	}
-	if err := session.P11Context.CloseSession(session.Handle); err != nil {
-		return err
-	}
-	if err := session.P11Context.Finalize(); err != nil {
-		return err
-	}
-	session.P11Context.Destroy()
-	return nil
+	kskBytes, err = keyFun(keys.kskSigner)
+	return
 }
 
 // DestroyAllKeys destroys all the keys using the rsaLabel defined in the session struct.
@@ -51,7 +82,7 @@ func (session *PKCS11Session) DestroyAllKeys() error {
 		return fmt.Errorf("session not initialized")
 	}
 	deleteTemplate := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, session.ctx.Label),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, session.Label),
 	}
 	objects, err := session.findObject(deleteTemplate)
 	if err != nil {
@@ -85,64 +116,22 @@ func (session *PKCS11Session) DestroyAllKeys() error {
 	return nil
 }
 
-// GetKeys get the public key string and private key habdler from HSM.
-// returns an error, if any.
-func (session *PKCS11Session) GetKeys() (keys *SigKeys, err error) {
-	ctx := session.Context()
-	keys, err = session.searchValidKeys()
-	if err != nil {
-		if err == NoValidKeys {
-			if !ctx.CreateKeys {
-				err = fmt.Errorf("no valid keys and --create-keys disabled." +
-					"Try again using --create-keys flag")
-				return
-			}
-		} else {
-			err = fmt.Errorf("corrupted hsm state (%s)."+
-				" Please reset the keys or create new ones with "+
-				"--create-keys flag", err)
-			return
-		}
+// End finishes a session execution, logging out and clossing the session.
+func (session *PKCS11Session) End() error {
+	if session.P11Context == nil {
+		return fmt.Errorf("session not initialized")
 	}
-	if ctx.CreateKeys {
-		if err = session.expireKeys(keys); err != nil {
-			return
-		}
-		if err = session.generateKeys(keys); err != nil {
-			return
-		}
+	if err := session.P11Context.Logout(session.Handle); err != nil {
+		return err
 	}
-	return
-}
-
-
-// Returns bytestrings of public zsk and ksk keys.
-func (session *PKCS11Session) GetPublicKeyBytes(keys *SigKeys) (zskBytes, kskBytes []byte, err error) {
-	var keyFun func(signer *PKCS11RRSigner) ([]byte, error)
-	switch session.SignAlgorithm {
-	case RSA_SHA256:
-		keyFun = session.getRSAPubKeyBytes
-	case ECDSA_P256_SHA256:
-		keyFun = session.getECDSAPubKeyBytes
-	default:
-		err = fmt.Errorf("undefined sign algorithm")
-		return
+	if err := session.P11Context.CloseSession(session.Handle); err != nil {
+		return err
 	}
-	kskSigner, ok := keys.kskSigner.(*PKCS11RRSigner)
-	if !ok {
-		return nil, nil, fmt.Errorf("Wrong keys provided. They should be of PKCS11RRSigner type")
+	if err := session.P11Context.Finalize(); err != nil {
+		return err
 	}
-	kskBytes, err = keyFun(kskSigner)
-	if err != nil {
-		return
-	}
-	zskSigner, ok := keys.zskSigner.(*PKCS11RRSigner)
-	if !ok {
-		return nil, nil, fmt.Errorf("Wrong keys provided. They should be of PKCS11RRSigner type")
-	}
-
-	zskBytes, err = keyFun(zskSigner)
-	return
+	session.P11Context.Destroy()
+	return nil
 }
 
 func (session *PKCS11Session) expireKeys(keys *SigKeys) error {
@@ -154,7 +143,6 @@ func (session *PKCS11Session) expireKeys(keys *SigKeys) error {
 		return err
 	}
 	return session.expirePKCS11Key(keys.kskSigner)
-
 }
 
 func (session *PKCS11Session) generateKeys(keys *SigKeys) error {
@@ -192,8 +180,11 @@ func (session *PKCS11Session) generateKeys(keys *SigKeys) error {
 	return nil
 }
 
+// generateKeyPair returns a public-private key handle pair of the signAlgorithm defined
+// for the session.
 func (session *PKCS11Session) generateKeyPair(label string, tokenPersistent bool, expDate time.Time) (pk, sk pkcs11.ObjectHandle, err error) {
-	switch session.SignAlgorithm {
+	ctx := session.Context()
+	switch ctx.SignAlgorithm {
 	case RSA_SHA256:
 		bitSize := 1024
 		if label == "ksk" {
@@ -245,7 +236,7 @@ func (session *PKCS11Session) searchValidKeys() (*SigKeys, error) {
 		return nil, fmt.Errorf("session not initialized")
 	}
 	AllTemplate := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, session.ctx.Label),
+		pkcs11.NewAttribute(pkcs11.CKA_LABEL, session.Label),
 	}
 
 	DateTemplate := []*pkcs11.Attribute{
@@ -359,3 +350,4 @@ func (session *PKCS11Session) expirePKCS11Key(signer crypto.Signer) error {
 	}
 	return nil
 }
+

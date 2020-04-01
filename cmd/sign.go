@@ -17,9 +17,10 @@ func init() {
 	signCmd.PersistentFlags().BoolP("nsec3", "3", false, "Use NSEC3 instead of NSEC (default: NSEC)")
 	signCmd.PersistentFlags().BoolP("opt-out", "x", false, "Use NSEC3 with opt-out")
 	signCmd.PersistentFlags().StringP("expiration-date", "e", "", "Expiration Date, in YYYYMMDD format. Default is one more year from now.")
-	signCmd.PersistentFlags().StringP("user-key", "k", "1234", "HSM User Login PKCS11Key (default is 1234)")
-	signCmd.PersistentFlags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer PKCS11Key")
 
+
+	pkcs11Cmd.PersistentFlags().StringP("user-key", "k", "1234", "HSM User Login PKCS11Key (default is 1234)")
+	pkcs11Cmd.PersistentFlags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer PKCS11Key")
 	pkcs11Cmd.PersistentFlags().StringP("p11lib", "p", "", "Full path to PKCS11Type lib file")
 	signCmd.AddCommand(pkcs11Cmd)
 
@@ -71,7 +72,7 @@ func runPKCS11(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	defer session.End()
-	if _, err := ctx.Sign(session); err != nil {
+	if _, err := signer.Sign(session); err != nil {
 		ctx.Log.Printf("file could not be signed.")
 		return err
 	}
@@ -119,7 +120,7 @@ func runFile(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	defer session.End()
-	if _, err := ctx.Sign(session); err != nil {
+	if _, err := signer.Sign(session); err != nil {
 		return err
 	}
 	ctx.Log.Printf("sessionType signed successfully.")

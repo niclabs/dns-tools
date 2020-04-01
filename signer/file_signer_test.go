@@ -1,12 +1,13 @@
 package signer_test
 
 import (
+	"bytes"
 	"github.com/niclabs/hsm-tools/signer"
 	"testing"
 	"time"
 )
 
-func TestSession_PKCS11RSASign(t *testing.T) {
+func TestSession_FileRSASign(t *testing.T) {
 	ctx := &signer.Context{
 		ContextConfig: &signer.ContextConfig{
 			Zone:          zone,
@@ -17,7 +18,9 @@ func TestSession_PKCS11RSASign(t *testing.T) {
 		SignAlgorithm: signer.RSA_SHA256,
 		Log: Log,
 	}
-	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
+	zsk := bytes.NewBufferString(RSAZSK)
+	ksk := bytes.NewBufferString(RSAKSK)
+	session, err := ctx.NewFileSession(zsk, ksk)
 	if err != nil {
 		t.Errorf("%s", err)
 		return
@@ -34,7 +37,7 @@ func TestSession_PKCS11RSASign(t *testing.T) {
 	return
 }
 
-func TestSession_PKCS11RSASignNSEC3(t *testing.T) {
+func TestSession_FileRSASignNSEC3(t *testing.T) {
 	ctx := &signer.Context{
 		ContextConfig: &signer.ContextConfig{
 			Zone:          zone,
@@ -45,7 +48,9 @@ func TestSession_PKCS11RSASignNSEC3(t *testing.T) {
 		SignAlgorithm: signer.RSA_SHA256,
 		Log: Log,
 	}
-	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
+	zsk := bytes.NewBufferString(RSAZSK)
+	ksk := bytes.NewBufferString(RSAKSK)
+	session, err := ctx.NewFileSession(zsk, ksk)
 	if err != nil {
 		t.Errorf("%s", err)
 		return
@@ -62,7 +67,7 @@ func TestSession_PKCS11RSASignNSEC3(t *testing.T) {
 	return
 }
 
-func TestSession_PKCS11RSASignNSEC3OptOut(t *testing.T) {
+func TestSession_FileRSASignNSEC3OptOut(t *testing.T) {
 	ctx := &signer.Context{
 		ContextConfig: &signer.ContextConfig{
 			Zone:          zone,
@@ -73,7 +78,9 @@ func TestSession_PKCS11RSASignNSEC3OptOut(t *testing.T) {
 		SignAlgorithm: signer.RSA_SHA256,
 		Log: Log,
 	}
-	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
+	zsk := bytes.NewBufferString(RSAZSK)
+	ksk := bytes.NewBufferString(RSAKSK)
+	session, err := ctx.NewFileSession(zsk, ksk)
 	if err != nil {
 		t.Errorf("%s", err)
 		return
@@ -90,7 +97,7 @@ func TestSession_PKCS11RSASignNSEC3OptOut(t *testing.T) {
 	return
 }
 
-func TestSession_PKCS11ECDSASign(t *testing.T) {
+func TestSession_FileECDSASign(t *testing.T) {
 	ctx := &signer.Context{
 		ContextConfig: &signer.ContextConfig{
 			Zone:          zone,
@@ -101,7 +108,9 @@ func TestSession_PKCS11ECDSASign(t *testing.T) {
 		SignAlgorithm: signer.ECDSA_P256_SHA256,
 		Log: Log,
 	}
-	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
+	zsk := bytes.NewBufferString(ECZSK)
+	ksk := bytes.NewBufferString(ECKSK)
+	session, err := ctx.NewFileSession(zsk, ksk)
 	if err != nil {
 		t.Errorf("%s", err)
 		return
@@ -118,7 +127,7 @@ func TestSession_PKCS11ECDSASign(t *testing.T) {
 	return
 }
 
-func TestSession_PKCS11ECDSASignNSEC3(t *testing.T) {
+func TestSession_FileECDSASignNSEC3(t *testing.T) {
 	ctx := &signer.Context{
 		ContextConfig: &signer.ContextConfig{
 			Zone:          zone,
@@ -129,7 +138,9 @@ func TestSession_PKCS11ECDSASignNSEC3(t *testing.T) {
 		SignAlgorithm: signer.ECDSA_P256_SHA256,
 		Log: Log,
 	}
-	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
+	zsk := bytes.NewBufferString(ECZSK)
+	ksk := bytes.NewBufferString(ECKSK)
+	session, err := ctx.NewFileSession(zsk, ksk)
 	if err != nil {
 		t.Errorf("%s", err)
 		return
@@ -146,7 +157,7 @@ func TestSession_PKCS11ECDSASignNSEC3(t *testing.T) {
 	return
 }
 
-func TestSession_PKCS11ECDSASignNSEC3OptOut(t *testing.T) {
+func TestSession_FileECDSASignNSEC3OptOut(t *testing.T) {
 	ctx := &signer.Context{
 		ContextConfig: &signer.ContextConfig{
 			Zone:          zone,
@@ -157,7 +168,9 @@ func TestSession_PKCS11ECDSASignNSEC3OptOut(t *testing.T) {
 		SignAlgorithm: signer.ECDSA_P256_SHA256,
 		Log: Log,
 	}
-	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
+	zsk := bytes.NewBufferString(ECZSK)
+	ksk := bytes.NewBufferString(ECKSK)
+	session, err := ctx.NewFileSession(zsk, ksk)
 	if err != nil {
 		t.Errorf("%s", err)
 		return
@@ -174,7 +187,7 @@ func TestSession_PKCS11ECDSASignNSEC3OptOut(t *testing.T) {
 	return
 }
 
-func TestSession_PKCS11ExpiredSig(t *testing.T) {
+func TestSession_FileExpiredSig(t *testing.T) {
 	ctx := &signer.Context{
 		ContextConfig: &signer.ContextConfig{
 			Zone:          zone,
@@ -182,11 +195,13 @@ func TestSession_PKCS11ExpiredSig(t *testing.T) {
 			NSEC3:         false,
 			OptOut:        false,
 		},
-		SignAlgorithm: signer.ECDSA_P256_SHA256,
 		Log: Log,
+		SignAlgorithm: signer.ECDSA_P256_SHA256,
 		SignExpDate: time.Now().AddDate(-1, 0, 0),
 	}
-	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
+	zsk := bytes.NewBufferString(ECZSK)
+	ksk := bytes.NewBufferString(ECKSK)
+	session, err := ctx.NewFileSession(zsk, ksk)
 	if err != nil {
 		t.Errorf("%s", err)
 		return

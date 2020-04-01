@@ -11,12 +11,11 @@ import (
 var NoValidKeys = fmt.Errorf("No valid keys")
 
 type Session interface {
-	End() error
-	DestroyAllKeys() error
-	GetPublicKeyBytes(*SigKeys) (kskBytes, zskBytes []byte, err error)
-	GetKeys() (*SigKeys, error)
 	Context() *Context
-	Algorithm() SignAlgorithm
+	GetKeys() (*SigKeys, error)
+	GetPublicKeyBytes(*SigKeys) (zskBytes, kskBytes []byte, err error)
+	DestroyAllKeys() error
+	End() error
 }
 
 // SigKeys contains the four keys used in zone signing.
@@ -62,6 +61,7 @@ func Sign(session Session) (ds *dns.DS, err error) {
 		err = rrSig.Verify(zsk, v)
 		if err != nil {
 			err = fmt.Errorf("cannot check RRSig: %s", err)
+			return
 		}
 		ctx.RRs = append(ctx.RRs, rrSig)
 	}
@@ -100,7 +100,7 @@ func GetDNSKEY(keys *SigKeys, session Session) (zsk, ksk *dns.DNSKEY, err error)
 	zsk = CreateNewDNSKEY(
 		ctx.Zone,
 		256,
-		uint8(session.Algorithm()), // (https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml)
+		uint8(ctx.SignAlgorithm), // (https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml)
 		ctx.MinTTL,
 		base64.StdEncoding.EncodeToString(zskBytes),
 	)
@@ -110,7 +110,7 @@ func GetDNSKEY(keys *SigKeys, session Session) (zsk, ksk *dns.DNSKEY, err error)
 	ksk = CreateNewDNSKEY(
 		ctx.Zone,
 		257,
-		uint8(session.Algorithm()), // (https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml)
+		uint8(ctx.SignAlgorithm), // (https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml)
 		ctx.MinTTL,           // SOA -> minimum TTL
 		base64.StdEncoding.EncodeToString(kskBytes),
 	)
