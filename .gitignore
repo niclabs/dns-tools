@@ -14,3 +14,4 @@ hsm-tools
 *sqlite3
 hsm-tools-config.json
 *.db
+*.pem
