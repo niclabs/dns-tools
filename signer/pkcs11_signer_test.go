@@ -28,7 +28,7 @@ func TestSession_PKCS11RSASign(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, out, Log); err != nil {
+	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
@@ -56,7 +56,7 @@ func TestSession_PKCS11RSASignNSEC3(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, out, Log); err != nil {
+	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
@@ -84,7 +84,7 @@ func TestSession_PKCS11RSASignNSEC3OptOut(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, out, Log); err != nil {
+	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
@@ -112,7 +112,7 @@ func TestSession_PKCS11ECDSASign(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, out, Log); err != nil {
+	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
@@ -140,7 +140,7 @@ func TestSession_PKCS11ECDSASignNSEC3(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, out, Log); err != nil {
+	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
@@ -168,7 +168,7 @@ func TestSession_PKCS11ECDSASignNSEC3OptOut(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, out, Log); err != nil {
+	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
@@ -197,7 +197,7 @@ func TestSession_PKCS11ExpiredSig(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, out, Log); err == nil {
+	if err := signer.VerifyFile(zone, "", out, Log); err == nil {
 		t.Errorf("output should be alerted as expired, but it was not")
 		return
 	}

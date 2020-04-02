@@ -5,6 +5,7 @@ import (
 	"github.com/niclabs/hsm-tools/signer"
 	"log"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -105,12 +106,7 @@ func sign(t *testing.T, ctx *signer.Context, session signer.Session) (*os.File, 
 	ctx.File = bytes.NewBufferString(fileString)
 	ctx.Output = writer
 	defer writer.Close()
-	// Session init
 	defer session.End()
-	if err != nil {
-		t.Errorf("Error creating new session: %s", err)
-		return nil, err
-	}
 	if ctx.CreateKeys {
 		if err = session.DestroyAllKeys(); err != nil {
 			t.Errorf("Error destroying old keys: %s", err)
@@ -123,5 +119,21 @@ func sign(t *testing.T, ctx *signer.Context, session signer.Session) (*os.File, 
 		return nil, err
 	}
 	return reader, nil
+}
+
+func TestContext_ReadAndParseZone(t *testing.T) {
+	ctx := signer.Context{
+		ContextConfig: &signer.ContextConfig{
+			Zone:          "wrong.zone",
+		},
+		File:          bytes.NewBufferString(fileString),
+		Log:           Log,
+	}
+	err := ctx.ReadAndParseZone(false)
+	if err == nil {
+		t.Errorf("Zone parsing should have failed because zone is wrong")
+	} else if !strings.Contains(err.Error(), "outside the defined zone") {
+		t.Errorf("Error received is different than error expected")
+	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -17,7 +18,7 @@ type Context struct {
 	SignExpDate   time.Time      // Expiration date for the signature.
 	File          io.Reader      // sessionType path
 	Output        io.WriteCloser // Out path
-	RRs           RRArray        // RRs
+	rrs           RRArray        // rrs
 	Log           *log.Logger    // Logger
 	SignAlgorithm SignAlgorithm  // Sign Algorithm
 }
@@ -75,7 +76,7 @@ func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error
 	return ctx, nil
 }
 
-// ReadAndParseZone parses a DNS zone file and returns an array of RRs and the zone minTTL.
+// ReadAndParseZone parses a DNS zone file and returns an array of rrs and the zone minTTL.
 // It also updates the serial in the SOA record if updateSerial is true.
 func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 
@@ -89,7 +90,7 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 		ctx.Zone = ctx.Zone + "."
 	}
 
-	zone := dns.NewZoneParser(ctx.File, "", "")
+	zone := dns.NewZoneParser(ctx.File, ctx.Zone, "")
 	if err := zone.Err(); err != nil {
 		return err
 	}
@@ -103,23 +104,37 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 			if updateSerial {
 				rr.(*dns.SOA).Serial += 2
 			}
+			// Getting zone name if it is not defined as argument
+			if ctx.Zone == "" {
+				ctx.Zone = rr.Header().Name
+			}
 		}
 	}
+	if ctx.Zone == "" {
+		return fmt.Errorf("zone name not defined in arguments nor guessable using SOA RR. Try again using --zone argument")
+	}
 	sort.Sort(rrs)
-	ctx.RRs = rrs
+	ctx.Log.Printf("Zone to sign is %s", ctx.Zone)
+	// We check that all the rrs are from the defined zone
+	for _, rr := range rrs {
+		if !strings.HasSuffix(rr.Header().Name, ctx.Zone) {
+			return fmt.Errorf("Zone file contains an RR (%s) outside the defined zone (%s)", rr.String(), ctx.Zone)
+		}
+	}
+	ctx.rrs = rrs
 	return nil
 }
 
-// AddNSEC13 adds NSEC 1 and 3 RRs to the RR list.
+// AddNSEC13 adds NSEC 1 and 3 rrs to the RR list.
 func (ctx *Context) AddNSEC13() {
 	if ctx.NSEC3 {
 		for {
-			if err := ctx.RRs.addNSEC3Records(ctx.Zone, ctx.OptOut); err == nil {
+			if err := ctx.rrs.addNSEC3Records(ctx.Zone, ctx.OptOut); err == nil {
 				break
 			}
 		}
 	} else {
-		ctx.RRs.addNSECRecords(ctx.Zone)
+		ctx.rrs.addNSECRecords(ctx.Zone)
 	}
 }
 

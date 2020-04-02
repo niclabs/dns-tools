@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// RRArray represents an array of RRs
+// RRArray represents an array of rrs
 // It implements Swapper interface, and is sortable.
 type RRArray []dns.RR
 
@@ -73,7 +73,7 @@ func (rrSet RRSet) Less(i, j int) bool {
 	return cmpArray.Less(0, 1)
 }
 
-// writeZone prints on writer all the RRs on the array.
+// writeZone prints on writer all the rrs on the array.
 // The format of the text printed is the format of a DNS zone.
 func (rrArray RRArray) writeZone(writer io.Writer) error {
 	for _, rr := range rrArray {
@@ -84,7 +84,7 @@ func (rrArray RRArray) writeZone(writer io.Writer) error {
 	return nil
 }
 
-// createRRSet groups the RRs by rsaLabel and class if byType is false, or rsaLabel, class and type if byType is true
+// createRRSet groups the rrs by rsaLabel and class if byType is false, or rsaLabel, class and type if byType is true
 // NSEC/NSEC3 uses the version with byType = false, and RRSIG uses the other version.
 // It assumes the rrarray is sorted.
 func (rrArray RRArray) createRRSet(zone string, byType bool) (set RRSet) {

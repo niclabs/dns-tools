@@ -12,11 +12,11 @@ var cfgFile string
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is /etc/hsm-tools/config.toml)")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "C", "", "configuration file (defaults are \"/etc/hsm-tools/hsm-tools-config.json\" and \"./hsm-tools-config.json\")")
 	rootCmd.AddCommand(signCmd)
 	rootCmd.AddCommand(verifyCmd)
 	rootCmd.AddCommand(resetPKCS11KeysCmd)
-	Log = log.New(os.Stderr, "", 0)
+	Log = log.New(os.Stderr, "[hsm-tools]",  log.Ldate|log.Ltime)
 }
 
 var Log *log.Logger
@@ -48,7 +48,7 @@ func initConfig() {
 
 	viper.AutomaticEnv()
 	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+		Log.Println("Using config file:", viper.ConfigFileUsed())
 	}
 }
 

@@ -6,31 +6,33 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 func init() {
-	signCmd.PersistentFlags().StringP("file", "f", "", "Full path to zone file to be signed")
-	signCmd.PersistentFlags().StringP("zone", "z", "", "Zone name")
-	signCmd.PersistentFlags().StringP("output", "o", "", "Output for the signed zone file")
+	signCmd.PersistentFlags().StringP("file", "f", "", "Full path to zone file to be signed.")
+	signCmd.PersistentFlags().StringP("zone", "z", "", "Origin zone name. If it is not specified, $ORIGIN inside the file will be used as this value.")
+	signCmd.PersistentFlags().StringP("output", "o", "", "Output for the signed zone file. By default is based on zone file name, with \"-signed\" at the end of the name and before the extension")
 	signCmd.PersistentFlags().BoolP("create-keys", "c", false, "Creates a new pair of keys, outdating all valid keys.")
-	signCmd.PersistentFlags().StringP("sign-algorithm", "a", "rsa", "Algorithm used in signing")
-	signCmd.PersistentFlags().BoolP("nsec3", "3", false, "Use NSEC3 instead of NSEC (default: NSEC)")
-	signCmd.PersistentFlags().BoolP("opt-out", "x", false, "Use NSEC3 with opt-out")
-	signCmd.PersistentFlags().StringP("expiration-date", "e", "", "Expiration Date, in YYYYMMDD format. Default is one more year from now.")
+	signCmd.PersistentFlags().StringP("sign-algorithm", "a", "rsa", "Algorithm used in signing.")
+	signCmd.PersistentFlags().BoolP("nsec3", "3", false, "Use NSEC3 instead of NSEC.")
+	signCmd.PersistentFlags().BoolP("opt-out", "x", false, "Use NSEC3 with opt-out.")
+	signCmd.PersistentFlags().StringP("expiration-date", "e", "", "Signature expiration Date, in YYYYMMDD format. Default is one more year from now.")
 
-	pkcs11Cmd.PersistentFlags().StringP("user-key", "k", "1234", "HSM User Login PKCS11Key (default is 1234)")
-	pkcs11Cmd.PersistentFlags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer PKCS11Key")
-	pkcs11Cmd.PersistentFlags().StringP("p11lib", "p", "", "Full path to PKCS11Type lib file")
+	pkcs11Cmd.PersistentFlags().StringP("user-key", "k", "1234", "HSM User Login PKCS11Key.")
+	pkcs11Cmd.PersistentFlags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer PKCS11Key.")
+	pkcs11Cmd.PersistentFlags().StringP("p11lib", "p", "", "Full path to PKCS11Type lib file.")
 	signCmd.AddCommand(pkcs11Cmd)
 
-	fileCmd.PersistentFlags().StringP("zsk-keyfile", "Z", "zsk.pem", "Full path to ZSK key file")
-	fileCmd.PersistentFlags().StringP("ksk-keyfile", "K", "ksk.pem", "Full path to KSK key file")
+	fileCmd.PersistentFlags().StringP("zsk-keyfile", "Z", "zsk.pem", "Full path to ZSK key file.")
+	fileCmd.PersistentFlags().StringP("ksk-keyfile", "K", "ksk.pem", "Full path to KSK key file.")
 	signCmd.AddCommand(fileCmd)
 }
 
 var signCmd = &cobra.Command{
 	Use:   "sign",
-	Short: "Signs a DNS Zone using the provided PKCS#11 library or a file",
+	Short: "Signs a DNS Zone using a PKCS#11 library or a file",
 }
 
 var pkcs11Cmd = &cobra.Command{
@@ -139,22 +141,24 @@ func newContextConfig() (*signer.ContextConfig, error) {
 	nsec3 := viper.GetBool("nsec3")
 	optOut := viper.GetBool("opt-out")
 
-	filepath := viper.GetString("file")
+	path := viper.GetString("file")
 	out := viper.GetString("output")
 	expDateStr := viper.GetString("expiration-date")
 	signAlgorithm := viper.GetString("sign-algorithm")
 
-	if len(filepath) == 0 {
-		return nil, fmt.Errorf("input file path not specified")
+	if len(path) == 0 {
+		return nil, fmt.Errorf("zone file not specified")
 	}
 	if len(zone) == 0 {
 		return nil, fmt.Errorf("zone not specified")
 	}
 	if len(out) == 0 {
-		return nil, fmt.Errorf("output file path not specified")
+		pathExt  := filepath.Ext(path)
+		pathName := strings.TrimSuffix(filepath.Base(path), pathExt)
+		out = filepath.Join(filepath.Dir(path), pathName + "-signed" + pathExt)
 	}
 
-	if err := filesExist(filepath); err != nil {
+	if err := filesExist(path); err != nil {
 		return nil, err
 	}
 
@@ -166,7 +170,7 @@ func newContextConfig() (*signer.ContextConfig, error) {
 		MinTTL:        0,
 		SignAlgorithm: signAlgorithm,
 		ExpDateStr:    expDateStr,
-		FilePath:      filepath,
+		FilePath:      path,
 		OutputPath:    out,
 	}, nil
 }

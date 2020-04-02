@@ -40,7 +40,7 @@ func Sign(session Session) (ds *dns.DS, err error) {
 		return nil, err
 	}
 	ctx.Log.Printf("Start signing...\n")
-	rrSet := ctx.RRs.createRRSet(ctx.Zone, true)
+	rrSet := ctx.rrs.createRRSet(ctx.Zone, true)
 
 	// ok, we create DNSKEYS
 	zsk, ksk, err := GetDNSKEY(keys, session)
@@ -63,7 +63,7 @@ func Sign(session Session) (ds *dns.DS, err error) {
 			err = fmt.Errorf("cannot check RRSig: %s", err)
 			return
 		}
-		ctx.RRs = append(ctx.RRs, rrSig)
+		ctx.rrs = append(ctx.rrs, rrSig)
 	}
 
 	rrDNSKeys := RRArray{zsk, ksk}
@@ -82,12 +82,12 @@ func Sign(session Session) (ds *dns.DS, err error) {
 		return nil, err
 	}
 
-	ctx.RRs = append(ctx.RRs, zsk, ksk, rrDNSKeySig)
+	ctx.rrs = append(ctx.rrs, zsk, ksk, rrDNSKeySig)
 
-	sort.Sort(ctx.RRs)
+	sort.Sort(ctx.rrs)
 	ds = ksk.ToDS(1)
 	ctx.Log.Printf("DS: %s\n", ds) // SHA256
-	err = ctx.RRs.writeZone(ctx.Output)
+	err = ctx.rrs.writeZone(ctx.Output)
 	return ds, err
 }
 
@@ -111,9 +111,8 @@ func GetDNSKEY(keys *SigKeys, session Session) (zsk, ksk *dns.DNSKEY, err error)
 		ctx.Zone,
 		257,
 		uint8(ctx.SignAlgorithm), // (https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml)
-		ctx.MinTTL,           // SOA -> minimum TTL
+		ctx.MinTTL,               // SOA -> minimum TTL
 		base64.StdEncoding.EncodeToString(kskBytes),
 	)
 	return
 }
-

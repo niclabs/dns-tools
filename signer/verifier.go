@@ -15,19 +15,23 @@ type RRSigTuple struct {
 }
 
 // VerifyFile verifies the signatures in an already signed zone file.
-func VerifyFile(zone string, reader io.Reader, logger *log.Logger) (err error) {
-	Context := &Context{
+// zone represents the domain origin, while filepath is the zone location, and it is used
+// to resolve $INCLUDE directives. reader has the zone input and logger allows us to log the operations.
+func VerifyFile(origin, path string, reader io.Reader, logger *log.Logger) (err error) {
+	ctx := &Context{
 		ContextConfig: &ContextConfig{
-			Zone: zone,
+			Zone: origin,
+			FilePath: path,
 		},
 		File: reader,
+		Log: logger,
 	}
 
-	if err = Context.ReadAndParseZone(false); err != nil {
+	if err = ctx.ReadAndParseZone(false); err != nil {
 		return
 	}
-	rrSet := Context.RRs.createRRSet(zone, true)
-	nsNames := getAllNSNames(Context.RRs)
+	rrSet := ctx.rrs.createRRSet(origin, true)
+	nsNames := getAllNSNames(ctx.rrs)
 
 	rrSigTuples := make(map[string]*RRSigTuple)
 
@@ -35,7 +39,7 @@ func VerifyFile(zone string, reader io.Reader, logger *log.Logger) (err error) {
 
 	// Pairing each RRArray with its RRSig
 	for _, rrArray := range rrSet {
-		if len(rrArray) > 0 && rrArray.isSignable(zone, nsNames) {
+		if len(rrArray) > 0 && rrArray.isSignable(origin, nsNames) {
 			if rrArray[0].Header().Rrtype == dns.TypeDNSKEY {
 				key1 := rrArray[0].(*dns.DNSKEY)
 				key2 := rrArray[1].(*dns.DNSKEY)
@@ -78,7 +82,7 @@ func VerifyFile(zone string, reader io.Reader, logger *log.Logger) (err error) {
 	}
 
 	// Checking each RRset RRSignature.
-	fmt.Printf("number of signatures: %d\n", len(rrSigTuples))
+	ctx.Log.Printf("number of signatures: %d\n", len(rrSigTuples))
 	for setName, tuple := range rrSigTuples {
 		sig := tuple.RRSig
 		arr := tuple.RRArray
@@ -97,7 +101,7 @@ func VerifyFile(zone string, reader io.Reader, logger *log.Logger) (err error) {
 				setName,
 				expDate.Format("2006-01-02 15:04:05"),
 			)
-			logger.Printf("%s\n", err)
+			ctx.Log.Printf("%s\n", err)
 			return
 		}
 		if arr[0].Header().Rrtype == dns.TypeDNSKEY {
@@ -106,9 +110,9 @@ func VerifyFile(zone string, reader io.Reader, logger *log.Logger) (err error) {
 			err = sig.Verify(pzsk, arr)
 		}
 		if err != nil {
-			logger.Printf("[Error] (%s) %s  \n", err, setName)
+			ctx.Log.Printf("[Error] (%s) %s  \n", err, setName)
 		} else {
-			logger.Printf("[ OK  ] %s\n", setName)
+			ctx.Log.Printf("[ OK  ] %s\n", setName)
 		}
 	}
 	return

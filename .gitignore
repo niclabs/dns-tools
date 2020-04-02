@@ -12,6 +12,6 @@ hsm-tools
 *.so
 # Databases
 *sqlite3
-hsm-tools-config.json
+hsm-tools-config.json.old
 *.db
 *.pem

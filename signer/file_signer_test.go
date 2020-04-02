@@ -75,7 +75,7 @@ func TestSession_FileRSASign(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, out, Log); err != nil {
+	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
@@ -105,7 +105,7 @@ func TestSession_FileRSASignNSEC3(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, out, Log); err != nil {
+	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
@@ -135,7 +135,7 @@ func TestSession_FileRSASignNSEC3OptOut(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, out, Log); err != nil {
+	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
@@ -165,7 +165,7 @@ func TestSession_FileECDSASign(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, out, Log); err != nil {
+	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
@@ -195,7 +195,7 @@ func TestSession_FileECDSASignNSEC3(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, out, Log); err != nil {
+	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
@@ -225,7 +225,7 @@ func TestSession_FileECDSASignNSEC3OptOut(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, out, Log); err != nil {
+	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
@@ -256,7 +256,7 @@ func TestSession_FileExpiredSig(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, out, Log); err == nil {
+	if err := signer.VerifyFile(zone, "", out, Log); err == nil {
 		t.Errorf("output should be alerted as expired, but it was not")
 		return
 	}
