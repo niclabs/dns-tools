@@ -1,15 +1,6 @@
 package signer
 
 import (
-	/*
-	   "encoding/base64"
-	   "encoding/binary"
-	   "fmt"
-	   "github.com/miekg/dns"
-	   "io"
-	   "sort"
-	   "time"
-	*/
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"

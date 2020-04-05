@@ -1,10 +1,10 @@
 package signer
 
 import (
+	"github.com/niclabs/dns"
 	"crypto"
 	"encoding/base64"
 	"fmt"
-	"github.com/miekg/dns"
 	"sort"
 )
 

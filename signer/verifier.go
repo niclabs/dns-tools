@@ -2,7 +2,7 @@ package signer
 
 import (
 	"fmt"
-	"github.com/miekg/dns"
+	"github.com/niclabs/dns"
 	"io"
 	"log"
 	"time"

@@ -4,8 +4,8 @@ go 1.12
 
 require (
 	github.com/magiconair/properties v1.8.1 // indirect
-	github.com/miekg/dns v1.1.9
 	github.com/miekg/pkcs11 v1.0.2
+	github.com/niclabs/dns v1.1.9
 	github.com/pelletier/go-toml v1.4.0 // indirect
 	github.com/spf13/afero v1.2.2 // indirect
 	github.com/spf13/cobra v0.0.5
