@@ -52,6 +52,15 @@ func (rrs RRArray) UpdateDigest() (error) {
 
 	buf := make([]byte, dns.MaxMsgSize)
   for i, rr := range rrs {
+    /* 
+    3.4 Inclusions/Exclusions
+    The RRSIG covering ZONEMD MUST NOT be included because the RRSIG
+      will be updated after all digests have been calculated.
+    */
+    if (rr.Header().Rrtype == dns.TypeRRSIG &&
+        rr.(*dns.RRSIG).TypeCovered == dns.TypeZONEMD) {
+          continue
+    }
     if (rr.Header().Rrtype == dns.TypeZONEMD) {
       zonemdidx = i
     }
@@ -102,6 +111,16 @@ func (rrs RRArray) ValidateDigest() (bool) {
 
   buf := make([]byte, dns.MaxMsgSize)
   for _, rr := range rrs {
+    /*
+    3.4 Inclusions/Exclusions
+    The RRSIG covering ZONEMD MUST NOT be included because the RRSIG
+      will be updated after all digests have been calculated.
+    */
+    if (rr.Header().Rrtype == dns.TypeRRSIG &&
+        rr.(*dns.RRSIG).TypeCovered == dns.TypeZONEMD) {
+          continue
+    }
+
     zonemd := rr.(*dns.ZONEMD)
     if (rr.Header().Rrtype == dns.TypeZONEMD) {
       digest = zonemd.Digest

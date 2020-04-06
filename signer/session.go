@@ -56,8 +56,13 @@ func Sign(session Session) (ds *dns.DS, err error) {
 	if err != nil {
 		return nil, err
 	}
-
-	for _, v := range rrSet {
+  
+  zonemdidx := -1
+	for i, v := range rrSet {
+    if (v[0].Header().Rrtype == dns.TypeZONEMD) {
+      zonemdidx = i
+      continue
+    }
 		rrSig := CreateNewRRSIG(ctx.Zone,
 			zsk,
 			ctx.SignExpDate,
@@ -94,6 +99,29 @@ func Sign(session Session) (ds *dns.DS, err error) {
 	ctx.rrs = append(ctx.rrs, zsk, ksk, rrDNSKeySig)
 
 	sort.Sort(ctx.rrs)
+
+  /* begin ZONEMD digest updating*/
+  if ctx.ZONEMD {
+    if ctx.rrs.UpdateDigest() != nil {
+      return nil, fmt.Errorf("Error updating digest for ZONEMD")
+    }
+    rrSig := CreateNewRRSIG(ctx.Zone, zsk, ctx.SignExpDate,
+                            rrSet[zonemdidx][0].Header().Ttl)
+    err = rrSig.Sign(keys.zskSigner, rrSet[zonemdidx])
+    if err != nil {
+      err = fmt.Errorf("cannot sign RRSig: %s", err)
+      return nil, err
+    }
+    err = rrSig.Verify(zsk, rrSet[zonemdidx])
+    if err != nil {
+      err = fmt.Errorf("cannot check RRSig: %s", err)
+      return nil, err
+    }
+    ctx.rrs = append(ctx.rrs, rrSig)
+	  sort.Sort(ctx.rrs)
+  }
+  /* end ZONEMD digest updating*/
+
 	ds = ksk.ToDS(1)
 	ctx.Log.Printf("DS: %s\n", ds) // SHA256
 	err = ctx.rrs.writeZone(ctx.Output)
