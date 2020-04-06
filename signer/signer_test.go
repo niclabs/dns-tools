@@ -129,7 +129,7 @@ func TestContext_ReadAndParseZone(t *testing.T) {
 		File:          bytes.NewBufferString(fileString),
 		Log:           Log,
 	}
-	err := ctx.ReadAndParseZone(false)
+	err := ctx.ReadAndParseZone(false,false)
 	if err == nil {
 		t.Errorf("Zone parsing should have failed because zone is wrong")
 	} else if !strings.Contains(err.Error(), "outside the defined zone") {

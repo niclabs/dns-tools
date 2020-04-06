@@ -17,18 +17,16 @@ import (
 	)
 
 
-func CalculateDigest(rrSet RRSet) (string, error) {
+func CalculateDigest(rrs RRArray) (string, error) {
   h := sha512.New384()
 
 	buf := make([]byte, dns.MaxMsgSize)
-	for _, rrArray := range rrSet {
-		for _, rr := range rrArray {
-			size, err := dns.PackRR(rr, buf, 0, nil, false)
-			if err == nil {
-				return "", err
-			}
-			h.Write(buf[:size])
+  for _, rr := range rrs {
+		size, err := dns.PackRR(rr, buf, 0, nil, false)
+		if err == nil {
+			return "", err
 		}
+		h.Write(buf[:size])
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
 }

@@ -78,8 +78,11 @@ func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error
 
 // ReadAndParseZone parses a DNS zone file and returns an array of rrs and the zone minTTL.
 // It also updates the serial in the SOA record if updateSerial is true.
-func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
+// and adds the ZONEMD if it's needed
 
+func (ctx *Context) ReadAndParseZone(updateSerial bool, withZONEMD bool) error {
+
+	var soa *dns.SOA
 	if ctx.File == nil {
 		return fmt.Errorf("no file defined on context")
 	}
@@ -97,7 +100,6 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 	for rr, ok := zone.Next(); ok; rr, ok = zone.Next() {
 		rrs = append(rrs, rr)
 		if rr.Header().Rrtype == dns.TypeSOA {
-			var soa *dns.SOA
 			soa = rr.(*dns.SOA)
 			ctx.MinTTL = soa.Minttl
 			// UPDATING THE SERIAL
@@ -113,6 +115,13 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 	if ctx.Zone == "" {
 		return fmt.Errorf("zone name not defined in arguments nor guessable using SOA RR. Try again using --zone argument")
 	}
+
+  /* START ZONEMD */
+
+  if (withZONEMD) { rrs.addZONEMDrecord(soa) }
+
+  /* END ZONEMD */
+
 	sort.Sort(rrs)
 	ctx.Log.Printf("Zone to sign is %s", ctx.Zone)
 	// We check that all the rrs are from the defined zone

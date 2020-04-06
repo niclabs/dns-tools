@@ -68,10 +68,8 @@ github.com/mitchellh/go-homedir v1.1.0/go.mod h1:SfyaCUpYCn1Vlf4IUYiD9fPX4A5wJrk
 github.com/mitchellh/mapstructure v1.1.2 h1:fmNYVwqnSfB9mZU6OS2O6GsXM+wcskZDuKQzvN1EDeE=
 github.com/mitchellh/mapstructure v1.1.2/go.mod h1:FVVH3fgwuzCH5S8UJGiWEs2h04kUh9fWfEaFds41c1Y=
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
-github.com/niclabs/dns v1.1.9 h1:mbzPHkN7kwXHGgIs7UELVZFVdGdwPh7X9Yb5Fore7F4=
-github.com/niclabs/dns v1.1.9/go.mod h1:6PW3vtmSTTBDQylLN6op/7mYFo8XbvkLqOEWNPtsVpA=
 github.com/niclabs/dns v1.1.29 h1:f515aa579d28efa1af67d9a62cc57f2dfe59da76
-github.com/niclabs/dns v1.1.29/go.mod h1:ba5b1f0baebac82771cfd4069d4f78d849f00e08
+github.com/niclabs/dns v1.1.29/go.mod h1:KNUDUusw/aVsxyTYZM1oqvCicbwhgbNgztCETuNZ7xM=
 github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
 github.com/pelletier/go-toml v1.4.0 h1:u3Z1r+oOXJIkxqw34zVhyPgjBsm6X2wn21NWs/HfSeg=

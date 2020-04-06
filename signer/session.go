@@ -31,7 +31,7 @@ func Sign(session Session) (ds *dns.DS, err error) {
 	if ctx.Output == nil {
 		return nil, fmt.Errorf("no output defined on context")
 	}
-	if err = ctx.ReadAndParseZone(true); err != nil {
+	if err = ctx.ReadAndParseZone(true,false); err != nil {
 		return nil, err
 	}
 	ctx.AddNSEC13()

@@ -27,7 +27,7 @@ func VerifyFile(origin, path string, reader io.Reader, logger *log.Logger) (err 
 		Log: logger,
 	}
 
-	if err = ctx.ReadAndParseZone(false); err != nil {
+	if err = ctx.ReadAndParseZone(false,false); err != nil {
 		return
 	}
 	rrSet := ctx.rrs.createRRSet(origin, true)
