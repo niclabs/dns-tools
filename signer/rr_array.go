@@ -292,27 +292,3 @@ func (rrArray RRArray) isSignable(zone string, nsNames map[string]struct{}) bool
 	return true
 }
 
-// addZONEMD adds a zone digest following draft-ietf-dnsop-dns-zone-digest-05
-// we need the SOA info for that
-
-func (rrArray *RRArray) addZONEMDrecord(soa *dns.SOA) {
-
-  // we suppose only one SOA per zone
-
-  zonemd := &dns.ZONEMD{}
-  zonemd.Hdr.Name = soa.Header().Name
-  zonemd.Hdr.Rrtype = dns.TypeZONEMD
-  zonemd.Hdr.Class = dns.ClassINET
-  zonemd.Hdr.Ttl = soa.Header().Ttl
-
-  zonemd.Serial = soa.Serial
-  zonemd.Scheme = dns.SchemeSIMPLE
-
-  /* hardcoded with SHA 384 */
-  /* technical debt, i know */
-  zonemd.Hash = dns.HashSHA384
-  zonemd.Digest = strings.Repeat("0",48*2)
-
-  *rrArray = append(*rrArray, zonemd)
-}
-

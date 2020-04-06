@@ -31,9 +31,18 @@ func Sign(session Session) (ds *dns.DS, err error) {
 	if ctx.Output == nil {
 		return nil, fmt.Errorf("no output defined on context")
 	}
-	if err = ctx.ReadAndParseZone(true,false); err != nil {
+  soa, err1 := ctx.ReadAndParseZone(true);
+  if err1 != nil {
 		return nil, err
 	}
+
+  // Do we use ZONEMD?
+  if ctx.ZONEMD {
+    ctx.rrs.addZONEMDrecord(soa)
+  }
+
+  sort.Sort(ctx.rrs)
+
 	ctx.AddNSEC13()
 	keys, err := session.GetKeys()
 	if err != nil {

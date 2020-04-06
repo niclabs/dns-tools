@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"sort"
 	"strings"
 	"time"
 )
@@ -29,6 +28,7 @@ type ContextConfig struct {
 	CreateKeys    bool   // If True, the sign process creates new keys for the signature.
 	NSEC3         bool   // If true, the zone is signed using NSEC3
 	OptOut        bool   // If true and NSEC3 is true, the zone is signed using OptOut NSEC3 flag.
+  ZONEMD        bool   // If true, the zone is hashed and ZONEMD is used
 	MinTTL        uint32 // Min TTL ;-)
 	SignAlgorithm string // Signature algorithm
 	FilePath      string // Output Path
@@ -78,13 +78,14 @@ func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error
 
 // ReadAndParseZone parses a DNS zone file and returns an array of rrs and the zone minTTL.
 // It also updates the serial in the SOA record if updateSerial is true.
-// and adds the ZONEMD if it's needed
+// Returns the SOA
+// DOES NOT SORT THE RR SET
 
-func (ctx *Context) ReadAndParseZone(updateSerial bool, withZONEMD bool) error {
+func (ctx *Context) ReadAndParseZone(updateSerial bool) (*dns.SOA, error) {
 
 	var soa *dns.SOA
 	if ctx.File == nil {
-		return fmt.Errorf("no file defined on context")
+		return nil, fmt.Errorf("no file defined on context")
 	}
 
 	rrs := make(RRArray, 0)
@@ -95,7 +96,7 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool, withZONEMD bool) error {
 
 	zone := dns.NewZoneParser(ctx.File, ctx.Zone, "")
 	if err := zone.Err(); err != nil {
-		return err
+		return nil, err
 	}
 	for rr, ok := zone.Next(); ok; rr, ok = zone.Next() {
 		rrs = append(rrs, rr)
@@ -113,25 +114,18 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool, withZONEMD bool) error {
 		}
 	}
 	if ctx.Zone == "" {
-		return fmt.Errorf("zone name not defined in arguments nor guessable using SOA RR. Try again using --zone argument")
+		return nil, fmt.Errorf("zone name not defined in arguments nor guessable using SOA RR. Try again using --zone argument")
 	}
 
-  /* START ZONEMD */
-
-  if (withZONEMD) { rrs.addZONEMDrecord(soa) }
-
-  /* END ZONEMD */
-
-	sort.Sort(rrs)
 	ctx.Log.Printf("Zone to sign is %s", ctx.Zone)
 	// We check that all the rrs are from the defined zone
 	for _, rr := range rrs {
 		if !strings.HasSuffix(rr.Header().Name, ctx.Zone) {
-			return fmt.Errorf("Zone file contains an RR (%s) outside the defined zone (%s)", rr.String(), ctx.Zone)
+			return nil, fmt.Errorf("Zone file contains an RR (%s) outside the defined zone (%s)", rr.String(), ctx.Zone)
 		}
 	}
 	ctx.rrs = rrs
-	return nil
+	return soa, nil
 }
 
 // AddNSEC13 adds NSEC 1 and 3 rrs to the RR list.
