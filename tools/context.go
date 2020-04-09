@@ -154,12 +154,12 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 func (ctx *Context) AddNSEC13() {
 	if ctx.Config.NSEC3 {
 		for {
-			if err := ctx.rrs.addNSEC3Records(ctx.Config.Zone, ctx.Config.OptOut); err == nil {
+			if err := ctx.addNSEC3Records(ctx.Config.OptOut); err == nil {
 				break
 			}
 		}
 	} else {
-		ctx.rrs.addNSECRecords(ctx.Config.Zone)
+		ctx.addNSECRecords()
 	}
 }
 

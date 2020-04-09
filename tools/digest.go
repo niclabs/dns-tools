@@ -86,23 +86,32 @@ func (ctx *Context) AddZONEMDRecord() {
 	}
 }
 
+// CleanDigests sets all root zone digests to 0
+// It is used before zone signing
+func (ctx *Context) CleanDigests()  {
+	for _, rr := range ctx.rrs {
+		switch x := rr.(type) {
+		case *dns.ZONEMD:
+			x.Digest = strings.Repeat("0", len(x.Digest))
+		}
+	}
+	return
+}
+
+
 // UpdateDigest calculates the digest for a PREVIOUSLY ORDERED zone.
 // This method returns the digest hex value.
 func (ctx *Context) CalculateDigest() (string, error) {
 	if ctx.zonemd == nil {
-		return "", fmt.Errorf("error trying to update digest without ZONEMD present")
+		return "", fmt.Errorf("error trying to calculate a digest without a ZONEMD RR present")
 	}
 	h := sha512.New384()
-	buf := make([]byte, dns.MaxMsgSize)
-	prevDigests := make(map[int]string)
 	var prevRR dns.RR
-	for i, rr := range ctx.rrs {
+	for _, rr := range ctx.rrs {
 		switch {
-		// Clean all valid ZONEMDs to zeroes
+		// Ignore ZONEMD RRs (new in v06)
 		case rr.Header().Rrtype == dns.TypeZONEMD && rr.Header().Name == ctx.Config.Zone:
-			zonemd := rr.(*dns.ZONEMD)
-			prevDigests[i] = zonemd.Digest
-			zonemd.Digest = strings.Repeat("0", len(prevDigests[i]))
+			continue
 		// Ignore duplicate RRs
 		case prevRR != nil && dns.IsDuplicate(prevRR, rr):
 			continue
@@ -113,15 +122,14 @@ func (ctx *Context) CalculateDigest() (string, error) {
 			rr.(*dns.RRSIG).TypeCovered == dns.TypeZONEMD:
 			continue
 		}
+		buf := make([]byte, dns.MaxMsgSize)
 		size, err := dns.PackRR(rr, buf, 0, nil, false)
 		if err != nil {
 			return "", err
 		}
 		h.Write(buf[:size])
+		fmt.Printf("%s\n", rr)
 		prevRR = rr
-	}
-	for i, prevDigest := range prevDigests {
-		ctx.rrs[i].(*dns.ZONEMD).Digest = prevDigest
 	}
 	digest := hex.EncodeToString(h.Sum(nil))
 	return digest, nil

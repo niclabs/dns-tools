@@ -126,16 +126,16 @@ func (ctx *Context) WriteZone() error {
 // getRRSetList groups the rrs by owner name and class if byType is false, or owner name, class and type if byType is true
 // NSEC/NSEC3 uses the version with byType = false, and RRSIG uses the other version.
 // It assumes the RRArray is properly sorted.
-func (array RRArray) getRRSetList(zone string, byType bool) (set RRSetList) {
+func (ctx *Context) getRRSetList(byType bool) (set RRSetList) {
 	// RRsets are RR grouped by rsaLabel and class for NSEC/NSEC3
 	// and by rsaLabel, class, type for RRSIG:
 	// An RRSIG record contains the signature for an RRset with a particular
 	// name, class, and type. RFC4034
 	set = make(RRSetList, 0)
-	nsNames := getAllNSNames(array)
+	nsNames := getAllNSNames(ctx.rrs)
 	var lastRR dns.RR
-	for _, rr := range array {
-		if isSignable(rr, zone, nsNames) {
+	for _, rr := range ctx.rrs {
+		if isSignable(rr, ctx.Config.Zone, nsNames) {
 			if !sameRRSet(lastRR, rr, byType) {
 				// create new set
 				set = append(set, make(RRArray, 0))
@@ -150,18 +150,19 @@ func (array RRArray) getRRSetList(zone string, byType bool) (set RRSetList) {
 }
 
 // addNSECRecords edits an RRArray and adds the respective NSEC records to it.
-func (array *RRArray) addNSECRecords(zone string) {
+// Finally, it sorts the records
+func (ctx *Context) addNSECRecords() {
 
-	set := array.getRRSetList(zone, false)
+	set := ctx.getRRSetList(false)
 
 	n := len(set)
 	for i, rrs := range set {
-		typeMap := make(map[uint16]bool)
+		typeMap := make(map[uint16]struct{})
 		typeArray := make([]uint16, 0)
 		for _, rr := range rrs {
-			typeMap[rr.Header().Rrtype] = true
+			typeMap[rr.Header().Rrtype] = struct{}{}
 		}
-		typeMap[dns.TypeNSEC] = true
+		typeMap[dns.TypeNSEC] = struct{}{}
 
 		for k := range typeMap {
 			typeArray = append(typeArray, k)
@@ -179,17 +180,17 @@ func (array *RRArray) addNSECRecords(zone string) {
 		nsec.NextDomain = set[(i+1)%n][0].Header().Name
 		nsec.TypeBitMap = typeArray
 
-		*array = append(*array, nsec)
+		ctx.rrs = append(ctx.rrs, nsec)
 	}
 
-	sort.Sort(*array)
+	sort.Sort(ctx.rrs)
 }
 
 // addNSEC3Records edits an RRArray and adds the respective NSEC3 records to it.
 // If optOut is true, it sets the flag for NSEC3PARAM RR, following RFC5155 section 6.
 // It returns an error if there is a colission on the hashes.
-func (array *RRArray) addNSEC3Records(zone string, optOut bool) error {
-	setList := array.getRRSetList(zone, false)
+func (ctx *Context) addNSEC3Records(optOut bool) error {
+	setList := ctx.getRRSetList(false)
 
 	h := make(map[string]bool)
 	collision := false
@@ -275,13 +276,13 @@ func (array *RRArray) addNSEC3Records(zone string, optOut bool) error {
 		for i := n; i < len(setList); i++ {
 			setList[i][0].Header().Name = setList[i][0].Header().Name + "." + apex
 			setList[i][0].Header().Ttl = minttl
-			*array = append(*array, setList[i][0])
+			ctx.rrs = append(ctx.rrs, setList[i][0])
 		}
 
-		*array = append(*array, param)
-		sort.Sort(*array)
+		ctx.rrs = append(ctx.rrs, param)
+		// Sorting rrSets by name, class and type
+		sort.Sort(ctx.rrs)
 	}
-	// Sorting rrSets by name, class and type
 	if collision {
 		return fmt.Errorf("collision detected")
 	}

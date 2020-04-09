@@ -39,6 +39,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 	// Do we use DigestEnabled?
 	if ctx.Config.DigestEnabled {
 		ctx.AddZONEMDRecord()
+		ctx.CleanDigests()
 	}
 
 	sort.Sort(ctx.rrs)
@@ -49,7 +50,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 		return nil, err
 	}
 	ctx.Log.Printf("Start signing...\n")
-	rrSet := ctx.rrs.getRRSetList(ctx.Config.Zone, true)
+	rrSet := ctx.getRRSetList(true)
 
 	// ok, we create DNSKEYS
 	zsk, ksk, err := GetDNSKEY(keys, session)
