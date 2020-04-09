@@ -59,8 +59,8 @@ func digest(cmd *cobra.Command, args []string) error {
 
 	outFile, err = os.Create(out)
 	if err != nil {
-			return err
-		}
+		return err
+	}
 	defer outFile.Close()
 
 	ctx := &hsmtools.Context{

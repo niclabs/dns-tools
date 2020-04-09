@@ -92,7 +92,7 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 
 	rrs := make(RRArray, 0)
 
-	if len(ctx.Config.Zone) > 0  && !strings.HasSuffix(ctx.Config.Zone, ".") {
+	if len(ctx.Config.Zone) > 0 && !strings.HasSuffix(ctx.Config.Zone, ".") {
 		ctx.Config.Zone += "."
 	}
 

@@ -11,7 +11,7 @@ import (
 func init() {
 	verifyCmd.PersistentFlags().StringP("file", "f", "", "Full path to zone file to be verified")
 	verifyCmd.PersistentFlags().StringP("zone", "z", "", "Zone name")
-	}
+}
 
 var verifyCmd = &cobra.Command{
 	Use:   "verify",

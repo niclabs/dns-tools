@@ -148,7 +148,7 @@ func GetDNSKEY(keys *SigKeys, session SignSession) (zsk, ksk *dns.DNSKEY, err er
 		ctx.Config.Zone,
 		257,
 		uint8(ctx.SignAlgorithm), // (https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml)
-		ctx.soa.Minttl,               // SOA -> minimum TTL
+		ctx.soa.Minttl,           // SOA -> minimum TTL
 		base64.StdEncoding.EncodeToString(kskBytes),
 	)
 	return

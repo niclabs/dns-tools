@@ -106,9 +106,9 @@ func (ctx *Context) CalculateDigest() (string, error) {
 		// Ignore duplicate RRs
 		case prevRR != nil && dns.IsDuplicate(prevRR, rr):
 			continue
-	   // 3.4 Inclusions/Exclusions
-	   // The RRSIG covering ZONEMD MUST NOT be included because the RRSIG
-	   // will be updated after all digests have been calculated.
+			// 3.4 Inclusions/Exclusions
+			// The RRSIG covering ZONEMD MUST NOT be included because the RRSIG
+			// will be updated after all digests have been calculated.
 		case rr.Header().Rrtype == dns.TypeRRSIG &&
 			rr.(*dns.RRSIG).TypeCovered == dns.TypeZONEMD:
 			continue
