@@ -1,4 +1,4 @@
-# HSM Tools: Checksum / Signer (using PKCS11)
+# HSM Tools: Checksum (mdzone) / Signer (using files and PKCS11)
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/niclabs/hsm-tools)](https://goreportcard.com/report/github.com/niclabs/hsm-tools) [![Build Status](https://travis-ci.org/niclabs/hsm-tools.svg?branch=master)](https://travis-ci.org/niclabs/hsm-tools)
 
