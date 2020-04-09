@@ -8,8 +8,9 @@
   "sign-algorithm": "rsa",
   "nsec3": true,
   "opt-out": true,
+  "digest": true,
   "expiration-date": "20300101",
   "zone": "example.com.",
-  "zsk-keyfile":  "zsk.pem",
+  "zsk-keyfile": "zsk.pem",
   "ksk-keyfile": "ksk.pem"
 }

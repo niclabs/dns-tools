@@ -1,4 +1,4 @@
-package signer
+package hsmtools
 
 import (
 	"crypto"
@@ -9,7 +9,7 @@ import (
 )
 
 type FileRRSigner struct {
-	Session Session
+	Session SignSession
 	Key     crypto.PrivateKey
 }
 

@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/niclabs/hsm-tools/signer"
+	"github.com/niclabs/hsm-tools/hsmtools"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
@@ -19,9 +19,10 @@ func init() {
 	signCmd.PersistentFlags().BoolP("nsec3", "3", false, "Use NSEC3 instead of NSEC.")
 	signCmd.PersistentFlags().BoolP("opt-out", "x", false, "Use NSEC3 with opt-out.")
 	signCmd.PersistentFlags().StringP("expiration-date", "e", "", "Signature expiration Date, in YYYYMMDD format. Default is one more year from now.")
+	signCmd.PersistentFlags().BoolP("digest", "d", false, "If true, DigestEnabled RR is added to the signed zone")
 
 	pkcs11Cmd.PersistentFlags().StringP("user-key", "k", "1234", "HSM User Login PKCS11Key.")
-	pkcs11Cmd.PersistentFlags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer PKCS11Key.")
+	pkcs11Cmd.PersistentFlags().StringP("key-label", "l", "HSM-hsmtools", "Label of HSM Signer PKCS11Key.")
 	pkcs11Cmd.PersistentFlags().StringP("p11lib", "p", "", "Full path to PKCS11Type lib file.")
 	signCmd.AddCommand(pkcs11Cmd)
 
@@ -38,24 +39,24 @@ var signCmd = &cobra.Command{
 var pkcs11Cmd = &cobra.Command{
 	Use:   "pkcs11",
 	Short: "uses a PKCS#11 library to sign the zone",
-	RunE:  runPKCS11,
+	RunE:  signPKCS11,
 }
 
 var fileCmd = &cobra.Command{
 	Use:   "file",
 	Short: "uses keys from a file to sign the zone",
-	RunE:  runFile,
+	RunE:  signFile,
 }
 
-func runPKCS11(cmd *cobra.Command, _ []string) error {
+func signPKCS11(cmd *cobra.Command, _ []string) error {
 	if err := viper.BindPFlags(cmd.Flags()); err != nil {
 		return err
 	}
-	conf, err := newContextConfig()
+	conf, err := newSignConfig()
 	if err != nil {
 		return err
 	}
-	ctx, err := signer.NewContext(conf, Log)
+	ctx, err := hsmtools.NewContext(conf, Log)
 	if err != nil {
 		return err
 	}
@@ -80,23 +81,23 @@ func runPKCS11(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	defer session.End()
-	if _, err := signer.Sign(session); err != nil {
-		ctx.Log.Printf("file could not be signed.")
+	if _, err := hsmtools.Sign(session); err != nil {
+		ctx.Log.Printf("zone could not be signed.")
 		return err
 	}
-	ctx.Log.Printf("file signed successfully.")
+	ctx.Log.Printf("zone signed successfully.")
 	return nil
 }
 
-func runFile(cmd *cobra.Command, _ []string) error {
+func signFile(cmd *cobra.Command, _ []string) error {
 	if err := viper.BindPFlags(cmd.Flags()); err != nil {
 		return err
 	}
-	conf, err := newContextConfig()
+	conf, err := newSignConfig()
 	if err != nil {
 		return err
 	}
-	ctx, err := signer.NewContext(conf, Log)
+	ctx, err := hsmtools.NewContext(conf, Log)
 	defer ctx.Close()
 	if err != nil {
 		return err
@@ -110,8 +111,8 @@ func runFile(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("KSK keyfile not specified")
 	}
 
-	fileFlags := os.O_RDWR|os.O_CREATE
-	if ctx.CreateKeys {
+	fileFlags := os.O_RDWR | os.O_CREATE
+	if ctx.Config.CreateKeys {
 		fileFlags |= os.O_TRUNC // Truncate old file
 	}
 
@@ -128,18 +129,19 @@ func runFile(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	defer session.End()
-	if _, err := signer.Sign(session); err != nil {
+	if _, err := hsmtools.Sign(session); err != nil {
 		return err
 	}
-	ctx.Log.Printf("sessionType signed successfully.")
+	ctx.Log.Printf("zone signed successfully.")
 	return nil
 }
 
-func newContextConfig() (*signer.ContextConfig, error) {
+func newSignConfig() (*hsmtools.ContextConfig, error) {
 	createKeys := viper.GetBool("create-keys")
 	zone := viper.GetString("zone")
 	nsec3 := viper.GetBool("nsec3")
 	optOut := viper.GetBool("opt-out")
+	digest := viper.GetBool("digest")
 
 	path := viper.GetString("file")
 	out := viper.GetString("output")
@@ -153,21 +155,21 @@ func newContextConfig() (*signer.ContextConfig, error) {
 		return nil, fmt.Errorf("zone not specified")
 	}
 	if len(out) == 0 {
-		pathExt  := filepath.Ext(path)
+		pathExt := filepath.Ext(path)
 		pathName := strings.TrimSuffix(filepath.Base(path), pathExt)
-		out = filepath.Join(filepath.Dir(path), pathName + "-signed" + pathExt)
+		out = filepath.Join(filepath.Dir(path), pathName+"-signed"+pathExt)
 	}
 
 	if err := filesExist(path); err != nil {
 		return nil, err
 	}
 
-	return &signer.ContextConfig{
+	return &hsmtools.ContextConfig{
 		Zone:          zone,
 		CreateKeys:    createKeys,
 		NSEC3:         nsec3,
+		DigestEnabled: digest,
 		OptOut:        optOut,
-		MinTTL:        0,
 		SignAlgorithm: signAlgorithm,
 		ExpDateStr:    expDateStr,
 		FilePath:      path,

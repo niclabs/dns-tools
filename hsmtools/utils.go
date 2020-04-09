@@ -1,12 +1,12 @@
-package signer
+package hsmtools
 
 import (
 	"crypto/elliptic"
 	"encoding/asn1"
 	"encoding/binary"
 	"fmt"
+	"github.com/miekg/dns"
 	"github.com/miekg/pkcs11"
-	"github.com/niclabs/dns"
 	"math/rand"
 	"strings"
 	"time"
@@ -97,7 +97,7 @@ func rsaPublicKeyToBytes(exponent, modulus []byte) ([]byte, error) {
 
 func ecdsaPublicKeyToBytes(ecPoint []byte) ([]byte, error) {
 	curve := elliptic.P256()
-	curveBytes := 2 * int((curve.Params().BitSize + 7) / 8)
+	curveBytes := 2 * int((curve.Params().BitSize+7)/8)
 	// asn1 -> elliptic-marshaled
 	asn1Encoded := make([]byte, 0)
 	rest, err := asn1.Unmarshal(ecPoint, &asn1Encoded)

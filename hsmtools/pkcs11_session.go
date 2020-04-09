@@ -1,4 +1,4 @@
-package signer
+package hsmtools
 
 import (
 	"crypto"
@@ -12,19 +12,17 @@ import (
 // PKCS11Session represents a PKCS#11 session. It includes the context, the session handle and a Label String,
 // used in creation and retrieval of DNS keys.
 type PKCS11Session struct {
-	ctx           *Context             // HSM Tools Context
-	P11Context    *pkcs11.Ctx          // PKCS#11 Context
-	Handle        pkcs11.SessionHandle // PKCS11Session Handle
-	Label         string // Signature Label
-	Key           string // Signature key
+	ctx        *Context             // HSM Tools Context
+	P11Context *pkcs11.Ctx          // PKCS#11 Context
+	Handle     pkcs11.SessionHandle // PKCS11Session Handle
+	Label      string               // Signature Label
+	Key        string               // Signature key
 }
 
 // Returns the session context
 func (session *PKCS11Session) Context() *Context {
 	return session.ctx
 }
-
-
 
 // GetKeys get the public key string and private key habdler from HSM.
 // returns an error, if any.
@@ -33,7 +31,7 @@ func (session *PKCS11Session) GetKeys() (keys *SigKeys, err error) {
 	keys, err = session.searchValidKeys()
 	if err != nil {
 		if err == NoValidKeys {
-			if !ctx.CreateKeys {
+			if !ctx.Config.CreateKeys {
 				err = fmt.Errorf("no valid keys and --create-keys disabled." +
 					"Try again using --create-keys flag")
 				return
@@ -45,7 +43,7 @@ func (session *PKCS11Session) GetKeys() (keys *SigKeys, err error) {
 			return
 		}
 	}
-	if ctx.CreateKeys {
+	if ctx.Config.CreateKeys {
 		if err = session.expireKeys(keys); err != nil {
 			return
 		}
@@ -331,7 +329,7 @@ func (session *PKCS11Session) searchValidKeys() (*SigKeys, error) {
 func (session *PKCS11Session) expirePKCS11Key(signer crypto.Signer) error {
 	pkcs11Signer, ok := signer.(*PKCS11RRSigner)
 	if !ok {
-		return fmt.Errorf("cannot convert signer into PKCS11RRSigner")
+		return fmt.Errorf("cannot convert hsmtools into PKCS11RRSigner")
 	}
 	today := time.Now()
 	yesterday := today.AddDate(0, 0, -1)
@@ -349,7 +347,6 @@ func (session *PKCS11Session) expirePKCS11Key(signer crypto.Signer) error {
 	}
 	return nil
 }
-
 
 // genRSAKeyPair creates a RSA key pair, or returns an error if it cannot create the key pair.
 func (session *PKCS11Session) genRSAKeyPair(tokenLabel string, tokenPersistent bool, expDate time.Time, bits int) (pkcs11.ObjectHandle, pkcs11.ObjectHandle, error) {
@@ -396,7 +393,6 @@ func (session *PKCS11Session) genRSAKeyPair(tokenLabel string, tokenPersistent b
 	return pubKey, privKey, nil
 }
 
-
 // genECDSAKeyPair creates a ECDSA key pair, or returns an error if it cannot create the key pair.
 func (session *PKCS11Session) genECDSAKeyPair(tokenLabel string, tokenPersistent bool, expDate time.Time) (pkcs11.ObjectHandle, pkcs11.ObjectHandle, error) {
 	if session == nil || session.P11Context == nil {
@@ -441,4 +437,3 @@ func (session *PKCS11Session) genECDSAKeyPair(tokenLabel string, tokenPersistent
 	}
 	return pubKey, privKey, nil
 }
-

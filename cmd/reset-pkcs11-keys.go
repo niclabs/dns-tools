@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/niclabs/hsm-tools/signer"
+	"github.com/niclabs/hsm-tools/hsmtools"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -10,7 +10,7 @@ import (
 func init() {
 	resetPKCS11KeysCmd.Flags().StringP("p11lib", "p", "", "Full path to PKCS11Type lib file")
 	resetPKCS11KeysCmd.Flags().StringP("user-key", "k", "1234", "HSM User Login PKCS11Key (default is 1234)")
-	resetPKCS11KeysCmd.Flags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer PKCS11Key")
+	resetPKCS11KeysCmd.Flags().StringP("key-label", "l", "HSM-hsmtools", "Label of HSM Signer PKCS11Key")
 }
 
 var resetPKCS11KeysCmd = &cobra.Command{
@@ -33,7 +33,7 @@ func resetPKCS11Keys(cmd *cobra.Command, args []string) error {
 	if err := filesExist(p11lib); err != nil {
 		return err
 	}
-	ctx, err := signer.NewContext(&signer.ContextConfig{}, Log)
+	ctx, err := hsmtools.NewContext(&hsmtools.ContextConfig{}, Log)
 	if err != nil {
 		return err
 	}

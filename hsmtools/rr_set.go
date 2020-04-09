@@ -1,9 +1,9 @@
-package signer
+package hsmtools
 
 import (
+	"bytes"
 	"fmt"
-	"github.com/niclabs/dns"
-	"io"
+	"github.com/miekg/dns"
 	"sort"
 	"strings"
 )
@@ -12,55 +12,85 @@ import (
 // It implements Swapper interface, and is sortable.
 type RRArray []dns.RR
 
-// RRArray is an array of RRArrays.
-type RRSet []RRArray
+// RRSetList is an array of RRArrays.
+type RRSetList []RRArray
 
 // Len returns the length of an RRArray.
-func (rrArray RRArray) Len() int {
-	return len(rrArray)
+func (array RRArray) Len() int {
+	return len(array)
 }
 
 // Swap swaps elements on positions i and j from RRArray
-func (rrArray RRArray) Swap(i, j int) {
-	rrArray[i], rrArray[j] = rrArray[j], rrArray[i]
+func (array RRArray) Swap(i, j int) {
+	array[i], array[j] = array[j], array[i]
 }
 
 // Less returns true if the element in the position i of RRArray is less than the element in position j of RRArray.
-func (rrArray RRArray) Less(i, j int) bool {
-	si := strings.Split(strings.ToLower(rrArray[i].Header().Name), ".")
-	sj := strings.Split(strings.ToLower(rrArray[j].Header().Name), ".")
-	if len(si) < len(sj) || len(si) > len(sj) {
-		return len(si) < len(sj)
-	}
-	// Equal length, check from left to right omiting .[nothing]
-	for k := len(si) - 2; k >= 0; k-- {
-		if si[k] < sj[k] {
-			return true
-		} else if si[k] > sj[k] {
-			return false
+func (array RRArray) Less(i, j int) bool {
+
+	// RR Canonical order:
+	// 1.- Canonical Owner Name (RFC 3034 6.1)
+	// 2.- RR Class
+	// 3.- Type
+	// 4.- RRData (as left-aligned canonical form)
+
+	si := dns.SplitDomainName(strings.ToLower(array[i].Header().Name))
+	sj := dns.SplitDomainName(strings.ToLower(array[j].Header().Name))
+
+	// Comparing tags, right to left
+	ii, ij := len(si)-1, len(sj)-1
+	for ii >= 0 && ij >= 0 {
+		if si[ii] != sj[ij] {
+			return si[ii] < sj[ij]
 		}
+		ii--
+		ij--
 	}
-	if rrArray[i].Header().Class == rrArray[j].Header().Class {
-		return rrArray[i].Header().Rrtype < rrArray[j].Header().Rrtype
+	// Now one is a subdomain (or the same domain) of the other
+	if ii != ij {
+		return ii < ij
+	}
+	// Equal subdomain
+	if array[i].Header().Class != array[j].Header().Class {
+		return array[i].Header().Class < array[j].Header().Class
+	} else if array[i].Header().Rrtype != array[j].Header().Rrtype {
+		return array[i].Header().Rrtype < array[j].Header().Rrtype
 	} else {
-		return rrArray[i].Header().Class < rrArray[j].Header().Class
+		return compareRRData(array[i], array[j])
 	}
+
 }
 
-// Len returns the length of an RRSet.
-func (rrSet RRSet) Len() int {
-	return len(rrSet)
+func compareRRData(rri, rrj dns.RR) bool {
+	bytei := make([]byte, dns.MaxMsgSize)
+	sizei, err := dns.PackRR(rri, bytei, 0, nil, false)
+	if err != nil {
+		return false
+	}
+	rrdatai := bytei[uint16(sizei)-rri.Header().Rdlength : sizei] // We remove the header from the representation
+	bytej := make([]byte, dns.MaxMsgSize)
+	sizej, err := dns.PackRR(rrj, bytej, 0, nil, false)
+	if err != nil {
+		return false
+	}
+	rrdataj := bytej[uint16(sizej)-rrj.Header().Rdlength : sizej] // We remove the header from the representation
+	return bytes.Compare(rrdatai, rrdataj) < 0
 }
 
-// Swap swaps elements on positions i and j from RRSet
-func (rrSet RRSet) Swap(i, j int) {
-	rrSet[i], rrSet[j] = rrSet[j], rrSet[i]
+// Len returns the length of an RRSetList.
+func (setList RRSetList) Len() int {
+	return len(setList)
 }
 
-// Less returns true if the element in the position i of RRSet is less than the element in position j of RRSet.
-func (rrSet RRSet) Less(i, j int) bool {
-	iRRArray := rrSet[i]
-	jRRArray := rrSet[j]
+// Swap swaps elements on positions i and j from RRSetList
+func (setList RRSetList) Swap(i, j int) {
+	setList[i], setList[j] = setList[j], setList[i]
+}
+
+// Less returns true if the element in the position i of RRSetList is less than the element in position j of RRSetList.
+func (setList RRSetList) Less(i, j int) bool {
+	iRRArray := setList[i]
+	jRRArray := setList[j]
 	if len(iRRArray) == 0 {
 		if len(jRRArray) == 0 {
 			return false
@@ -73,29 +103,38 @@ func (rrSet RRSet) Less(i, j int) bool {
 	return cmpArray.Less(0, 1)
 }
 
-// writeZone prints on writer all the rrs on the array.
+// WriteZone prints on writer all the rrs on the array.
 // The format of the text printed is the format of a DNS zone.
-func (rrArray RRArray) writeZone(writer io.Writer) error {
-	for _, rr := range rrArray {
-		if _, err := fmt.Fprintln(writer, rr); err != nil {
+func (ctx *Context) WriteZone() error {
+	if ctx.Output == nil {
+		return fmt.Errorf("output not defined in context")
+	}
+	if _, err := fmt.Fprintln(ctx.Output, ctx.soa); err != nil {
+		return err
+	}
+	for _, rr := range ctx.rrs {
+		if rr.Header().Rrtype == dns.TypeSOA {
+			continue // Skipping SOA because is the first one
+		}
+		if _, err := fmt.Fprintln(ctx.Output, rr); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// createRRSet groups the rrs by rsaLabel and class if byType is false, or rsaLabel, class and type if byType is true
+// getRRSetList groups the rrs by owner name and class if byType is false, or owner name, class and type if byType is true
 // NSEC/NSEC3 uses the version with byType = false, and RRSIG uses the other version.
-// It assumes the rrarray is sorted.
-func (rrArray RRArray) createRRSet(zone string, byType bool) (set RRSet) {
+// It assumes the RRArray is properly sorted.
+func (array RRArray) getRRSetList(zone string, byType bool) (set RRSetList) {
 	// RRsets are RR grouped by rsaLabel and class for NSEC/NSEC3
 	// and by rsaLabel, class, type for RRSIG:
 	// An RRSIG record contains the signature for an RRset with a particular
 	// name, class, and type. RFC4034
-	set = make(RRSet, 0)
-	nsNames := getAllNSNames(rrArray)
+	set = make(RRSetList, 0)
+	nsNames := getAllNSNames(array)
 	var lastRR dns.RR
-	for _, rr := range rrArray {
+	for _, rr := range array {
 		if isSignable(rr, zone, nsNames) {
 			if !sameRRSet(lastRR, rr, byType) {
 				// create new set
@@ -111,9 +150,9 @@ func (rrArray RRArray) createRRSet(zone string, byType bool) (set RRSet) {
 }
 
 // addNSECRecords edits an RRArray and adds the respective NSEC records to it.
-func (rrArray *RRArray) addNSECRecords(zone string) {
+func (array *RRArray) addNSECRecords(zone string) {
 
-	set := rrArray.createRRSet(zone, false)
+	set := array.getRRSetList(zone, false)
 
 	n := len(set)
 	for i, rrs := range set {
@@ -140,17 +179,17 @@ func (rrArray *RRArray) addNSECRecords(zone string) {
 		nsec.NextDomain = set[(i+1)%n][0].Header().Name
 		nsec.TypeBitMap = typeArray
 
-		*rrArray = append(*rrArray, nsec)
+		*array = append(*array, nsec)
 	}
 
-	sort.Sort(*rrArray)
+	sort.Sort(*array)
 }
 
 // addNSEC3Records edits an RRArray and adds the respective NSEC3 records to it.
 // If optOut is true, it sets the flag for NSEC3PARAM RR, following RFC5155 section 6.
 // It returns an error if there is a colission on the hashes.
-func (rrArray *RRArray) addNSEC3Records(zone string, optOut bool) error {
-	set := rrArray.createRRSet(zone, false)
+func (array *RRArray) addNSEC3Records(zone string, optOut bool) error {
+	setList := array.getRRSetList(zone, false)
 
 	h := make(map[string]bool)
 	collision := false
@@ -170,10 +209,10 @@ func (rrArray *RRArray) addNSEC3Records(zone string, optOut bool) error {
 	apex := ""
 	minttl := uint32(8600)
 
-	n := len(set)
+	n := len(setList)
 	last := -1
 
-	for _, rrs := range set {
+	for _, rrs := range setList {
 		typeMap := make(map[uint16]bool)
 		for _, rr := range rrs {
 			typeMap[rr.Header().Rrtype] = true
@@ -221,26 +260,26 @@ func (rrArray *RRArray) addNSEC3Records(zone string, optOut bool) error {
 		nsec3.TypeBitMap = typeArray
 
 		if last >= 0 { // not the first NSEC3 record
-			set[n+last][0].(*dns.NSEC3).NextDomain = nsec3.Hdr.Name
-			set[n+last][0].(*dns.NSEC3).HashLength = 20 // It's the length of the hash, not the encoding
+			setList[n+last][0].(*dns.NSEC3).NextDomain = nsec3.Hdr.Name
+			setList[n+last][0].(*dns.NSEC3).HashLength = 20 // It's the length of the hash, not the encoding
 		}
 		last = last + 1
 
-		set = append(set, RRArray{nsec3})
+		setList = append(setList, RRArray{nsec3})
 	}
 
 	if last >= 0 {
-		set[n+last][0].(*dns.NSEC3).NextDomain = set[n][0].Header().Name
-		set[n+last][0].(*dns.NSEC3).HashLength = 20 // It's the length of the hash, not the encoding
+		setList[n+last][0].(*dns.NSEC3).NextDomain = setList[n][0].Header().Name
+		setList[n+last][0].(*dns.NSEC3).HashLength = 20 // It's the length of the hash, not the encoding
 
-		for i := n; i < len(set); i++ {
-			set[i][0].Header().Name = set[i][0].Header().Name + "." + apex
-			set[i][0].Header().Ttl = minttl
-			*rrArray = append(*rrArray, set[i][0])
+		for i := n; i < len(setList); i++ {
+			setList[i][0].Header().Name = setList[i][0].Header().Name + "." + apex
+			setList[i][0].Header().Ttl = minttl
+			*array = append(*array, setList[i][0])
 		}
 
-		*rrArray = append(*rrArray, param)
-		sort.Sort(*rrArray)
+		*array = append(*array, param)
+		sort.Sort(*array)
 	}
 	// Sorting rrSets by name, class and type
 	if collision {
@@ -249,9 +288,9 @@ func (rrArray *RRArray) addNSEC3Records(zone string, optOut bool) error {
 	return nil
 }
 
-func getAllNSNames(rrArray RRArray) map[string]struct{} {
+func getAllNSNames(set RRArray) map[string]struct{} {
 	m := make(map[string]struct{})
-	for _, elem := range rrArray {
+	for _, elem := range set {
 		if _, ok := elem.(*dns.NS); ok {
 			m[dns.Fqdn(elem.Header().Name)] = struct{}{}
 		}
@@ -272,7 +311,7 @@ func isSignable(rr dns.RR, zone string, nsNames map[string]struct{}) bool {
 	return true
 }
 
-// sameRRSet returns true if both rrs provided should be on the same RRSet.
+// sameRRSet returns true if both rrs provided should be on the same RRSetList.
 func sameRRSet(rr1, rr2 dns.RR, byType bool) bool {
 	if rr1 == nil || rr2 == nil {
 		return false
@@ -291,4 +330,3 @@ func (rrArray RRArray) isSignable(zone string, nsNames map[string]struct{}) bool
 	}
 	return true
 }
-

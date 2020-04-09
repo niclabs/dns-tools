@@ -1,4 +1,4 @@
-package signer
+package hsmtools
 
 type SignAlgorithm uint8
 

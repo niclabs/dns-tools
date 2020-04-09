@@ -1,9 +1,10 @@
-package signer_test
+package hsmtools_test
 
 import (
 	"fmt"
-	"github.com/niclabs/hsm-tools/signer"
+	"github.com/niclabs/hsm-tools/hsmtools"
 	"io"
+	"strings"
 	"testing"
 	"time"
 )
@@ -52,14 +53,14 @@ func (f *vFile) Seek(offset int64, whence int) (int64, error) {
 }
 
 func TestSession_FileRSASign(t *testing.T) {
-	ctx := &signer.Context{
-		ContextConfig: &signer.ContextConfig{
+	ctx := &hsmtools.Context{
+		Config: &hsmtools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      false,
 			OptOut:     false,
 		},
-		SignAlgorithm: signer.RSA_SHA256,
+		SignAlgorithm: hsmtools.RSA_SHA256,
 		Log:           Log,
 	}
 	zsk := &vFile{data: []byte(RSAZSK)}
@@ -75,21 +76,21 @@ func TestSession_FileRSASign(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
+	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
 }
 
 func TestSession_FileRSASignNSEC3(t *testing.T) {
-	ctx := &signer.Context{
-		ContextConfig: &signer.ContextConfig{
+	ctx := &hsmtools.Context{
+		Config: &hsmtools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      true,
 			OptOut:     false,
 		},
-		SignAlgorithm: signer.RSA_SHA256,
+		SignAlgorithm: hsmtools.RSA_SHA256,
 		Log:           Log,
 	}
 	zsk := &vFile{data: []byte(RSAZSK)}
@@ -105,21 +106,21 @@ func TestSession_FileRSASignNSEC3(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
+	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
 }
 
 func TestSession_FileRSASignNSEC3OptOut(t *testing.T) {
-	ctx := &signer.Context{
-		ContextConfig: &signer.ContextConfig{
+	ctx := &hsmtools.Context{
+		Config: &hsmtools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      true,
 			OptOut:     true,
 		},
-		SignAlgorithm: signer.RSA_SHA256,
+		SignAlgorithm: hsmtools.RSA_SHA256,
 		Log:           Log,
 	}
 	zsk := &vFile{data: []byte(RSAZSK)}
@@ -135,21 +136,21 @@ func TestSession_FileRSASignNSEC3OptOut(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
+	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
 }
 
 func TestSession_FileECDSASign(t *testing.T) {
-	ctx := &signer.Context{
-		ContextConfig: &signer.ContextConfig{
+	ctx := &hsmtools.Context{
+		Config: &hsmtools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      false,
 			OptOut:     false,
 		},
-		SignAlgorithm: signer.ECDSA_P256_SHA256,
+		SignAlgorithm: hsmtools.ECDSA_P256_SHA256,
 		Log:           Log,
 	}
 	zsk := &vFile{data: []byte(ECZSK)}
@@ -165,21 +166,21 @@ func TestSession_FileECDSASign(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
+	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
 }
 
 func TestSession_FileECDSASignNSEC3(t *testing.T) {
-	ctx := &signer.Context{
-		ContextConfig: &signer.ContextConfig{
+	ctx := &hsmtools.Context{
+		Config: &hsmtools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      true,
 			OptOut:     false,
 		},
-		SignAlgorithm: signer.ECDSA_P256_SHA256,
+		SignAlgorithm: hsmtools.ECDSA_P256_SHA256,
 		Log:           Log,
 	}
 	zsk := &vFile{data: []byte(ECZSK)}
@@ -195,21 +196,21 @@ func TestSession_FileECDSASignNSEC3(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
+	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
 }
 
 func TestSession_FileECDSASignNSEC3OptOut(t *testing.T) {
-	ctx := &signer.Context{
-		ContextConfig: &signer.ContextConfig{
+	ctx := &hsmtools.Context{
+		Config: &hsmtools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      true,
 			OptOut:     true,
 		},
-		SignAlgorithm: signer.ECDSA_P256_SHA256,
+		SignAlgorithm: hsmtools.ECDSA_P256_SHA256,
 		Log:           Log,
 	}
 	zsk := &vFile{data: []byte(ECZSK)}
@@ -225,22 +226,22 @@ func TestSession_FileECDSASignNSEC3OptOut(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
+	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
 }
 
 func TestSession_FileExpiredSig(t *testing.T) {
-	ctx := &signer.Context{
-		ContextConfig: &signer.ContextConfig{
+	ctx := &hsmtools.Context{
+		Config: &hsmtools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      false,
 			OptOut:     false,
 		},
 		Log:           Log,
-		SignAlgorithm: signer.ECDSA_P256_SHA256,
+		SignAlgorithm: hsmtools.ECDSA_P256_SHA256,
 		SignExpDate:   time.Now().AddDate(-1, 0, 0),
 	}
 	zsk := &vFile{data: []byte(ECZSK)}
@@ -256,9 +257,14 @@ func TestSession_FileExpiredSig(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, "", out, Log); err == nil {
-		t.Errorf("output should be alerted as expired, but it was not")
-		return
+	if err := ctx.VerifyFile(); err != nil {
+		if strings.Contains(fmt.Sprintf("%s", err), "expired") {
+			return
+		} else {
+			t.Errorf("Expired error expected, but received %s", err)
+		}
+	} else {
+		t.Errorf("Error expected, but nil received")
 	}
 	return
 }

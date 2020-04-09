@@ -1,4 +1,4 @@
-package signer
+package hsmtools
 
 import (
 	"crypto"
@@ -26,7 +26,7 @@ func (session *FileSession) Context() *Context {
 }
 
 func (session *FileSession) GetKeys() (keys *SigKeys, err error) {
-	if session.ctx.CreateKeys {
+	if session.ctx.Config.CreateKeys {
 		session.ctx.Log.Printf("create-keys flag activated. Creating or overwriting keys")
 		if err = session.generateKeys(); err != nil {
 			return

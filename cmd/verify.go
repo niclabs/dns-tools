@@ -2,21 +2,21 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/niclabs/hsm-tools/signer"
+	"github.com/niclabs/hsm-tools/hsmtools"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
 )
 
 func init() {
-	verifyCmd.Flags().StringP("file", "f", "", "Full path to zone file to be verified")
-	verifyCmd.Flags().StringP("zone", "z", "", "Zone name")
-}
+	verifyCmd.PersistentFlags().StringP("file", "f", "", "Full path to zone file to be verified")
+	verifyCmd.PersistentFlags().StringP("zone", "z", "", "Zone name")
+	}
 
 var verifyCmd = &cobra.Command{
 	Use:   "verify",
-	Short: "Verifies a signed file.",
-	RunE: verify,
+	Short: "Verification options",
+	RunE:  verify,
 }
 
 func verify(cmd *cobra.Command, args []string) error {
@@ -29,9 +29,6 @@ func verify(cmd *cobra.Command, args []string) error {
 	if len(path) == 0 {
 		return fmt.Errorf("input file path not specified")
 	}
-	if len(zone) == 0 {
-		return fmt.Errorf("zone not specified")
-	}
 
 	if err := filesExist(path); err != nil {
 		return err
@@ -42,9 +39,24 @@ func verify(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := signer.VerifyFile(zone, path, file, Log); err != nil {
-		return err
+	ctx := &hsmtools.Context{
+		Config: &hsmtools.ContextConfig{
+			Zone:     zone,
+			FilePath: path,
+		},
+		File: file,
+		Log:  Log,
 	}
-	Log.Printf("sessionType verified successfully.")
+
+	if err := ctx.VerifyFile(); err != nil {
+		Log.Printf("Zone Signature: %s", err)
+	} else {
+		Log.Printf("Zone Signature: Verified Successfully.")
+	}
+	if err := ctx.VerifyDigest(); err != nil {
+		Log.Printf("Zone Digest: %s", err)
+	} else {
+		Log.Printf("Zone Digest: Verified Successfully.")
+	}
 	return nil
 }

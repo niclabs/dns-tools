@@ -1,21 +1,23 @@
-package signer_test
+package hsmtools_test
 
 import (
-	"github.com/niclabs/hsm-tools/signer"
+	"fmt"
+	"github.com/niclabs/hsm-tools/hsmtools"
+	"strings"
 	"testing"
 	"time"
 )
 
 func TestSession_PKCS11RSASign(t *testing.T) {
-	ctx := &signer.Context{
-		ContextConfig: &signer.ContextConfig{
-			Zone:          zone,
-			CreateKeys:    true,
-			NSEC3:         false,
-			OptOut:        false,
+	ctx := &hsmtools.Context{
+		Config: &hsmtools.ContextConfig{
+			Zone:       zone,
+			CreateKeys: true,
+			NSEC3:      false,
+			OptOut:     false,
 		},
-		SignAlgorithm: signer.RSA_SHA256,
-		Log: Log,
+		SignAlgorithm: hsmtools.RSA_SHA256,
+		Log:           Log,
 	}
 	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
 	if err != nil {
@@ -28,22 +30,22 @@ func TestSession_PKCS11RSASign(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
+	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
 }
 
 func TestSession_PKCS11RSASignNSEC3(t *testing.T) {
-	ctx := &signer.Context{
-		ContextConfig: &signer.ContextConfig{
-			Zone:          zone,
-			CreateKeys:    true,
-			NSEC3:         true,
-			OptOut:        false,
+	ctx := &hsmtools.Context{
+		Config: &hsmtools.ContextConfig{
+			Zone:       zone,
+			CreateKeys: true,
+			NSEC3:      true,
+			OptOut:     false,
 		},
-		SignAlgorithm: signer.RSA_SHA256,
-		Log: Log,
+		SignAlgorithm: hsmtools.RSA_SHA256,
+		Log:           Log,
 	}
 	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
 	if err != nil {
@@ -56,22 +58,22 @@ func TestSession_PKCS11RSASignNSEC3(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
+	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
 }
 
 func TestSession_PKCS11RSASignNSEC3OptOut(t *testing.T) {
-	ctx := &signer.Context{
-		ContextConfig: &signer.ContextConfig{
-			Zone:          zone,
-			CreateKeys:    true,
-			NSEC3:         true,
-			OptOut:        true,
+	ctx := &hsmtools.Context{
+		Config: &hsmtools.ContextConfig{
+			Zone:       zone,
+			CreateKeys: true,
+			NSEC3:      true,
+			OptOut:     true,
 		},
-		SignAlgorithm: signer.RSA_SHA256,
-		Log: Log,
+		SignAlgorithm: hsmtools.RSA_SHA256,
+		Log:           Log,
 	}
 	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
 	if err != nil {
@@ -84,22 +86,22 @@ func TestSession_PKCS11RSASignNSEC3OptOut(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
+	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
 }
 
 func TestSession_PKCS11ECDSASign(t *testing.T) {
-	ctx := &signer.Context{
-		ContextConfig: &signer.ContextConfig{
-			Zone:          zone,
-			CreateKeys:    true,
-			NSEC3:         false,
-			OptOut:        false,
+	ctx := &hsmtools.Context{
+		Config: &hsmtools.ContextConfig{
+			Zone:       zone,
+			CreateKeys: true,
+			NSEC3:      false,
+			OptOut:     false,
 		},
-		SignAlgorithm: signer.ECDSA_P256_SHA256,
-		Log: Log,
+		SignAlgorithm: hsmtools.ECDSA_P256_SHA256,
+		Log:           Log,
 	}
 	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
 	if err != nil {
@@ -112,22 +114,22 @@ func TestSession_PKCS11ECDSASign(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
+	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
 }
 
 func TestSession_PKCS11ECDSASignNSEC3(t *testing.T) {
-	ctx := &signer.Context{
-		ContextConfig: &signer.ContextConfig{
-			Zone:          zone,
-			CreateKeys:    true,
-			NSEC3:         true,
-			OptOut:        false,
+	ctx := &hsmtools.Context{
+		Config: &hsmtools.ContextConfig{
+			Zone:       zone,
+			CreateKeys: true,
+			NSEC3:      true,
+			OptOut:     false,
 		},
-		SignAlgorithm: signer.ECDSA_P256_SHA256,
-		Log: Log,
+		SignAlgorithm: hsmtools.ECDSA_P256_SHA256,
+		Log:           Log,
 	}
 	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
 	if err != nil {
@@ -140,22 +142,22 @@ func TestSession_PKCS11ECDSASignNSEC3(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
+	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
 }
 
 func TestSession_PKCS11ECDSASignNSEC3OptOut(t *testing.T) {
-	ctx := &signer.Context{
-		ContextConfig: &signer.ContextConfig{
-			Zone:          zone,
-			CreateKeys:    true,
-			NSEC3:         true,
-			OptOut:        true,
+	ctx := &hsmtools.Context{
+		Config: &hsmtools.ContextConfig{
+			Zone:       zone,
+			CreateKeys: true,
+			NSEC3:      true,
+			OptOut:     true,
 		},
-		SignAlgorithm: signer.ECDSA_P256_SHA256,
-		Log: Log,
+		SignAlgorithm: hsmtools.ECDSA_P256_SHA256,
+		Log:           Log,
 	}
 	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
 	if err != nil {
@@ -168,23 +170,23 @@ func TestSession_PKCS11ECDSASignNSEC3OptOut(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, "", out, Log); err != nil {
+	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
 	return
 }
 
 func TestSession_PKCS11ExpiredSig(t *testing.T) {
-	ctx := &signer.Context{
-		ContextConfig: &signer.ContextConfig{
-			Zone:          zone,
-			CreateKeys:    true,
-			NSEC3:         false,
-			OptOut:        false,
+	ctx := &hsmtools.Context{
+		Config: &hsmtools.ContextConfig{
+			Zone:       zone,
+			CreateKeys: true,
+			NSEC3:      false,
+			OptOut:     false,
 		},
-		SignAlgorithm: signer.ECDSA_P256_SHA256,
-		Log: Log,
-		SignExpDate: time.Now().AddDate(-1, 0, 0),
+		SignAlgorithm: hsmtools.ECDSA_P256_SHA256,
+		Log:           Log,
+		SignExpDate:   time.Now().AddDate(-1, 0, 0),
 	}
 	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
 	if err != nil {
@@ -197,9 +199,14 @@ func TestSession_PKCS11ExpiredSig(t *testing.T) {
 		return
 	}
 	defer out.Close()
-	if err := signer.VerifyFile(zone, "", out, Log); err == nil {
-		t.Errorf("output should be alerted as expired, but it was not")
-		return
+	if err := ctx.VerifyFile(); err != nil {
+		if strings.Contains(fmt.Sprintf("%s", err), "expired") {
+			return
+		} else {
+			t.Errorf("Expired error expected, but received %s", err)
+		}
+	} else {
+		t.Errorf("Error expected, but nil received")
 	}
 	return
 }

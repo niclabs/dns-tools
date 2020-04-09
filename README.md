@@ -34,7 +34,7 @@ The file `hsm-tools` will be created on the same directory.
 ## Command Flags
 
 the command has three modes:
-* **Verify** `hsm-tools verify` allows to verify a previously signed key. It only receives one parameter, `--file (-f)`, that is used as the input file for verification.
+* **Verify** `hsm-tools verify` allows to verify a previously signed and/or digested zone. It only receives one parameter, `--file (-f)`, that is used as the input file for verification.
 * **Reset PKCS#11 Keys** `hsm-tools reset-pkcs11-keys` Deletes all the keys from the HSM. Is a very dangerous command. It uses some parameters from `sign`, as `-p`, `-l` and `-k`.
 * **Sign** allows to sign a zone. Its common parameters are:
     * `--create-keys (-c)` creates the keys if they doesn't exist.
@@ -45,6 +45,10 @@ the command has three modes:
     * `--p11lib (-p)` selects the library to use as pkcs11 HSM driver.
     * `--sign-algorithm (-a)` Sign algorithm used. It can be 'rsa' or 'ecdsa'.
     * `--zone (-z)` Zone name
+    * `--digest (-d)` If true, the signature also creates a [Digest](https://tools.ietf.org/html/draft-ietf-dnsop-dns-zone-digest-05.html) over the zone
+* **ZONEMD calculation** Allows to generate a [ZONEMD](https://tools.ietf.org/html/draft-ietf-dnsop-dns-zone-digest-05.html) RR over the zone. It allows the following commands:
+  - `--file (-f)` Input zone file
+  - `--output (-o)` Output for zone file 
     
 Sign can be used in two modes:
 * **PKCS#11**: `hsm-tools sign pkcs11` connects to a PKCS#11 enabled device to sign the zone. It considers the following options:
@@ -81,6 +85,14 @@ The following command verifies the previously created zone.
 
 ```
 ./hsm-tools verify -f ./example.com.signed
+```
+
+## How to add ZONEMD RR to a zone
+
+The following command creates an output file with a ZONEMD RR:
+
+```
+./hsm-tools digest -f ./example.com.signed -o ./example-digest.com.signed
 ```
 
 ## How to delete PKCS11 keys
@@ -120,6 +132,8 @@ You can also set the config file path using `--config` flag.
     - [ ] SHA128
     - [x] SHA256
     - [ ] SHA512
+- [x] Calculate ZONEMD RRs
+- [x] Verify signed/digested zones
 - [x] Reuse keys
 - [x] Delete keys
 - [x] Save zone to file

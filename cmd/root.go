@@ -12,21 +12,22 @@ var cfgFile string
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "C", "", "configuration file (defaults are \"/etc/hsm-tools/hsm-tools-config.json\" and \"./hsm-tools-config.json\")")
+	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "C", "", "configuration file (defaults are \"/etc/hsm-hsmtools/hsm-hsmtools-config.json\" and \"./hsm-hsmtools-config.json\")")
 	rootCmd.AddCommand(signCmd)
 	rootCmd.AddCommand(verifyCmd)
+	rootCmd.AddCommand(digestCmd)
 	rootCmd.AddCommand(resetPKCS11KeysCmd)
-	Log = log.New(os.Stderr, "[hsm-tools]",  log.Ldate|log.Ltime)
+	Log = log.New(os.Stderr, "[hsm-hsmtools]", log.Ldate|log.Ltime)
 }
 
 var Log *log.Logger
 
 var rootCmd = &cobra.Command{
-	Use:   "hsm-tools",
+	Use:   "hsm-hsmtools",
 	Short: "Signs a DNS zone using a PKCS11 Device",
 	Long: `Allows to sign a DNS zone using a PKCS#11 device.
 	
-	For more information, visit "https://github.com/niclabs/hsm-tools".`,
+	For more information, visit "https://github.com/niclabs/hsm-hsmtools".`,
 }
 
 func Execute() {
@@ -41,9 +42,9 @@ func initConfig() {
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 	} else {
-		viper.AddConfigPath("/etc/hsm-tools/")
+		viper.AddConfigPath("/etc/hsm-hsmtools/")
 		viper.AddConfigPath("./")
-		viper.SetConfigName("hsm-tools-config")
+		viper.SetConfigName("hsm-hsmtools-config")
 	}
 
 	viper.AutomaticEnv()
@@ -51,7 +52,6 @@ func initConfig() {
 		Log.Println("Using config file:", viper.ConfigFileUsed())
 	}
 }
-
 
 // filesExist returns an error if any of the paths received as args does not point to a readable file.
 func filesExist(filepaths ...string) error {

@@ -1,4 +1,4 @@
-package signer
+package hsmtools
 
 import (
 	"crypto"
@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	"reflect"
 )
-
 
 // readerToKeyPair transforms a reader into a RSA or ECDSA KeyPair
 func readerToPrivateKey(r io.Reader) (crypto.PrivateKey, error) {
@@ -65,7 +64,7 @@ func (session *FileSession) getECDSAPubKeyBytes(signer crypto.Signer) (bytes []b
 	if !ok {
 		return nil, fmt.Errorf("getECDSAPubKeyBytes expected ECDSA key")
 	}
-	curveBytes := 2 * int((pk.Curve.Params().BitSize + 7) / 8)
+	curveBytes := 2 * int((pk.Curve.Params().BitSize+7)/8)
 	xBytes, yBytes := pk.X.Bytes(), pk.Y.Bytes()
 	bytesPoint := make([]byte, curveBytes) // two 32 bit unsigned numbers
 	copy(bytesPoint[curveBytes/2-len(xBytes):curveBytes/2], xBytes)
