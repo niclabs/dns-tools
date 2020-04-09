@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/niclabs/hsm-tools/hsmtools"
+	"github.com/niclabs/dns-tools/tools"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"os"
@@ -22,7 +22,7 @@ func init() {
 	signCmd.PersistentFlags().BoolP("digest", "d", false, "If true, DigestEnabled RR is added to the signed zone")
 
 	pkcs11Cmd.PersistentFlags().StringP("user-key", "k", "1234", "HSM User Login PKCS11Key.")
-	pkcs11Cmd.PersistentFlags().StringP("key-label", "l", "HSM-hsmtools", "Label of HSM Signer PKCS11Key.")
+	pkcs11Cmd.PersistentFlags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer PKCS11Key.")
 	pkcs11Cmd.PersistentFlags().StringP("p11lib", "p", "", "Full path to PKCS11Type lib file.")
 	signCmd.AddCommand(pkcs11Cmd)
 
@@ -56,7 +56,7 @@ func signPKCS11(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	ctx, err := hsmtools.NewContext(conf, Log)
+	ctx, err := tools.NewContext(conf, Log)
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func signPKCS11(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	defer session.End()
-	if _, err := hsmtools.Sign(session); err != nil {
+	if _, err := tools.Sign(session); err != nil {
 		ctx.Log.Printf("zone could not be signed.")
 		return err
 	}
@@ -97,7 +97,7 @@ func signFile(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	ctx, err := hsmtools.NewContext(conf, Log)
+	ctx, err := tools.NewContext(conf, Log)
 	defer ctx.Close()
 	if err != nil {
 		return err
@@ -129,14 +129,14 @@ func signFile(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	defer session.End()
-	if _, err := hsmtools.Sign(session); err != nil {
+	if _, err := tools.Sign(session); err != nil {
 		return err
 	}
 	ctx.Log.Printf("zone signed successfully.")
 	return nil
 }
 
-func newSignConfig() (*hsmtools.ContextConfig, error) {
+func newSignConfig() (*tools.ContextConfig, error) {
 	createKeys := viper.GetBool("create-keys")
 	zone := viper.GetString("zone")
 	nsec3 := viper.GetBool("nsec3")
@@ -164,7 +164,7 @@ func newSignConfig() (*hsmtools.ContextConfig, error) {
 		return nil, err
 	}
 
-	return &hsmtools.ContextConfig{
+	return &tools.ContextConfig{
 		Zone:          zone,
 		CreateKeys:    createKeys,
 		NSEC3:         nsec3,

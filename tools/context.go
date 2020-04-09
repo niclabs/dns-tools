@@ -1,4 +1,4 @@
-package hsmtools
+package tools
 
 import (
 	"fmt"

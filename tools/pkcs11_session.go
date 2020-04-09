@@ -1,4 +1,4 @@
-package hsmtools
+package tools
 
 import (
 	"crypto"
@@ -329,7 +329,7 @@ func (session *PKCS11Session) searchValidKeys() (*SigKeys, error) {
 func (session *PKCS11Session) expirePKCS11Key(signer crypto.Signer) error {
 	pkcs11Signer, ok := signer.(*PKCS11RRSigner)
 	if !ok {
-		return fmt.Errorf("cannot convert hsmtools into PKCS11RRSigner")
+		return fmt.Errorf("cannot convert tools into PKCS11RRSigner")
 	}
 	today := time.Now()
 	yesterday := today.AddDate(0, 0, -1)

@@ -1,4 +1,4 @@
-package hsmtools
+package tools
 
 import (
 	"crypto"
@@ -26,7 +26,7 @@ type PKCS11RRSigner struct {
 	ExpDate time.Time           // Expiration Date of the key
 }
 
-// Public returns the hsmtools public key.
+// Public returns the tools public key.
 func (rs *PKCS11RRSigner) Public() crypto.PublicKey {
 	return rs.PK
 }

@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/niclabs/hsm-tools/hsmtools"
+	"github.com/niclabs/dns-tools/tools"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"io"
@@ -63,8 +63,8 @@ func digest(cmd *cobra.Command, args []string) error {
 	}
 	defer outFile.Close()
 
-	ctx := &hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := &tools.Context{
+		Config: &tools.ContextConfig{
 			Zone: zone,
 		},
 		File:   zoneFile,

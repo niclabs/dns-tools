@@ -1,4 +1,4 @@
-package hsmtools
+package tools
 
 import (
 	"crypto"
@@ -12,7 +12,7 @@ func (session *PKCS11Session) getRSAPubKeyBytes(signer crypto.Signer) ([]byte, e
 	}
 	key, ok := signer.(*PKCS11RRSigner)
 	if !ok {
-		return nil, fmt.Errorf("wrong hsmtools provided. It should be of *PKCS11RRSigner type")
+		return nil, fmt.Errorf("wrong tools provided. It should be of *PKCS11RRSigner type")
 	}
 	PKTemplate := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, nil),
@@ -40,7 +40,7 @@ func (session *PKCS11Session) getECDSAPubKeyBytes(signer crypto.Signer) ([]byte,
 	}
 	key, ok := signer.(*PKCS11RRSigner)
 	if !ok {
-		return nil, fmt.Errorf("wrong hsmtools provided. It should be of *PKCS11RRSigner type")
+		return nil, fmt.Errorf("wrong tools provided. It should be of *PKCS11RRSigner type")
 	}
 	attr, err := session.P11Context.GetAttributeValue(session.Handle, key.PK, PKTemplate)
 	if err != nil {

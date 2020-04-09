@@ -1,4 +1,4 @@
-package hsmtools
+package tools
 
 type SignAlgorithm uint8
 

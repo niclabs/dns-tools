@@ -5,13 +5,12 @@
 *.com
 *.com.signed
 # binary
-hsm-tools
+dns-tools
 # scripts that should not be here
 *.sh
 # shared objects that should not be here
 *.so
 # Databases
 *sqlite3
-hsm-tools-config.json.old
 *.db
 *.pem

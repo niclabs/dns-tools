@@ -1,8 +1,8 @@
-package hsmtools_test
+package tools_test
 
 import (
 	"fmt"
-	"github.com/niclabs/hsm-tools/hsmtools"
+	"github.com/niclabs/dns-tools/tools"
 	"io"
 	"strings"
 	"testing"
@@ -53,14 +53,14 @@ func (f *vFile) Seek(offset int64, whence int) (int64, error) {
 }
 
 func TestSession_FileRSASign(t *testing.T) {
-	ctx := &hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := &tools.Context{
+		Config: &tools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      false,
 			OptOut:     false,
 		},
-		SignAlgorithm: hsmtools.RSA_SHA256,
+		SignAlgorithm: tools.RSA_SHA256,
 		Log:           Log,
 	}
 	zsk := &vFile{data: []byte(RSAZSK)}
@@ -83,14 +83,14 @@ func TestSession_FileRSASign(t *testing.T) {
 }
 
 func TestSession_FileRSASignNSEC3(t *testing.T) {
-	ctx := &hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := &tools.Context{
+		Config: &tools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      true,
 			OptOut:     false,
 		},
-		SignAlgorithm: hsmtools.RSA_SHA256,
+		SignAlgorithm: tools.RSA_SHA256,
 		Log:           Log,
 	}
 	zsk := &vFile{data: []byte(RSAZSK)}
@@ -113,14 +113,14 @@ func TestSession_FileRSASignNSEC3(t *testing.T) {
 }
 
 func TestSession_FileRSASignNSEC3OptOut(t *testing.T) {
-	ctx := &hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := &tools.Context{
+		Config: &tools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      true,
 			OptOut:     true,
 		},
-		SignAlgorithm: hsmtools.RSA_SHA256,
+		SignAlgorithm: tools.RSA_SHA256,
 		Log:           Log,
 	}
 	zsk := &vFile{data: []byte(RSAZSK)}
@@ -143,14 +143,14 @@ func TestSession_FileRSASignNSEC3OptOut(t *testing.T) {
 }
 
 func TestSession_FileECDSASign(t *testing.T) {
-	ctx := &hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := &tools.Context{
+		Config: &tools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      false,
 			OptOut:     false,
 		},
-		SignAlgorithm: hsmtools.ECDSA_P256_SHA256,
+		SignAlgorithm: tools.ECDSA_P256_SHA256,
 		Log:           Log,
 	}
 	zsk := &vFile{data: []byte(ECZSK)}
@@ -173,14 +173,14 @@ func TestSession_FileECDSASign(t *testing.T) {
 }
 
 func TestSession_FileECDSASignNSEC3(t *testing.T) {
-	ctx := &hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := &tools.Context{
+		Config: &tools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      true,
 			OptOut:     false,
 		},
-		SignAlgorithm: hsmtools.ECDSA_P256_SHA256,
+		SignAlgorithm: tools.ECDSA_P256_SHA256,
 		Log:           Log,
 	}
 	zsk := &vFile{data: []byte(ECZSK)}
@@ -203,14 +203,14 @@ func TestSession_FileECDSASignNSEC3(t *testing.T) {
 }
 
 func TestSession_FileECDSASignNSEC3OptOut(t *testing.T) {
-	ctx := &hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := &tools.Context{
+		Config: &tools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      true,
 			OptOut:     true,
 		},
-		SignAlgorithm: hsmtools.ECDSA_P256_SHA256,
+		SignAlgorithm: tools.ECDSA_P256_SHA256,
 		Log:           Log,
 	}
 	zsk := &vFile{data: []byte(ECZSK)}
@@ -233,15 +233,15 @@ func TestSession_FileECDSASignNSEC3OptOut(t *testing.T) {
 }
 
 func TestSession_FileExpiredSig(t *testing.T) {
-	ctx := &hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := &tools.Context{
+		Config: &tools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      false,
 			OptOut:     false,
 		},
 		Log:           Log,
-		SignAlgorithm: hsmtools.ECDSA_P256_SHA256,
+		SignAlgorithm: tools.ECDSA_P256_SHA256,
 		SignExpDate:   time.Now().AddDate(-1, 0, 0),
 	}
 	zsk := &vFile{data: []byte(ECZSK)}

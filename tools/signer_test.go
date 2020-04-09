@@ -1,8 +1,8 @@
-package hsmtools_test
+package tools_test
 
 import (
 	"bytes"
-	"github.com/niclabs/hsm-tools/hsmtools"
+	"github.com/niclabs/dns-tools/tools"
 	"log"
 	"os"
 	"testing"
@@ -254,7 +254,7 @@ D8aiYtF8tpcOCrp/5ofSpBlaVx+hRANCAATwd4+hzR5oFNkZEFC3P/W0oT3RRPk1
 
 var Log = log.New(os.Stderr, "[Testing] ", log.Ldate|log.Ltime)
 
-func sign(t *testing.T, ctx *hsmtools.Context, session hsmtools.SignSession) (*os.File, error) {
+func sign(t *testing.T, ctx *tools.Context, session tools.SignSession) (*os.File, error) {
 
 	// Create input and output files
 	reader, writer, err := os.Pipe()
@@ -271,7 +271,7 @@ func sign(t *testing.T, ctx *hsmtools.Context, session hsmtools.SignSession) (*o
 			return nil, err
 		}
 	}
-	_, err = hsmtools.Sign(session)
+	_, err = tools.Sign(session)
 	if err != nil {
 		t.Errorf("Error signing example: %s", err)
 		return nil, err
@@ -280,8 +280,8 @@ func sign(t *testing.T, ctx *hsmtools.Context, session hsmtools.SignSession) (*o
 }
 
 func TestContext_ReadAndParseZone(t *testing.T) {
-	ctx := hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := tools.Context{
+		Config: &tools.ContextConfig{
 			Zone: "wrong.zone",
 		},
 		File: bytes.NewBufferString(fileString),
@@ -294,8 +294,8 @@ func TestContext_ReadAndParseZone(t *testing.T) {
 }
 
 func TestContext_RootZoneDigest(t *testing.T) {
-	ctx := hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := tools.Context{
+		Config: &tools.ContextConfig{
 			Zone: "root-servers.net",
 		},
 		File:   bytes.NewBufferString(rootServers),
@@ -308,8 +308,8 @@ func TestContext_RootZoneDigest(t *testing.T) {
 }
 
 func TestContext_ComplexDigest(t *testing.T) {
-	ctx := hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := tools.Context{
+		Config: &tools.ContextConfig{
 			Zone: "example",
 		},
 		File:   bytes.NewBufferString(complexZone),
@@ -322,8 +322,8 @@ func TestContext_ComplexDigest(t *testing.T) {
 }
 
 func TestContext_SignedDigest(t *testing.T) {
-	ctx := hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := tools.Context{
+		Config: &tools.ContextConfig{
 			Zone: "uri.arpa",
 		},
 		File:   bytes.NewBufferString(signedZone),
@@ -339,8 +339,8 @@ func TestContext_SignedDigest(t *testing.T) {
 }
 
 func TestContext_MultiZONEMDDigest(t *testing.T) {
-	ctx := hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := tools.Context{
+		Config: &tools.ContextConfig{
 			Zone: "example",
 		},
 		File:   bytes.NewBufferString(multiZONEMDZone),
@@ -353,8 +353,8 @@ func TestContext_MultiZONEMDDigest(t *testing.T) {
 }
 
 func TestContext_WrongDigest(t *testing.T) {
-	ctx := hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := tools.Context{
+		Config: &tools.ContextConfig{
 			Zone: "root-servers.net",
 		},
 		File:   bytes.NewBufferString(wrongRootServers),

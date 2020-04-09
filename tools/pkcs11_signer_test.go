@@ -1,22 +1,22 @@
-package hsmtools_test
+package tools_test
 
 import (
 	"fmt"
-	"github.com/niclabs/hsm-tools/hsmtools"
+	"github.com/niclabs/dns-tools/tools"
 	"strings"
 	"testing"
 	"time"
 )
 
 func TestSession_PKCS11RSASign(t *testing.T) {
-	ctx := &hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := &tools.Context{
+		Config: &tools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      false,
 			OptOut:     false,
 		},
-		SignAlgorithm: hsmtools.RSA_SHA256,
+		SignAlgorithm: tools.RSA_SHA256,
 		Log:           Log,
 	}
 	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
@@ -37,14 +37,14 @@ func TestSession_PKCS11RSASign(t *testing.T) {
 }
 
 func TestSession_PKCS11RSASignNSEC3(t *testing.T) {
-	ctx := &hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := &tools.Context{
+		Config: &tools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      true,
 			OptOut:     false,
 		},
-		SignAlgorithm: hsmtools.RSA_SHA256,
+		SignAlgorithm: tools.RSA_SHA256,
 		Log:           Log,
 	}
 	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
@@ -65,14 +65,14 @@ func TestSession_PKCS11RSASignNSEC3(t *testing.T) {
 }
 
 func TestSession_PKCS11RSASignNSEC3OptOut(t *testing.T) {
-	ctx := &hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := &tools.Context{
+		Config: &tools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      true,
 			OptOut:     true,
 		},
-		SignAlgorithm: hsmtools.RSA_SHA256,
+		SignAlgorithm: tools.RSA_SHA256,
 		Log:           Log,
 	}
 	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
@@ -93,14 +93,14 @@ func TestSession_PKCS11RSASignNSEC3OptOut(t *testing.T) {
 }
 
 func TestSession_PKCS11ECDSASign(t *testing.T) {
-	ctx := &hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := &tools.Context{
+		Config: &tools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      false,
 			OptOut:     false,
 		},
-		SignAlgorithm: hsmtools.ECDSA_P256_SHA256,
+		SignAlgorithm: tools.ECDSA_P256_SHA256,
 		Log:           Log,
 	}
 	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
@@ -121,14 +121,14 @@ func TestSession_PKCS11ECDSASign(t *testing.T) {
 }
 
 func TestSession_PKCS11ECDSASignNSEC3(t *testing.T) {
-	ctx := &hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := &tools.Context{
+		Config: &tools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      true,
 			OptOut:     false,
 		},
-		SignAlgorithm: hsmtools.ECDSA_P256_SHA256,
+		SignAlgorithm: tools.ECDSA_P256_SHA256,
 		Log:           Log,
 	}
 	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
@@ -149,14 +149,14 @@ func TestSession_PKCS11ECDSASignNSEC3(t *testing.T) {
 }
 
 func TestSession_PKCS11ECDSASignNSEC3OptOut(t *testing.T) {
-	ctx := &hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := &tools.Context{
+		Config: &tools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      true,
 			OptOut:     true,
 		},
-		SignAlgorithm: hsmtools.ECDSA_P256_SHA256,
+		SignAlgorithm: tools.ECDSA_P256_SHA256,
 		Log:           Log,
 	}
 	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
@@ -177,14 +177,14 @@ func TestSession_PKCS11ECDSASignNSEC3OptOut(t *testing.T) {
 }
 
 func TestSession_PKCS11ExpiredSig(t *testing.T) {
-	ctx := &hsmtools.Context{
-		Config: &hsmtools.ContextConfig{
+	ctx := &tools.Context{
+		Config: &tools.ContextConfig{
 			Zone:       zone,
 			CreateKeys: true,
 			NSEC3:      false,
 			OptOut:     false,
 		},
-		SignAlgorithm: hsmtools.ECDSA_P256_SHA256,
+		SignAlgorithm: tools.ECDSA_P256_SHA256,
 		Log:           Log,
 		SignExpDate:   time.Now().AddDate(-1, 0, 0),
 	}
