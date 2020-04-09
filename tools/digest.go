@@ -30,6 +30,9 @@ func (ctx *Context) VerifyDigest() error {
 	if err := ctx.ReadAndParseZone(false); err != nil {
 		return err
 	}
+	if ctx.soa.Serial != ctx.zonemd.Serial {
+		return fmt.Errorf("ZONEMD serial does not match with SOA serial")
+	}
 	sort.Sort(ctx.rrs)
 	if err := ctx.ValidateOrderedZoneDigest(); err != nil {
 		return err

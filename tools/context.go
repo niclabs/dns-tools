@@ -133,6 +133,9 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 		if zonemd.Header().Name == ctx.Config.Zone &&
 			zonemd.Scheme == 1 && // Hardcoded: only scheme option
 			zonemd.Hash == 1 { // Hardcoded: only hash option.
+			if ctx.zonemd != nil {
+				return fmt.Errorf("two ZONEMD with same Scheme and Hash found in zone")
+			}
 			ctx.zonemd = zonemd
 		}
 	}
