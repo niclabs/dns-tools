@@ -5,10 +5,10 @@ services:
 
 before_install:
   - docker build -t niclabs/dns-tools .
-  - docker run niclabs/dns-tools sh -c 'go test tools'
+  - docker run niclabs/dns-tools sh -c 'go test ./...'
 
 script:
-  - go test tools
+  - go test ./...
 
 go:
   - 1.x

@@ -2,10 +2,11 @@ package tools_test
 
 import (
 	"bytes"
-	"github.com/niclabs/dns-tools/tools"
 	"log"
 	"os"
 	"testing"
+
+	"github.com/niclabs/dns-tools/tools"
 )
 
 // Using default softHSM configuration. Change it if necessary.
@@ -25,7 +26,6 @@ ns1.example.com.		86400	IN	A		127.0.0.1
 www.example.com.		86400	IN	A		127.0.0.2
 yo.example.com.			86400	IN	A		127.0.0.3
 `
-
 
 const RSAKSK = `
 -----BEGIN PRIVATE KEY-----
