@@ -1,9 +1,9 @@
 language: go
 dist: bionic
 before_install:
-  - apt update
-  - apt install softhsm
-  - mkdir -p /var/lib/softhsm/tokens
+  - sudo apt update
+  - sudo apt install softhsm
+  - sudo mkdir -p /var/lib/softhsm/tokens
   - softhsm2-util --init-token --slot 0 --label hsm --pin 1234 --so-pin 1234
 
 go:
