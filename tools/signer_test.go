@@ -10,7 +10,7 @@ import (
 )
 
 // Using default softHSM configuration. Change it if necessary.
-const p11Lib = "/usr/lib/libsofthsm2.so"
+const p11Lib = "/usr/lib/softhsm/libsofthsm2.so" // Path used by Debian Buster (in Dockerfile)
 const key = "1234"
 const rsaLabel = "hsm"
 const zone = "example.com."
