@@ -4,10 +4,10 @@ before_install:
   - sudo apt update
   - sudo apt install softhsm
   - sudo mkdir -p /var/lib/softhsm/tokens
-  - softhsm2-util --init-token --slot 0 --label hsm --pin 1234 --so-pin 1234
+  - sudo softhsm2-util --init-token --slot 0 --label hsm --pin 1234 --so-pin 1234
 
 script:
-  - go test ./...
+  - sudo /usr/local/go/bin/go test ./...
 
 go:
   - 1.x
