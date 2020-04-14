@@ -1,14 +1,11 @@
 language: go
-
-services:
-  - docker
-
+sudo: required
+dist: bionic
 before_install:
-  - docker build -t niclabs/dns-tools .
-  - docker run niclabs/dns-tools sh -c 'go test ./...'
-
-script:
-  - go test ./...
+  - sudo apt update
+  - sudo apt install softhsm
+  - sudo mkdir -p /var/lib/softhsm/tokens
+  - sudo softhsm2-util --init-token --slot 0 --label hsm --pin 1234 --so-pin 1234
 
 go:
   - 1.x
