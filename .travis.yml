@@ -7,7 +7,7 @@ before_install:
   - sudo softhsm2-util --init-token --slot 0 --label hsm --pin 1234 --so-pin 1234
 
 script:
-  - sudo go test ./...
+  - sudo /usr/local/bin/go test ./...
 
 go:
   - 1.x
