@@ -69,11 +69,11 @@ func digest(cmd *cobra.Command, args []string) error {
 		},
 		File:   zoneFile,
 		Output: outFile,
-		Log:    Log,
+		Log:    commandLog,
 	}
 	if err := ctx.Digest(); err != nil {
 		return err
 	}
-	Log.Printf("zone digested successfully in %s.", out)
+	commandLog.Printf("zone digested successfully in %s.", out)
 	return nil
 }

@@ -30,7 +30,7 @@ func (session *PKCS11Session) GetKeys() (keys *SigKeys, err error) {
 	ctx := session.Context()
 	keys, err = session.searchValidKeys()
 	if err != nil {
-		if err == NoValidKeys {
+		if err == ErrNoValidKeys {
 			if !ctx.Config.CreateKeys {
 				err = fmt.Errorf("no valid keys and --create-keys disabled." +
 					"Try again using --create-keys flag")
@@ -267,55 +267,54 @@ func (session *PKCS11Session) searchValidKeys() (*SigKeys, error) {
 		attr, err := session.P11Context.GetAttributeValue(session.Handle, object, DateTemplate)
 		if err != nil {
 			return nil, fmt.Errorf("cannot get attributes: %s\n", err)
-		} else {
-			class := uint(binary.LittleEndian.Uint32(attr[0].Value))
-			id := string(attr[1].Value)
-			start := string(attr[2].Value)
-			end := string(attr[3].Value)
-			valid := start <= sToday && sToday <= end
-			endTime, _ := time.Parse("20060102", end)
+		}
+		class := uint(binary.LittleEndian.Uint32(attr[0].Value))
+		id := string(attr[1].Value)
+		start := string(attr[2].Value)
+		end := string(attr[3].Value)
+		valid := start <= sToday && sToday <= end
+		endTime, _ := time.Parse("20060102", end)
 
-			session.ctx.Log.Printf("Checking key class %v id %s and valid %t\n", class, id, valid)
+		session.ctx.Log.Printf("Checking key class %v id %s and valid %t\n", class, id, valid)
 
-			if !valid {
-				continue
-			}
+		if !valid {
+			continue
+		}
 
-			if class == pkcs11.CKO_PUBLIC_KEY {
-				if id == "zsk" {
-					if valid {
-						session.ctx.Log.Printf("Found valid Public ZSK")
-						zskSigner.ExpDate = endTime
-						zskSigner.PK = object
-						found++
-					}
-				}
-				if id == "ksk" {
-					if valid {
-						session.ctx.Log.Printf("Found valid Public KSK")
-						kskSigner.ExpDate = endTime
-						kskSigner.PK = object
-						found++
-					}
-				}
-			} else if class == pkcs11.CKO_PRIVATE_KEY {
-				if id == "zsk" {
-					session.ctx.Log.Printf("Found valid Private ZSK\n")
+		if class == pkcs11.CKO_PUBLIC_KEY {
+			if id == "zsk" {
+				if valid {
+					session.ctx.Log.Printf("Found valid Public ZSK")
 					zskSigner.ExpDate = endTime
-					zskSigner.SK = object
-					found++
-				} else if id == "ksk" {
-					session.ctx.Log.Printf("Found valid Private KSK\n")
-					kskSigner.ExpDate = endTime
-					kskSigner.SK = object
+					zskSigner.PK = object
 					found++
 				}
+			}
+			if id == "ksk" {
+				if valid {
+					session.ctx.Log.Printf("Found valid Public KSK")
+					kskSigner.ExpDate = endTime
+					kskSigner.PK = object
+					found++
+				}
+			}
+		} else if class == pkcs11.CKO_PRIVATE_KEY {
+			if id == "zsk" {
+				session.ctx.Log.Printf("Found valid Private ZSK\n")
+				zskSigner.ExpDate = endTime
+				zskSigner.SK = object
+				found++
+			} else if id == "ksk" {
+				session.ctx.Log.Printf("Found valid Private KSK\n")
+				kskSigner.ExpDate = endTime
+				kskSigner.SK = object
+				found++
 			}
 		}
 	}
 	switch {
 	case found == 0:
-		return validKeys, NoValidKeys
+		return validKeys, ErrNoValidKeys
 	case found == 4:
 		return validKeys, nil
 	case found > 4:

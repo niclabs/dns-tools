@@ -20,11 +20,12 @@ type FileSession struct {
 	kskFile io.ReadWriteSeeker
 }
 
-// Returns the session context
+// Context returns the session context
 func (session *FileSession) Context() *Context {
 	return session.ctx
 }
 
+// GetKeys returns the keys (zsk, ksk) related to the session
 func (session *FileSession) GetKeys() (keys *SigKeys, err error) {
 	if session.ctx.Config.CreateKeys {
 		session.ctx.Log.Printf("create-keys flag activated. Creating or overwriting keys")
@@ -41,17 +42,18 @@ func (session *FileSession) GetKeys() (keys *SigKeys, err error) {
 		return
 	}
 	return &SigKeys{
-		zskSigner: &FileRRSigner{
+		zskSigner: &fileRRSigner{
 			Session: session,
 			Key:     zsk,
 		},
-		kskSigner: &FileRRSigner{
+		kskSigner: &fileRRSigner{
 			Session: session,
 			Key:     ksk,
 		},
 	}, nil
 }
 
+// GetPublicKeyBytes returns the public key bytes for ZSK and KSK keys
 func (session *FileSession) GetPublicKeyBytes(keys *SigKeys) (zskBytes, kskBytes []byte, err error) {
 	var keyFun func(signer crypto.Signer) ([]byte, error)
 	ctx := session.Context()
@@ -72,10 +74,12 @@ func (session *FileSession) GetPublicKeyBytes(keys *SigKeys) (zskBytes, kskBytes
 	return
 }
 
+// DestroyAllKeys destroys all keys inside the session. In the case of FileSession it does nothing
 func (session *FileSession) DestroyAllKeys() error {
 	return nil
 }
 
+// End ends the session. In FileSession it does nothing
 func (session *FileSession) End() error {
 	return nil
 }
@@ -141,6 +145,9 @@ func (session *FileSession) generateECDSAKey() ([]byte, error) {
 		return nil, err
 	}
 	pkcs8Bytes, err := x509.MarshalPKCS8PrivateKey(sk)
+	if err != nil {
+		return nil, err
+	}
 	return pem.EncodeToMemory(&pem.Block{
 		Type:  "PRIVATE KEY",
 		Bytes: pkcs8Bytes,

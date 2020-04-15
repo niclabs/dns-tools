@@ -33,7 +33,7 @@ func resetPKCS11Keys(cmd *cobra.Command, args []string) error {
 	if err := filesExist(p11lib); err != nil {
 		return err
 	}
-	ctx, err := tools.NewContext(&tools.ContextConfig{}, Log)
+	ctx, err := tools.NewContext(&tools.ContextConfig{}, commandLog)
 	if err != nil {
 		return err
 	}
@@ -46,6 +46,6 @@ func resetPKCS11Keys(cmd *cobra.Command, args []string) error {
 	if err := session.DestroyAllKeys(); err != nil {
 		return err
 	}
-	Log.Printf("All keys destroyed.")
+	commandLog.Printf("All keys destroyed.")
 	return nil
 }

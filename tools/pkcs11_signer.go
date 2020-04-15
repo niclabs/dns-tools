@@ -19,19 +19,16 @@ var pkcs1Prefix = map[crypto.Hash][]byte{
 	crypto.SHA512: {0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03, 0x05, 0x00, 0x04, 0x40},
 }
 
-// PKCS11RRSigner Implements crypto.Signer Interface and signs using PKCS11 Interface.
 type PKCS11RRSigner struct {
 	Session *PKCS11Session      // PKCS#11 PKCS11Session
 	SK, PK  pkcs11.ObjectHandle // Secret and Public PKCS11Key handles
 	ExpDate time.Time           // Expiration Date of the key
 }
 
-// Public returns the tools public key.
 func (rs *PKCS11RRSigner) Public() crypto.PublicKey {
 	return rs.PK
 }
 
-// PKCS11Sign signs the content from the reader and returns a signature, or an error if it fails.
 func (rs *PKCS11RRSigner) Sign(rand io.Reader, rr []byte, opts crypto.SignerOpts) ([]byte, error) {
 	if rs.Session == nil || rs.Session.P11Context == nil {
 		return nil, fmt.Errorf("session not initialized")

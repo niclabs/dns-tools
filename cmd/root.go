@@ -17,10 +17,10 @@ func init() {
 	rootCmd.AddCommand(verifyCmd)
 	rootCmd.AddCommand(digestCmd)
 	rootCmd.AddCommand(resetPKCS11KeysCmd)
-	Log = log.New(os.Stderr, "[dns-tools]", log.Ldate|log.Ltime)
+	commandLog = log.New(os.Stderr, "[dns-tools] ", log.Ldate|log.Ltime)
 }
 
-var Log *log.Logger
+var commandLog *log.Logger
 
 var rootCmd = &cobra.Command{
 	Use:   "dns-tools",
@@ -30,10 +30,10 @@ var rootCmd = &cobra.Command{
 	For more information, visit "https://github.com/niclabs/dns-tools".`,
 }
 
+// Execute executes the command.
 func Execute() {
-
 	if err := rootCmd.Execute(); err != nil {
-		Log.Printf("Error: %s", err)
+		commandLog.Printf("Error: %s", err)
 		os.Exit(1)
 	}
 }
@@ -49,7 +49,7 @@ func initConfig() {
 
 	viper.AutomaticEnv()
 	if err := viper.ReadInConfig(); err == nil {
-		Log.Println("Using config file:", viper.ConfigFileUsed())
+		commandLog.Println("Using config file:", viper.ConfigFileUsed())
 	}
 }
 

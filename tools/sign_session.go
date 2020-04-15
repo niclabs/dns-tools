@@ -8,8 +8,10 @@ import (
 	"sort"
 )
 
-var NoValidKeys = fmt.Errorf("No valid keys")
+// ErrNoValidKeys represents an error returned when the session does not have valid keys
+var ErrNoValidKeys = fmt.Errorf("no valid keys")
 
+// SignSession represents an abstract signing session
 type SignSession interface {
 	Context() *Context
 	GetKeys() (*SigKeys, error)
@@ -129,6 +131,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 	return ds, err
 }
 
+// GetDNSKEY returns two DNSKEY RRs based on the session SigKeys
 func GetDNSKEY(keys *SigKeys, session SignSession) (zsk, ksk *dns.DNSKEY, err error) {
 	zskBytes, kskBytes, err := session.GetPublicKeyBytes(keys)
 	if err != nil {

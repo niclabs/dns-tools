@@ -35,9 +35,9 @@ func readerToPrivateKey(r io.Reader) (crypto.PrivateKey, error) {
 }
 
 func (session *FileSession) getRSAPubKeyBytes(signer crypto.Signer) (bytes []byte, err error) {
-	rrSigner, ok := signer.(*FileRRSigner)
+	rrSigner, ok := signer.(*fileRRSigner)
 	if !ok {
-		return nil, fmt.Errorf("getRSAPubKeyBytes expected FileRRSigner")
+		return nil, fmt.Errorf("getRSAPubKeyBytes expected fileRRSigner")
 	}
 	pk, ok := rrSigner.Public().(*rsa.PublicKey)
 	if !ok {
@@ -56,9 +56,9 @@ func (session *FileSession) getRSAPubKeyBytes(signer crypto.Signer) (bytes []byt
 }
 
 func (session *FileSession) getECDSAPubKeyBytes(signer crypto.Signer) (bytes []byte, err error) {
-	rrSigner, ok := signer.(*FileRRSigner)
+	rrSigner, ok := signer.(*fileRRSigner)
 	if !ok {
-		return nil, fmt.Errorf("getECDSAPubKeyBytes expected FileRRSigner")
+		return nil, fmt.Errorf("getECDSAPubKeyBytes expected fileRRSigner")
 	}
 	pk, ok := rrSigner.Public().(*ecdsa.PublicKey)
 	if !ok {

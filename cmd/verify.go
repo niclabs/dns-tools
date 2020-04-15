@@ -45,18 +45,18 @@ func verify(cmd *cobra.Command, args []string) error {
 			FilePath: path,
 		},
 		File: file,
-		Log:  Log,
+		Log:  commandLog,
 	}
 
 	if err := ctx.VerifyFile(); err != nil {
-		Log.Printf("Zone Signature: %s", err)
+		commandLog.Printf("Zone Signature: %s", err)
 	} else {
-		Log.Printf("Zone Signature: Verified Successfully.")
+		commandLog.Printf("Zone Signature: Verified Successfully.")
 	}
 	if err := ctx.VerifyDigest(); err != nil {
-		Log.Printf("Zone Digest: %s", err)
+		commandLog.Printf("Zone Digest: %s", err)
 	} else {
-		Log.Printf("Zone Digest: Verified Successfully.")
+		commandLog.Printf("Zone Digest: Verified Successfully.")
 	}
 	return nil
 }

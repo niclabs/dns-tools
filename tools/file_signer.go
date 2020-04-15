@@ -8,12 +8,12 @@ import (
 	"io"
 )
 
-type FileRRSigner struct {
+type fileRRSigner struct {
 	Session SignSession
 	Key     crypto.PrivateKey
 }
 
-func (signer *FileRRSigner) Public() crypto.PublicKey {
+func (signer *fileRRSigner) Public() crypto.PublicKey {
 	ctx := signer.Session.Context()
 	switch ctx.SignAlgorithm {
 	case RSA_SHA256:
@@ -33,7 +33,7 @@ func (signer *FileRRSigner) Public() crypto.PublicKey {
 	return nil
 }
 
-func (signer *FileRRSigner) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
+func (signer *fileRRSigner) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
 	ctx := signer.Session.Context()
 	switch ctx.SignAlgorithm {
 	case RSA_SHA256:

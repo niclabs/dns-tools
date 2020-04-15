@@ -68,7 +68,7 @@ func (ctx *Context) Digest() error {
 	return nil
 }
 
-// addZONEMDRecord adds a zone digest following draft-ietf-dnsop-dns-zone-digest-05
+// AddZONEMDRecord adds a zone digest following draft-ietf-dnsop-dns-zone-digest-05
 // we need the SOA info for that
 func (ctx *Context) AddZONEMDRecord() {
 	if ctx.zonemd == nil {
@@ -91,7 +91,7 @@ func (ctx *Context) AddZONEMDRecord() {
 
 // CleanDigests sets all root zone digests to 0
 // It is used before zone signing
-func (ctx *Context) CleanDigests()  {
+func (ctx *Context) CleanDigests() {
 	for _, rr := range ctx.rrs {
 		switch x := rr.(type) {
 		case *dns.ZONEMD:
@@ -101,8 +101,7 @@ func (ctx *Context) CleanDigests()  {
 	return
 }
 
-
-// UpdateDigest calculates the digest for a PREVIOUSLY ORDERED zone.
+// CalculateDigest calculates the digest for a PREVIOUSLY ORDERED zone.
 // This method returns the digest hex value.
 func (ctx *Context) CalculateDigest() (string, error) {
 	if ctx.zonemd == nil {

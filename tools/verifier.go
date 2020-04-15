@@ -29,7 +29,7 @@ func (ctx *Context) VerifyFile() (err error) {
 	if err = ctx.ReadAndParseZone(false); err != nil {
 		return
 	}
-	setList := ctx.getRRSetList( true)
+	setList := ctx.getRRSetList(true)
 	nsNames := getAllNSNames(ctx.rrs)
 
 	rrSigTuples := make(map[string]*RRSigTuple)

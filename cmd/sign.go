@@ -56,7 +56,7 @@ func signPKCS11(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	ctx, err := tools.NewContext(conf, Log)
+	ctx, err := tools.NewContext(conf, commandLog)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func signFile(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	ctx, err := tools.NewContext(conf, Log)
+	ctx, err := tools.NewContext(conf, commandLog)
 	defer ctx.Close()
 	if err != nil {
 		return err

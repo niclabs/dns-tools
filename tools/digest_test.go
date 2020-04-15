@@ -199,7 +199,6 @@ func TestContext_SimpleDigest(t *testing.T) {
 	}
 }
 
-
 func TestContext_ComplexDigest(t *testing.T) {
 	ctx := tools.Context{
 		Config: &tools.ContextConfig{

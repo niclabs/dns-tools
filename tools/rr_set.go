@@ -61,6 +61,16 @@ func (array RRArray) Less(i, j int) bool {
 
 }
 
+// isSignable checks if all the rrs are signable (they should be).
+func (array RRArray) isSignable(zone string, nsNames map[string]struct{}) bool {
+	for _, rr := range array {
+		if !isSignable(rr, zone, nsNames) {
+			return false
+		}
+	}
+	return true
+}
+
 func compareRRData(rri, rrj dns.RR) bool {
 	bytei := make([]byte, dns.MaxMsgSize)
 	sizei, err := dns.PackRR(rri, bytei, 0, nil, false)
@@ -94,9 +104,8 @@ func (setList RRSetList) Less(i, j int) bool {
 	if len(iRRArray) == 0 {
 		if len(jRRArray) == 0 {
 			return false
-		} else {
-			return true
 		}
+		return true
 	}
 	// Create and array to reuse Less method from rrArrays
 	cmpArray := append(make(RRArray, 0), iRRArray[0], jRRArray[0])
@@ -320,14 +329,4 @@ func sameRRSet(rr1, rr2 dns.RR, byType bool) bool {
 	return rr1.Header().Class == rr2.Header().Class &&
 		strings.ToLower(dns.Fqdn(rr1.Header().Name)) == strings.ToLower(dns.Fqdn(rr2.Header().Name)) &&
 		(!byType || rr1.Header().Rrtype == rr2.Header().Rrtype)
-}
-
-// isSignable checks if all the rrs are signable (they should be).
-func (rrArray RRArray) isSignable(zone string, nsNames map[string]struct{}) bool {
-	for _, rr := range rrArray {
-		if !isSignable(rr, zone, nsNames) {
-			return false
-		}
-	}
-	return true
 }
