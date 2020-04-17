@@ -108,6 +108,9 @@ func (ctx *Context) VerifyFile() (err error) {
 		var ok bool
 		if set[0].Header().Rrtype == dns.TypeDNSKEY {
 			key, ok = pksk[sig.KeyTag]
+			if !ok {
+				key, ok = pzsk[sig.KeyTag]
+			}
 		} else {
 			key, ok = pzsk[sig.KeyTag]
 		}
