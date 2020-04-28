@@ -59,6 +59,7 @@ func (ctx *Context) Digest() error {
 		return err
 	}
 	ctx.AddZONEMDRecord() // If it doesn't exist, adds a ZONEMD record.
+
 	sort.Sort(ctx.rrs)
 
 	if err := ctx.UpdateDigest(); err != nil {

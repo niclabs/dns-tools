@@ -12,6 +12,7 @@ import (
 // PKCS11Session represents a PKCS#11 session. It includes the context, the session handle and a Label String,
 // used in creation and retrieval of DNS keys.
 type PKCS11Session struct {
+	libPath    string               // Library Path
 	ctx        *Context             // HSM Tools Context
 	P11Context *pkcs11.Ctx          // PKCS#11 Context
 	Handle     pkcs11.SessionHandle // PKCS11Session Handle

@@ -47,10 +47,14 @@ the command has three modes:
     * `--sign-algorithm (-a)` Sign algorithm used. It can be 'rsa' or 'ecdsa'.
     * `--zone (-z)` Zone name
     * `--digest (-d)` If true, the signature also creates a [Digest](https://tools.ietf.org/html/draft-ietf-dnsop-dns-zone-digest-05.html) over the zone
+    - `--info (-i)` Add a TXT RR to the zone with signing information (signer software, mode and library used if PKCS#11)
 * **ZONEMD calculation** Allows to generate a [ZONEMD](https://tools.ietf.org/html/draft-ietf-dnsop-dns-zone-digest-05.html) RR over the zone. It allows the following commands:
   - `--file (-f)` Input zone file
   - `--output (-o)` Output for zone file 
-    
+  - `--info (-i)` Add a TXT RR to the zone with signing information (signer software, mode and library used if PKCS#11)
+
+## Signing modes
+
 Sign can be used in two modes:
 * **PKCS#11**: `dns-tools sign pkcs11` connects to a PKCS#11 enabled device to sign the zone. It considers the following options:
     - `--key-label (-l)` allows to choose a label for the created keys (if not, they will have dns-tools as name).
@@ -59,8 +63,6 @@ Sign can be used in two modes:
     - `--zsk-file (-Z)` ZSK PEM File location. If `--create-keys` is enabled, the file will be created and any previous key will be overriden, so use it with care.
     - `--ksk-file (-K)` KSK PEM File location. If `--create-keys` is enabled, the file will be created and any previous key will be overriden, so use it with care.
 
-
-## How to sign a zone
 
 ### Using a PKCS#11 device
 

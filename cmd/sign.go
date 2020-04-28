@@ -20,6 +20,7 @@ func init() {
 	signCmd.PersistentFlags().BoolP("opt-out", "x", false, "Use NSEC3 with opt-out.")
 	signCmd.PersistentFlags().StringP("expiration-date", "e", "", "Signature expiration Date, in YYYYMMDD format. Default is one more year from now.")
 	signCmd.PersistentFlags().BoolP("digest", "d", false, "If true, DigestEnabled RR is added to the signed zone")
+	signCmd.PersistentFlags().BoolP("info", "i", false, "If true, an TXT RR is added with information about the signing process (tool and mode)")
 
 	pkcs11Cmd.PersistentFlags().StringP("user-key", "k", "1234", "HSM User Login PKCS11Key.")
 	pkcs11Cmd.PersistentFlags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer PKCS11Key.")
@@ -142,6 +143,7 @@ func newSignConfig() (*tools.ContextConfig, error) {
 	nsec3 := viper.GetBool("nsec3")
 	optOut := viper.GetBool("opt-out")
 	digest := viper.GetBool("digest")
+	info := viper.GetBool("info")
 
 	path := viper.GetString("file")
 	out := viper.GetString("output")
@@ -174,5 +176,6 @@ func newSignConfig() (*tools.ContextConfig, error) {
 		ExpDateStr:    expDateStr,
 		FilePath:      path,
 		OutputPath:    out,
+		Info:          info,
 	}, nil
 }

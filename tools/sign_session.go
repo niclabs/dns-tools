@@ -44,6 +44,18 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 		ctx.CleanDigests()
 	}
 
+	if ctx.Config.Info {
+		ctx.rrs = append(ctx.rrs, &dns.TXT{
+			Hdr: dns.RR_Header{
+				Name:   "_dnstools." + ctx.Config.Zone,
+				Rrtype: dns.TypeTXT,
+				Class:  dns.ClassINET,
+				Ttl:    ctx.soa.Minttl,
+			},
+			Txt: []string{ctx.genInfo(session)},
+		})
+	}
+
 	sort.Sort(ctx.rrs)
 
 	ctx.AddNSEC13()

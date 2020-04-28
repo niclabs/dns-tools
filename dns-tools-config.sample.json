@@ -12,5 +12,6 @@
   "expiration-date": "20300101",
   "zone": "example.com.",
   "zsk-keyfile": "zsk.pem",
-  "ksk-keyfile": "ksk.pem"
+  "ksk-keyfile": "ksk.pem",
+  "info": false
 }

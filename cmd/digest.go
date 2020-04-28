@@ -15,6 +15,7 @@ func init() {
 	digestCmd.PersistentFlags().StringP("file", "f", "", "Full path to zone file")
 	digestCmd.PersistentFlags().StringP("zone", "z", "", "Zone name")
 	digestCmd.PersistentFlags().StringP("output", "o", "", "Full path to output file")
+	digestCmd.PersistentFlags().BoolP("info", "i", false, "If true, an TXT RR is added with information about the signing process (tool and mode)")
 }
 
 var digestCmd = &cobra.Command{
@@ -30,6 +31,7 @@ func digest(cmd *cobra.Command, args []string) error {
 	zonePath := viper.GetString("file")
 	zone := viper.GetString("zone")
 	out := viper.GetString("output")
+	info := viper.GetBool("info")
 
 	if len(zonePath) == 0 {
 		return fmt.Errorf("input file zonePath not specified")
@@ -66,6 +68,7 @@ func digest(cmd *cobra.Command, args []string) error {
 	ctx := &tools.Context{
 		Config: &tools.ContextConfig{
 			Zone: zone,
+			Info: info,
 		},
 		File:   zoneFile,
 		Output: outFile,

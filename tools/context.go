@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path"
 	"strings"
 	"time"
 )
@@ -35,6 +36,7 @@ type ContextConfig struct {
 	FilePath      string // Output Path
 	OutputPath    string // Output Path
 	ExpDateStr    string // Signature Expiration Date in String
+	Info          bool   // If true, a credits txt will be added to _dnstools subdomain.
 }
 
 // NewContext creates a new context based on a configuration structure. It also receives
@@ -79,6 +81,7 @@ func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error
 
 // ReadAndParseZone parses a DNS zone file and returns an array of rrs and the zone minTTL.
 // It also updates the serial in the SOA record if updateSerial is true.
+// If setCredits is true, it adds a TXT record to the zone, under the subdomain _dnstools, with signing information
 // Returns the SOA
 // IT DOES NOT SORT THE RR LIST
 func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
@@ -190,6 +193,7 @@ func (ctx *Context) NewPKCS11Session(key, label, p11lib string) (SignSession, er
 		return nil, fmt.Errorf("Error login with provided key: %s\n", err)
 	}
 	return &PKCS11Session{
+		libPath:    p11lib,
 		ctx:        ctx,
 		P11Context: p,
 		Handle:     session,
@@ -215,4 +219,17 @@ func (ctx *Context) Close() error {
 		}
 	}
 	return nil
+}
+
+// Returns a signing/digesting info string with the library name and signing mode
+func (ctx *Context) genInfo(session SignSession) string {
+	now := time.Now().Unix()
+	switch s := session.(type) {
+	case *PKCS11Session:
+		return fmt.Sprintf("signer=dns-tools;timestamp=%d;mode=pkcs11;libname=%s;", now, path.Base(s.libPath))
+	case *FileSession:
+		return fmt.Sprintf("signer=dns-tools;timestamp=%d;mode=file;", now)
+	}
+	// I assume that no session implies digest mode
+	return fmt.Sprintf("signer=dns-tools;timestamp=%d;mode=digest", now)
 }
