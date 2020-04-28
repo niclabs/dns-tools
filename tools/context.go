@@ -42,10 +42,7 @@ type ContextConfig struct {
 // NewContext creates a new context based on a configuration structure. It also receives
 // a logger to log errors.
 func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error) {
-	algorithm, ok := StringToSignAlgorithm[config.SignAlgorithm] // It could be nil
-	if !ok {
-		return nil, fmt.Errorf("algorithm is not defined in config")
-	}
+	algorithm, _ := StringToSignAlgorithm[config.SignAlgorithm] // It could be nil
 	ctx = &Context{
 		Config:        config,
 		Log:           log,
@@ -170,7 +167,7 @@ func (ctx *Context) AddNSEC13() {
 }
 
 // NewPKCS11Session creates a new session.
-// The arguments also define the HSM user key and the rsaLabel the keys will use when created or retrieved.
+// The arguments also define the HSM user key and the pkcs11 label the keys will use when created or retrieved.
 func (ctx *Context) NewPKCS11Session(key, label, p11lib string) (SignSession, error) {
 	p := pkcs11.New(p11lib)
 	if p == nil {
@@ -197,6 +194,8 @@ func (ctx *Context) NewPKCS11Session(key, label, p11lib string) (SignSession, er
 		ctx:        ctx,
 		P11Context: p,
 		Handle:     session,
+		Key:        key,
+		Label:      label,
 	}, nil
 }
 

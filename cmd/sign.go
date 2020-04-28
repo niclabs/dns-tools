@@ -66,13 +66,13 @@ func signPKCS11(cmd *cobra.Command, _ []string) error {
 	if len(p11lib) == 0 {
 		return fmt.Errorf("p11lib not specified")
 	}
-	key := viper.GetString("key")
+	key := viper.GetString("user-key")
 	if len(key) == 0 {
-		return fmt.Errorf("key not specified")
+		return fmt.Errorf("user-key not specified")
 	}
-	label := viper.GetString("label")
+	label := viper.GetString("key-label")
 	if len(label) == 0 {
-		return fmt.Errorf("label not specified")
+		return fmt.Errorf("key-label not specified")
 	}
 	if err := filesExist(p11lib); err != nil {
 		return err

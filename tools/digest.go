@@ -134,7 +134,6 @@ func (ctx *Context) CalculateDigest() (string, error) {
 			return "", err
 		}
 		h.Write(buf[:size])
-		fmt.Printf("%s\n", rr)
 		prevRR = rr
 	}
 	digest := hex.EncodeToString(h.Sum(nil))

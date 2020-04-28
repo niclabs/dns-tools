@@ -2,12 +2,13 @@ package tools
 
 import (
 	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/asn1"
 	"encoding/binary"
 	"fmt"
 	"github.com/miekg/dns"
 	"github.com/miekg/pkcs11"
-	"math/rand"
+	"sort"
 	"strings"
 	"time"
 )
@@ -47,12 +48,14 @@ func CreateNewRRSIG(zone string, dnsKeyRR *dns.DNSKEY, expDate time.Time, rrSetT
 	}
 }
 
-// generateSalt returns a salt based on a random string seeded on current time.
-func generateSalt() string {
-	rand.Seed(time.Now().UnixNano())
-	r := rand.Int31()
-	s := fmt.Sprintf("%x", r)
-	return s
+// generateSalt returns a 64 bit salt from a cryptographically secure generator.
+func generateSalt() (string, error) {
+	b := make([]byte, 8)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x",b), nil
 }
 
 // removeDuplicates removes the duplicates from an array of object handles.
@@ -119,4 +122,17 @@ func ecdsaPublicKeyToBytes(ecPoint []byte) ([]byte, error) {
 	return bytesPoint, nil
 	// elliptic.pubkey -> {x|y}
 
+}
+
+
+func newTypeArray(typeMap map[uint16]bool) []uint16 {
+	typeArray := make([]uint16, 0)
+	for k := range typeMap {
+		typeArray = append(typeArray, k)
+	}
+
+	sort.Slice(typeArray, func(i, j int) bool {
+		return typeArray[i] < typeArray[j]
+	})
+	return typeArray
 }

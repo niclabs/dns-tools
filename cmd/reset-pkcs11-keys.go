@@ -9,8 +9,8 @@ import (
 
 func init() {
 	resetPKCS11KeysCmd.Flags().StringP("p11lib", "p", "", "Full path to PKCS11Type lib file")
-	resetPKCS11KeysCmd.Flags().StringP("user-key", "k", "1234", "HSM User Login PKCS11Key (default is 1234)")
-	resetPKCS11KeysCmd.Flags().StringP("key-label", "l", "dns-tools", "Label of HSM Signer PKCS11Key")
+	resetPKCS11KeysCmd.Flags().StringP("user-key", "k", "1234", "HSM User Login PKCS11Key")
+	resetPKCS11KeysCmd.Flags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer PKCS11Key")
 }
 
 var resetPKCS11KeysCmd = &cobra.Command{
@@ -38,7 +38,7 @@ func resetPKCS11Keys(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	defer ctx.Close()
-	session, err := ctx.NewPKCS11Session(label, key, p11lib)
+	session, err := ctx.NewPKCS11Session(key, label, p11lib)
 	if err != nil {
 		return err
 	}

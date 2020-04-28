@@ -61,6 +61,15 @@ func (array RRArray) Less(i, j int) bool {
 
 }
 
+// getTypeMap returns an array with the types contained in the array, sorted by value.
+func (array RRArray) getTypeMap() map[uint16]bool {
+	typeMap := make(map[uint16]bool)
+	for _, rr := range array {
+		typeMap[rr.Header().Rrtype] = true
+	}
+	return typeMap
+}
+
 // isSignable checks if all the rrs are signable (they should be).
 func (array RRArray) isSignable(zone string, nsNames map[string]struct{}) bool {
 	for _, rr := range array {
@@ -200,101 +209,74 @@ func (ctx *Context) addNSECRecords() {
 // It returns an error if there is a colission on the hashes.
 func (ctx *Context) addNSEC3Records(optOut bool) error {
 	setList := ctx.getRRSetList(false)
-
-	h := make(map[string]bool)
-	collision := false
-
-	param := &dns.NSEC3PARAM{}
-	param.Hdr.Class = dns.ClassINET
-	param.Hdr.Rrtype = dns.TypeNSEC3PARAM
-	param.Hash = dns.SHA1
+	salt, err := generateSalt()
+	if err != nil {
+		return err
+	}
+	param := &dns.NSEC3PARAM{
+		Hdr: dns.RR_Header{
+			Name:   ctx.soa.Hdr.Name,
+			Rrtype: dns.TypeNSEC3PARAM,
+			Class:  dns.ClassINET,
+			Ttl:    ctx.soa.Minttl,
+		},
+		Hash:       dns.SHA1,
+		Iterations: 100, // Is enough
+		Salt:       salt,
+		SaltLength: uint8(len(salt) / 2),
+	}
 	if optOut {
 		param.Flags = 1
 	}
-	param.Iterations = 100 // 100 is enough!
-	param.Salt = generateSalt()
-	// Possible library bug: for some reason the library does not parse the value in NSEC3PARAM as octets, but RFC5155 4.2
-	// specifies that the behaviour of this field is the same as NSEC3 case (3.1.4).
-	param.SaltLength = uint8(len(param.Salt))
-	apex := ""
-	minttl := uint32(8600)
 
-	n := len(setList)
-	last := -1
+	nsec3List := make([]*dns.NSEC3, 0)
 
-	for _, rrs := range setList {
-		typeMap := make(map[uint16]bool)
-		for _, rr := range rrs {
-			typeMap[rr.Header().Rrtype] = true
-
-			if rr.Header().Rrtype == dns.TypeSOA {
-				param.Hdr.Name = rr.Header().Name
-				apex = rr.Header().Name
-				minttl = rr.(*dns.SOA).Minttl
-				param.Hdr.Ttl = minttl
-				typeMap[dns.TypeNSEC3PARAM] = true
-			}
+	hashedNames := make(map[string]bool)
+	for i, rrSet := range setList {
+		typeMap := rrSet.getTypeMap()
+		if typeMap[dns.TypeSOA] {
+			typeMap[dns.TypeNSEC3PARAM] = true
 		}
 		if optOut && !typeMap[dns.TypeDS] && !typeMap[dns.TypeDNSKEY] {
 			continue
 		}
-
-		typeArray := make([]uint16, 0)
-		for k := range typeMap {
-			typeArray = append(typeArray, k)
-		}
-
-		sort.Slice(typeArray, func(i, j int) bool {
-			return typeArray[i] < typeArray[j]
-		})
-
-		nsec3 := &dns.NSEC3{}
-		nsec3.Hdr.Class = dns.ClassINET
-		nsec3.Hdr.Rrtype = dns.TypeNSEC3
-		nsec3.Hash = param.Hash
-		nsec3.Flags = param.Flags
-		nsec3.Iterations = param.Iterations
-		nsec3.SaltLength = uint8(len(param.Salt)) / 2 // length is in octets and salt is an hex value.
-		nsec3.Salt = param.Salt
-		hName := dns.HashName(rrs[0].Header().Name, param.Hash,
+		hName := dns.HashName(rrSet[0].Header().Name, param.Hash,
 			param.Iterations, param.Salt)
-
-		if h[hName] {
-			collision = true
-			last = -1
-			break
+		if hashedNames[hName] {
+			return fmt.Errorf("collision detected")
 		}
-		h[hName] = true
-
-		nsec3.Hdr.Name = hName
-		nsec3.TypeBitMap = typeArray
-
-		if last >= 0 { // not the first NSEC3 record
-			setList[n+last][0].(*dns.NSEC3).NextDomain = nsec3.Hdr.Name
-			setList[n+last][0].(*dns.NSEC3).HashLength = 20 // It's the length of the hash, not the encoding
-		}
-		last = last + 1
-
-		setList = append(setList, RRArray{nsec3})
-	}
-
-	if last >= 0 {
-		setList[n+last][0].(*dns.NSEC3).NextDomain = setList[n][0].Header().Name
-		setList[n+last][0].(*dns.NSEC3).HashLength = 20 // It's the length of the hash, not the encoding
-
-		for i := n; i < len(setList); i++ {
-			setList[i][0].Header().Name = setList[i][0].Header().Name + "." + apex
-			setList[i][0].Header().Ttl = minttl
-			ctx.rrs = append(ctx.rrs, setList[i][0])
+		hashedNames[hName] = true
+		nsec3 := &dns.NSEC3{
+			Hdr: dns.RR_Header{
+				Name:   hName,
+				Rrtype: dns.TypeNSEC3,
+				Class:  param.Hdr.Class,
+				Ttl:    param.Hdr.Ttl,
+			},
+			Hash:       param.Hash,
+			Flags:      param.Flags,
+			Iterations: param.Iterations,
+			SaltLength: param.SaltLength,
+			Salt:       param.Salt,
+			HashLength: 20,
+			TypeBitMap: newTypeArray(typeMap),
 		}
 
-		ctx.rrs = append(ctx.rrs, param)
-		// Sorting rrSets by name, class and type
-		sort.Sort(ctx.rrs)
+		if i > 0 { // not the first NSEC3 record
+			nsec3List[i-1].NextDomain = nsec3.Hdr.Name
+		}
+		nsec3List = append(nsec3List, nsec3)
 	}
-	if collision {
-		return fmt.Errorf("collision detected")
+	if len(nsec3List) > 0 {
+		// Link the first one
+		nsec3List[len(nsec3List)-1].NextDomain = nsec3List[0].Hdr.Name
+		for i := 0; i < len(nsec3List); i++ {
+			nsec3List[i].Header().Name += "." + ctx.Config.Zone
+			ctx.rrs = append(ctx.rrs, nsec3List[i])
+		}
 	}
+	ctx.rrs = append(ctx.rrs, param)
+	sort.Sort(ctx.rrs)
 	return nil
 }
 
@@ -329,4 +311,13 @@ func sameRRSet(rr1, rr2 dns.RR, byType bool) bool {
 	return rr1.Header().Class == rr2.Header().Class &&
 		strings.ToLower(dns.Fqdn(rr1.Header().Name)) == strings.ToLower(dns.Fqdn(rr2.Header().Name)) &&
 		(!byType || rr1.Header().Rrtype == rr2.Header().Rrtype)
+}
+
+// String returns a string representation of the RRArray, based on the name, class and Rrtype of the first element.
+func (array RRArray) String() string {
+	if len(array) == 0 {
+		return "<empty_setlist>"
+	} else {
+		return fmt.Sprintf("%s#%s#%s", array[0].Header().Name, dns.ClassToString[array[0].Header().Class], dns.TypeToString[array[0].Header().Rrtype])
+	}
 }

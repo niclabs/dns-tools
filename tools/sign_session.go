@@ -63,7 +63,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx.Log.Printf("Start signing...\n")
+	ctx.Log.Printf("Starting signing process...\n")
 	rrSet := ctx.getRRSetList(true)
 
 	// ok, we create DNSKEYS
@@ -72,7 +72,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 		return nil, err
 	}
 
-	for _, v := range rrSet {
+	for i, v := range rrSet {
 		if v[0].Header().Rrtype == dns.TypeZONEMD {
 			continue // Skip it, we sign it post digest
 		}
@@ -80,11 +80,13 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 			zsk,
 			ctx.SignExpDate,
 			v[0].Header().Ttl)
+		ctx.Log.Printf("[Signature %d/%d] Creating RRSig for RRSet %s\n", i+1, len(rrSet)+1, v.String())
 		err = rrSig.Sign(keys.zskSigner, v)
 		if err != nil {
 			err = fmt.Errorf("cannot sign RRSig: %s", err)
 			return nil, err
 		}
+		ctx.Log.Printf("[Signature %d/%d] Verifying RRSig for RRSet %s\n", i+1, len(rrSet)+1, v.String())
 		err = rrSig.Verify(zsk, v)
 		if err != nil {
 			err = fmt.Errorf("cannot check RRSig: %s", err)
@@ -99,10 +101,12 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 		ksk,
 		ctx.SignExpDate,
 		ksk.Hdr.Ttl)
+	ctx.Log.Printf("[Signature %d/%d] Creating RRSig for DNSKEY", len(rrSet)+1, len(rrSet)+1)
 	err = rrDNSKeySig.Sign(keys.kskSigner, rrDNSKeys)
 	if err != nil {
 		return nil, err
 	}
+	ctx.Log.Printf("[Signature %d/%d] Verifying RRSig for DNSKEY", len(rrSet)+1, len(rrSet)+1)
 	err = rrDNSKeySig.Verify(ksk, rrDNSKeys)
 	if err != nil {
 		err = fmt.Errorf("cannot check ksk RRSig: %s", err)
@@ -116,16 +120,19 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 
 	/* begin DigestEnabled digest updating (and signing)*/
 	if ctx.Config.DigestEnabled {
-		if ctx.UpdateDigest() != nil {
-			return nil, fmt.Errorf("Error updating digest for DigestEnabled")
+		ctx.Log.Printf("Updating zone digest...")
+		if err := ctx.UpdateDigest(); err != nil {
+			return nil, fmt.Errorf("Error updating ZONEMD Digest: %s", err)
 		}
 		rrSig := CreateNewRRSIG(ctx.Config.Zone, zsk, ctx.SignExpDate,
 			ctx.zonemd.Header().Ttl)
+		ctx.Log.Printf("Signing new zone digest...")
 		err = rrSig.Sign(keys.zskSigner, []dns.RR{ctx.zonemd})
 		if err != nil {
 			err = fmt.Errorf("cannot sign RRSig: %s", err)
 			return nil, err
 		}
+		ctx.Log.Printf("Verifying new zone digest...")
 		err = rrSig.Verify(zsk, []dns.RR{ctx.zonemd})
 		if err != nil {
 			err = fmt.Errorf("cannot check RRSig: %s", err)
@@ -134,8 +141,10 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 		ctx.rrs = append(ctx.rrs, rrSig)
 		// Sort again
 		sort.Sort(ctx.rrs)
+		ctx.Log.Printf("Digest calculation done")
 	}
 	/* end DigestEnabled digest updating*/
+	ctx.Log.Printf("Signing done")
 
 	ds = ksk.ToDS(1)
 	ctx.Log.Printf("DS: %s\n", ds) // SHA256
