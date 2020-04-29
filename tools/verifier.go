@@ -47,6 +47,8 @@ func (ctx *Context) VerifyFile() (err error) {
 					case 256:
 						pzsk[key.KeyTag()] = key
 					case 257:
+						ds := key.ToDS(1)
+						ctx.Log.Printf("DS for KSK with tag %d is \"%s\"", key.KeyTag(), ds)
 						pksk[key.KeyTag()] = key
 					}
 				}
