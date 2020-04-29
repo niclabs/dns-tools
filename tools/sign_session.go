@@ -47,7 +47,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 	if ctx.Config.Info {
 		ctx.rrs = append(ctx.rrs, &dns.TXT{
 			Hdr: dns.RR_Header{
-				Name:   "_dnstools." + ctx.Config.Zone,
+				Name:   "_created_by." + ctx.Config.Zone,
 				Rrtype: dns.TypeTXT,
 				Class:  dns.ClassINET,
 				Ttl:    ctx.soa.Minttl,
@@ -71,28 +71,42 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 	if err != nil {
 		return nil, err
 	}
-
+	numTries := 3
 	for i, v := range rrSet {
 		if v[0].Header().Rrtype == dns.TypeZONEMD {
+			ctx.Log.Printf("[Signature %d/%d] Skipping RRSet because it is a ZONEMD RR", i+1, len(rrSet)+1)
 			continue // Skip it, we sign it post digest
 		}
-		rrSig := CreateNewRRSIG(ctx.Config.Zone,
-			zsk,
-			ctx.SignExpDate,
-			v[0].Header().Ttl)
-		ctx.Log.Printf("[Signature %d/%d] Creating RRSig for RRSet %s\n", i+1, len(rrSet)+1, v.String())
-		err = rrSig.Sign(keys.zskSigner, v)
-		if err != nil {
-			err = fmt.Errorf("cannot sign RRSig: %s", err)
-			return nil, err
+		for try := 1; try <= numTries; try++ {
+			rrSig := CreateNewRRSIG(ctx.Config.Zone,
+				zsk,
+				ctx.SignExpDate,
+				v[0].Header().Ttl)
+			ctx.Log.Printf("[Signature %d/%d] Creating RRSig for RRSet %s", i+1, len(rrSet)+1, v.String())
+			err = rrSig.Sign(keys.zskSigner, v)
+			if err != nil {
+				err = fmt.Errorf("cannot sign RRSig: %s", err)
+				if try == numTries {
+					return
+				} else {
+					ctx.Log.Printf("%s. Retrying...", err)
+					continue
+				}
+			}
+			ctx.Log.Printf("[Signature %d/%d] Verifying RRSig for RRSet %s\n", i+1, len(rrSet)+1, v.String())
+			err = rrSig.Verify(zsk, v)
+			if err != nil {
+				err = fmt.Errorf("cannot check RRSig: %s", err)
+				if try == numTries {
+					return
+				} else {
+					ctx.Log.Printf("%s. Retrying...", err)
+					continue
+				}
+			}
+			ctx.rrs = append(ctx.rrs, rrSig)
+			break
 		}
-		ctx.Log.Printf("[Signature %d/%d] Verifying RRSig for RRSet %s\n", i+1, len(rrSet)+1, v.String())
-		err = rrSig.Verify(zsk, v)
-		if err != nil {
-			err = fmt.Errorf("cannot check RRSig: %s", err)
-			return
-		}
-		ctx.rrs = append(ctx.rrs, rrSig)
 	}
 
 	rrDNSKeys := RRArray{zsk, ksk}
