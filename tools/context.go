@@ -15,7 +15,8 @@ import (
 // Context contains the state of a zone signing process.
 type Context struct {
 	Config        *ContextConfig
-	SignExpDate   time.Time      // Expiration date for the signature.
+	KSKExpDate    time.Time      // Expiration date for signatures with KSK Key.
+	ZSKExpDate    time.Time      // Expiration date for signatures with ZSK Key.
 	File          io.Reader      // zone path
 	Output        io.WriteCloser // Out path
 	rrs           RRArray        // rrs
@@ -35,7 +36,8 @@ type ContextConfig struct {
 	SignAlgorithm string // Signature algorithm
 	FilePath      string // Output Path
 	OutputPath    string // Output Path
-	ExpDateStr    string // Signature Expiration Date in String
+	KSKExpDateStr string // KSK-signed Signature Expiration Date in String
+	ZSKExpDateStr string // ZSK-signed Signature Expiration Date in String
 	Info          bool   // If true, a credits txt will be added to _dnstools subdomain.
 }
 
@@ -46,7 +48,8 @@ func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error
 	ctx = &Context{
 		Config:        config,
 		Log:           log,
-		SignExpDate:   time.Now().AddDate(0, 3, 0),
+		KSKExpDate:    time.Now().AddDate(0, 3, 0),
+		ZSKExpDate:    time.Now().AddDate(0, 1, 0),
 		Output:        os.Stdout,
 		SignAlgorithm: algorithm,
 	}
@@ -58,12 +61,20 @@ func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error
 		}
 	}
 
-	if len(config.ExpDateStr) > 0 {
-		parsedDate, err := time.Parse("20060102", config.ExpDateStr)
+	if len(config.KSKExpDateStr) > 0 {
+		parsedDate, err := time.Parse("20060102", config.KSKExpDateStr)
 		if err != nil {
 			return nil, fmt.Errorf("cannot parse expiration date: %s", err)
 		}
-		ctx.SignExpDate = parsedDate
+		ctx.KSKExpDate = parsedDate
+	}
+
+	if len(config.ZSKExpDateStr) > 0 {
+		parsedDate, err := time.Parse("20060102", config.ZSKExpDateStr)
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse expiration date: %s", err)
+		}
+		ctx.ZSKExpDate = parsedDate
 	}
 
 	if len(config.OutputPath) > 0 {

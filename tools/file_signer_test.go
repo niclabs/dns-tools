@@ -242,7 +242,7 @@ func TestSession_FileExpiredSig(t *testing.T) {
 		},
 		Log:           Log,
 		SignAlgorithm: tools.ECDSA_P256_SHA256,
-		SignExpDate:   time.Now().AddDate(-1, 0, 0),
+		KSKExpDate:    time.Now().AddDate(-1, 0, 0),
 	}
 	zsk := &vFile{data: []byte(ECZSK)}
 	ksk := &vFile{data: []byte(ECKSK)}

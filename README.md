@@ -39,7 +39,8 @@ the command has three modes:
 * **Reset PKCS#11 Keys** `dns-tools reset-pkcs11-keys` Deletes all the keys from the HSM. Is a very dangerous command. It uses some parameters from `sign`, as `-p`, `-l` and `-k`.
 * **Sign** allows to sign a zone. Its common parameters are:
     * `--create-keys (-c)` creates the keys if they doesn't exist.
-    * `--expiration-date (-e)` Allows to use a specific expiration date for certificate signing.
+    * `--zsk-expiration-date (-Z)` Allows to use a specific expiration date for RRSIG signatures with ZSK key.
+    * `--ksk-expiration-date (-K)` Allows to use a specific expiration date for RRSIG signatures with KSK key.
     * `--file (-f)` allows to select the file that will be signed.
     * `--nsec3 (-3)` Uses NSEC3 for zone signing, as specified in [RFC5155](https://tools.ietf.org/html/rfc5155). If not activated, it uses NSEC.
     * `--optout (-o)` Uses Opt-out, as specified in [RFC5155](https://tools.ietf.org/html/rfc5155).

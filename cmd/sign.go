@@ -18,7 +18,8 @@ func init() {
 	signCmd.PersistentFlags().StringP("sign-algorithm", "a", "rsa", "Algorithm used in signing.")
 	signCmd.PersistentFlags().BoolP("nsec3", "3", false, "Use NSEC3 instead of NSEC.")
 	signCmd.PersistentFlags().BoolP("opt-out", "x", false, "Use NSEC3 with opt-out.")
-	signCmd.PersistentFlags().StringP("expiration-date", "e", "", "Signature expiration Date, in YYYYMMDD format. Default is three months from now.")
+	signCmd.PersistentFlags().StringP("zsk-expiration-date", "Z", "", "ZSK Signature expiration Date, in YYYYMMDD format. Default is one month from now.")
+	signCmd.PersistentFlags().StringP("ksk-expiration-date", "K", "", "KSK Signature expiration Date, in YYYYMMDD format. Default is three months from now.")
 	signCmd.PersistentFlags().BoolP("digest", "d", false, "If true, DigestEnabled RR is added to the signed zone")
 	signCmd.PersistentFlags().BoolP("info", "i", false, "If true, an TXT RR is added with information about the signing process (tool and mode)")
 
@@ -147,7 +148,8 @@ func newSignConfig() (*tools.ContextConfig, error) {
 
 	path := viper.GetString("file")
 	out := viper.GetString("output")
-	expDateStr := viper.GetString("expiration-date")
+	zskExpDateStr := viper.GetString("zsk-expiration-date")
+	kskExpDateStr := viper.GetString("zsk-expiration-date")
 	signAlgorithm := viper.GetString("sign-algorithm")
 
 	if len(path) == 0 {
@@ -173,7 +175,8 @@ func newSignConfig() (*tools.ContextConfig, error) {
 		DigestEnabled: digest,
 		OptOut:        optOut,
 		SignAlgorithm: signAlgorithm,
-		ExpDateStr:    expDateStr,
+		KSKExpDateStr: kskExpDateStr,
+		ZSKExpDateStr: zskExpDateStr,
 		FilePath:      path,
 		OutputPath:    out,
 		Info:          info,

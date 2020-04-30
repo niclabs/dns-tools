@@ -80,7 +80,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 		for try := 1; try <= numTries; try++ {
 			rrSig := CreateNewRRSIG(ctx.Config.Zone,
 				zsk,
-				ctx.SignExpDate,
+				ctx.ZSKExpDate,
 				v[0].Header().Ttl)
 			ctx.Log.Printf("[Signature %d/%d] Creating RRSig for RRSet %s", i+1, len(rrSet)+1, v.String())
 			err = rrSig.Sign(keys.zskSigner, v)
@@ -113,7 +113,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 
 	rrDNSKeySig := CreateNewRRSIG(ctx.Config.Zone,
 		ksk,
-		ctx.SignExpDate,
+		ctx.KSKExpDate,
 		ksk.Hdr.Ttl)
 	ctx.Log.Printf("[Signature %d/%d] Creating RRSig for DNSKEY", len(rrSet)+1, len(rrSet)+1)
 	err = rrDNSKeySig.Sign(keys.kskSigner, rrDNSKeys)
@@ -138,8 +138,11 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 		if err := ctx.UpdateDigest(); err != nil {
 			return nil, fmt.Errorf("Error updating ZONEMD Digest: %s", err)
 		}
-		rrSig := CreateNewRRSIG(ctx.Config.Zone, zsk, ctx.SignExpDate,
-			ctx.zonemd.Header().Ttl)
+		rrSig := CreateNewRRSIG(
+			ctx.Config.Zone,
+			zsk, ctx.ZSKExpDate,
+			ctx.zonemd.Header().Ttl,
+		)
 		ctx.Log.Printf("Signing new zone digest...")
 		err = rrSig.Sign(keys.zskSigner, []dns.RR{ctx.zonemd})
 		if err != nil {
