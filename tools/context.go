@@ -46,7 +46,7 @@ func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error
 	ctx = &Context{
 		Config:        config,
 		Log:           log,
-		SignExpDate:   time.Now().AddDate(1, 0, 0),
+		SignExpDate:   time.Now().AddDate(0, 3, 0),
 		Output:        os.Stdout,
 		SignAlgorithm: algorithm,
 	}
