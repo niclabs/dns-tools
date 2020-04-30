@@ -187,6 +187,7 @@ func TestSession_PKCS11ExpiredSig(t *testing.T) {
 		SignAlgorithm: tools.ECDSA_P256_SHA256,
 		Log:           Log,
 		KSKExpDate:    time.Now().AddDate(-1, 0, 0),
+		ZSKExpDate:    time.Now().AddDate(-1, 0, 0),
 	}
 	session, err := ctx.NewPKCS11Session(key, rsaLabel, p11Lib)
 	if err != nil {
