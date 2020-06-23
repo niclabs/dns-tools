@@ -2,14 +2,16 @@ package tools
 
 import (
 	"fmt"
-	"github.com/miekg/dns"
-	"github.com/miekg/pkcs11"
 	"io"
 	"log"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"time"
+
+	"github.com/miekg/dns"
+	"github.com/miekg/pkcs11"
 )
 
 // Context contains the state of a zone signing process.
@@ -121,7 +123,13 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 			ctx.soa = rr.(*dns.SOA)
 			// UPDATING THE SERIAL
 			if updateSerial {
-				ctx.soa.Serial += 2
+				todayInt, _ := strconv.Atoi(time.Now().Format("20060102"))
+				if ctx.soa.Serial/100 < uint32(todayInt) { // Only if current serial number is less than today date
+					// we set serial as today's YYYYMMDD00
+					ctx.soa.Serial = uint32(todayInt) * 100
+				} else {
+					ctx.soa.Serial += 2
+				}
 			}
 			// Getting zone name if it is not defined as argument
 			if ctx.Config.Zone == "" {
