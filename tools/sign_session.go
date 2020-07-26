@@ -4,8 +4,9 @@ import (
 	"crypto"
 	"encoding/base64"
 	"fmt"
-	"github.com/miekg/dns"
 	"sort"
+
+	"github.com/miekg/dns"
 )
 
 // ErrNoValidKeys represents an error returned when the session does not have valid keys
@@ -80,7 +81,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 		for try := 1; try <= numTries; try++ {
 			rrSig := CreateNewRRSIG(ctx.Config.Zone,
 				zsk,
-				ctx.ZSKExpDate,
+				ctx.Config.RRSIGExpDate,
 				v[0].Header().Ttl)
 			ctx.Log.Printf("[Signature %d/%d] Creating RRSig for RRSet %s", i+1, len(rrSet)+1, v.String())
 			err = rrSig.Sign(keys.zskSigner, v)
@@ -88,10 +89,9 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 				err = fmt.Errorf("cannot sign RRSig: %s", err)
 				if try == numTries {
 					return
-				} else {
-					ctx.Log.Printf("%s. Retrying...", err)
-					continue
 				}
+				ctx.Log.Printf("%s. Retrying...", err)
+				continue
 			}
 			ctx.Log.Printf("[Signature %d/%d] Verifying RRSig for RRSet %s\n", i+1, len(rrSet)+1, v.String())
 			err = rrSig.Verify(zsk, v)
@@ -99,10 +99,9 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 				err = fmt.Errorf("cannot check RRSig: %s", err)
 				if try == numTries {
 					return
-				} else {
-					ctx.Log.Printf("%s. Retrying...", err)
-					continue
 				}
+				ctx.Log.Printf("%s. Retrying...", err)
+				continue
 			}
 			ctx.rrs = append(ctx.rrs, rrSig)
 			break
@@ -113,7 +112,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 
 	rrDNSKeySig := CreateNewRRSIG(ctx.Config.Zone,
 		ksk,
-		ctx.KSKExpDate,
+		ctx.Config.RRSIGExpDate,
 		ksk.Hdr.Ttl)
 	ctx.Log.Printf("[Signature %d/%d] Creating RRSig for DNSKEY", len(rrSet)+1, len(rrSet)+1)
 	err = rrDNSKeySig.Sign(keys.kskSigner, rrDNSKeys)
@@ -140,7 +139,8 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 		}
 		rrSig := CreateNewRRSIG(
 			ctx.Config.Zone,
-			zsk, ctx.ZSKExpDate,
+			zsk,
+			ctx.Config.RRSIGExpDate,
 			ctx.zonemd.Header().Ttl,
 		)
 		ctx.Log.Printf("Signing new zone digest...")

@@ -9,10 +9,6 @@ import (
 	"github.com/niclabs/dns-tools/tools"
 )
 
-// Using default softHSM configuration. Change it if necessary.
-const p11Lib = "/usr/lib/softhsm/libsofthsm2.so" // Path used by Ubuntu Bionic Beaver
-const key = "1234"
-const rsaLabel = "hsm"
 const zone = "example.com."
 
 const fileString = `

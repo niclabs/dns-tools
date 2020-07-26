@@ -2,11 +2,12 @@ package tools_test
 
 import (
 	"fmt"
-	"github.com/niclabs/dns-tools/tools"
 	"io"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/niclabs/dns-tools/tools"
 )
 
 type vFile struct {
@@ -60,7 +61,7 @@ func TestSession_FileRSASign(t *testing.T) {
 			NSEC3:      false,
 			OptOut:     false,
 		},
-		SignAlgorithm: tools.RSA_SHA256,
+		SignAlgorithm: tools.RsaSha256,
 		Log:           Log,
 	}
 	zsk := &vFile{data: []byte(RSAZSK)}
@@ -90,7 +91,7 @@ func TestSession_FileRSASignNSEC3(t *testing.T) {
 			NSEC3:      true,
 			OptOut:     false,
 		},
-		SignAlgorithm: tools.RSA_SHA256,
+		SignAlgorithm: tools.RsaSha256,
 		Log:           Log,
 	}
 	zsk := &vFile{data: []byte(RSAZSK)}
@@ -120,7 +121,7 @@ func TestSession_FileRSASignNSEC3OptOut(t *testing.T) {
 			NSEC3:      true,
 			OptOut:     true,
 		},
-		SignAlgorithm: tools.RSA_SHA256,
+		SignAlgorithm: tools.RsaSha256,
 		Log:           Log,
 	}
 	zsk := &vFile{data: []byte(RSAZSK)}
@@ -150,7 +151,7 @@ func TestSession_FileECDSASign(t *testing.T) {
 			NSEC3:      false,
 			OptOut:     false,
 		},
-		SignAlgorithm: tools.ECDSA_P256_SHA256,
+		SignAlgorithm: tools.EcdsaP256Sha256,
 		Log:           Log,
 	}
 	zsk := &vFile{data: []byte(ECZSK)}
@@ -180,7 +181,7 @@ func TestSession_FileECDSASignNSEC3(t *testing.T) {
 			NSEC3:      true,
 			OptOut:     false,
 		},
-		SignAlgorithm: tools.ECDSA_P256_SHA256,
+		SignAlgorithm: tools.EcdsaP256Sha256,
 		Log:           Log,
 	}
 	zsk := &vFile{data: []byte(ECZSK)}
@@ -210,7 +211,7 @@ func TestSession_FileECDSASignNSEC3OptOut(t *testing.T) {
 			NSEC3:      true,
 			OptOut:     true,
 		},
-		SignAlgorithm: tools.ECDSA_P256_SHA256,
+		SignAlgorithm: tools.EcdsaP256Sha256,
 		Log:           Log,
 	}
 	zsk := &vFile{data: []byte(ECZSK)}
@@ -235,15 +236,14 @@ func TestSession_FileECDSASignNSEC3OptOut(t *testing.T) {
 func TestSession_FileExpiredSig(t *testing.T) {
 	ctx := &tools.Context{
 		Config: &tools.ContextConfig{
-			Zone:       zone,
-			CreateKeys: true,
-			NSEC3:      false,
-			OptOut:     false,
+			Zone:         zone,
+			CreateKeys:   true,
+			NSEC3:        false,
+			OptOut:       false,
+			RRSIGExpDate: time.Now().AddDate(-1, 0, 0),
 		},
 		Log:           Log,
-		SignAlgorithm: tools.ECDSA_P256_SHA256,
-		KSKExpDate:    time.Now().AddDate(-1, 0, 0),
-		ZSKExpDate:    time.Now().AddDate(-1, 0, 0),
+		SignAlgorithm: tools.EcdsaP256Sha256,
 	}
 	zsk := &vFile{data: []byte(ECZSK)}
 	ksk := &vFile{data: []byte(ECKSK)}

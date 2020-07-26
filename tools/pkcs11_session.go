@@ -5,8 +5,9 @@ import (
 	"encoding/asn1"
 	"encoding/binary"
 	"fmt"
-	"github.com/miekg/pkcs11"
 	"time"
+
+	"github.com/miekg/pkcs11"
 )
 
 // PKCS11Session represents a PKCS#11 session. It includes the context, the session handle and a Label String,
@@ -20,7 +21,7 @@ type PKCS11Session struct {
 	Key        string               // Signature key
 }
 
-// Returns the session context
+// Context Returns the session context
 func (session *PKCS11Session) Context() *Context {
 	return session.ctx
 }
@@ -48,21 +49,21 @@ func (session *PKCS11Session) GetKeys() (keys *SigKeys, err error) {
 		if err = session.expireKeys(keys); err != nil {
 			return
 		}
-		if err = session.generateSigners(keys); err != nil {
+		if err = session.generateSigners(keys, ctx.Config.ZSKExpDate, ctx.Config.KSKExpDate); err != nil {
 			return
 		}
 	}
 	return
 }
 
-// Returns bytestrings of public zsk and ksk keys.
+// GetPublicKeyBytes returns bytestrings of public zsk and ksk keys.
 func (session *PKCS11Session) GetPublicKeyBytes(keys *SigKeys) (zskBytes, kskBytes []byte, err error) {
 	var keyFun func(signer crypto.Signer) ([]byte, error)
 	ctx := session.Context()
 	switch ctx.SignAlgorithm {
-	case RSA_SHA256:
+	case RsaSha256:
 		keyFun = session.getRSAPubKeyBytes
-	case ECDSA_P256_SHA256:
+	case EcdsaP256Sha256:
 		keyFun = session.getECDSAPubKeyBytes
 	default:
 		err = fmt.Errorf("undefined sign algorithm")
@@ -145,13 +146,12 @@ func (session *PKCS11Session) expireKeys(keys *SigKeys) error {
 	return session.expirePKCS11Key(keys.kskSigner)
 }
 
-func (session *PKCS11Session) generateSigners(keys *SigKeys) error {
-	defaultExpDate := time.Now().AddDate(1, 0, 0) // TODO: allow to config this?
+func (session *PKCS11Session) generateSigners(keys *SigKeys, zskExpDate, kskExpDate time.Time) error {
 	session.ctx.Log.Printf("generating zsk")
 	public, private, err := session.generateKeyPair(
 		"zsk",
 		true,
-		defaultExpDate)
+		zskExpDate)
 	if err != nil {
 		return err
 	}
@@ -159,14 +159,14 @@ func (session *PKCS11Session) generateSigners(keys *SigKeys) error {
 		Session: session,
 		PK:      public,
 		SK:      private,
-		ExpDate: defaultExpDate,
+		ExpDate: zskExpDate,
 	}
 
 	session.ctx.Log.Printf("generating ksk")
 	public, private, err = session.generateKeyPair(
 		"ksk",
 		true,
-		defaultExpDate)
+		kskExpDate)
 	if err != nil {
 		return err
 	}
@@ -174,7 +174,7 @@ func (session *PKCS11Session) generateSigners(keys *SigKeys) error {
 		Session: session,
 		PK:      public,
 		SK:      private,
-		ExpDate: defaultExpDate,
+		ExpDate: kskExpDate,
 	}
 	session.ctx.Log.Printf("keys generated")
 	return nil
@@ -185,7 +185,7 @@ func (session *PKCS11Session) generateSigners(keys *SigKeys) error {
 func (session *PKCS11Session) generateKeyPair(label string, tokenPersistent bool, expDate time.Time) (pk, sk pkcs11.ObjectHandle, err error) {
 	ctx := session.Context()
 	switch ctx.SignAlgorithm {
-	case RSA_SHA256:
+	case RsaSha256:
 		bitSize := 1024
 		if label == "ksk" {
 			bitSize = 2048
@@ -196,7 +196,7 @@ func (session *PKCS11Session) generateKeyPair(label string, tokenPersistent bool
 			expDate,
 			bitSize,
 		)
-	case ECDSA_P256_SHA256:
+	case EcdsaP256Sha256:
 		return session.genECDSAKeyPair(
 			label,
 			tokenPersistent,
@@ -267,7 +267,7 @@ func (session *PKCS11Session) searchValidKeys() (*SigKeys, error) {
 	for _, object := range objects {
 		attr, err := session.P11Context.GetAttributeValue(session.Handle, object, DateTemplate)
 		if err != nil {
-			return nil, fmt.Errorf("cannot get attributes: %s\n", err)
+			return nil, fmt.Errorf("cannot get attributes: %s", err)
 		}
 		class := uint(binary.LittleEndian.Uint32(attr[0].Value))
 		id := string(attr[1].Value)

@@ -6,11 +6,12 @@ import (
 	"encoding/asn1"
 	"encoding/binary"
 	"fmt"
-	"github.com/miekg/dns"
-	"github.com/miekg/pkcs11"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/miekg/dns"
+	"github.com/miekg/pkcs11"
 )
 
 // CreateNewDNSKEY creates a new DNSKEY RR, using the parameters provided.
@@ -31,9 +32,6 @@ func CreateNewDNSKEY(zone string, flags uint16, algorithm uint8, ttl uint32, pub
 
 // CreateNewRRSIG creates a new RRSIG RR, using the parameters provided.
 func CreateNewRRSIG(zone string, dnsKeyRR *dns.DNSKEY, expDate time.Time, rrSetTTL uint32) *dns.RRSIG {
-	if expDate.IsZero() {
-		expDate = time.Now().AddDate(1, 0, 0)
-	}
 	return &dns.RRSIG{
 		Hdr: dns.RR_Header{
 			// Uses RRset TTL, not key TTL
@@ -55,7 +53,7 @@ func generateSalt() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%x",b), nil
+	return fmt.Sprintf("%x", b), nil
 }
 
 // removeDuplicates removes the duplicates from an array of object handles.
@@ -123,7 +121,6 @@ func ecdsaPublicKeyToBytes(ecPoint []byte) ([]byte, error) {
 	// elliptic.pubkey -> {x|y}
 
 }
-
 
 func newTypeArray(typeMap map[uint16]bool) []uint16 {
 	typeArray := make([]uint16, 0)

@@ -16,14 +16,14 @@ type fileRRSigner struct {
 func (signer *fileRRSigner) Public() crypto.PublicKey {
 	ctx := signer.Session.Context()
 	switch ctx.SignAlgorithm {
-	case RSA_SHA256:
+	case RsaSha256:
 		rsaKey, ok := signer.Key.(*rsa.PrivateKey)
 		if !ok {
 			return nil
 		}
 		pubKey := rsaKey.Public()
 		return pubKey
-	case ECDSA_P256_SHA256:
+	case EcdsaP256Sha256:
 		ecdsaKey, ok := signer.Key.(*ecdsa.PrivateKey)
 		if !ok {
 			return nil
@@ -36,13 +36,13 @@ func (signer *fileRRSigner) Public() crypto.PublicKey {
 func (signer *fileRRSigner) Sign(rand io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
 	ctx := signer.Session.Context()
 	switch ctx.SignAlgorithm {
-	case RSA_SHA256:
+	case RsaSha256:
 		rsaKey, ok := signer.Key.(*rsa.PrivateKey)
 		if !ok {
 			return nil, fmt.Errorf("wrong key type")
 		}
 		return rsaKey.Sign(rand, digest, opts)
-	case ECDSA_P256_SHA256:
+	case EcdsaP256Sha256:
 		ecdsaKey, ok := signer.Key.(*ecdsa.PrivateKey)
 		if !ok {
 			return nil, fmt.Errorf("wrong key type")

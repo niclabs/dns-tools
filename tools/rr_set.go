@@ -3,9 +3,10 @@ package tools
 import (
 	"bytes"
 	"fmt"
-	"github.com/miekg/dns"
 	"sort"
 	"strings"
+
+	"github.com/miekg/dns"
 )
 
 // RRArray represents an array of rrs
@@ -317,7 +318,6 @@ func sameRRSet(rr1, rr2 dns.RR, byType bool) bool {
 func (array RRArray) String() string {
 	if len(array) == 0 {
 		return "<empty_setlist>"
-	} else {
-		return fmt.Sprintf("%s#%s#%s", array[0].Header().Name, dns.ClassToString[array[0].Header().Class], dns.TypeToString[array[0].Header().Rrtype])
 	}
+	return fmt.Sprintf("%s#%s#%s", array[0].Header().Name, dns.ClassToString[array[0].Header().Class], dns.TypeToString[array[0].Header().Rrtype])
 }

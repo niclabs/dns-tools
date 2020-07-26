@@ -58,9 +58,9 @@ func (session *FileSession) GetPublicKeyBytes(keys *SigKeys) (zskBytes, kskBytes
 	var keyFun func(signer crypto.Signer) ([]byte, error)
 	ctx := session.Context()
 	switch ctx.SignAlgorithm {
-	case RSA_SHA256:
+	case RsaSha256:
 		keyFun = session.getRSAPubKeyBytes
-	case ECDSA_P256_SHA256:
+	case EcdsaP256Sha256:
 		keyFun = session.getECDSAPubKeyBytes
 	default:
 		err = fmt.Errorf("undefined sign algorithm")
@@ -89,7 +89,7 @@ func (session *FileSession) generateKeys() (err error) {
 	ctx := session.Context()
 	var zskBytes, kskBytes []byte
 	switch ctx.SignAlgorithm {
-	case RSA_SHA256:
+	case RsaSha256:
 		kskBytes, err = session.generateRSAKey(2048)
 		if err != nil {
 			return
@@ -102,7 +102,7 @@ func (session *FileSession) generateKeys() (err error) {
 		}
 		session.zskFile.Write(zskBytes)
 		session.zskFile.Seek(0, io.SeekStart)
-	case ECDSA_P256_SHA256:
+	case EcdsaP256Sha256:
 		kskBytes, err = session.generateECDSAKey()
 		if err != nil {
 			return
