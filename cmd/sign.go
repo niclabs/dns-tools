@@ -22,7 +22,7 @@ func init() {
 	signCmd.PersistentFlags().StringP("file", "f", "", "Full path to zone file to be signed.")
 	signCmd.PersistentFlags().StringP("zone", "z", "", "Origin zone name. If it is not specified, $ORIGIN inside the file will be used as this value.")
 	signCmd.PersistentFlags().StringP("output", "o", "", "Output for the signed zone file. By default is based on zone file name, with \"-signed\" at the end of the name and before the extension")
-	signCmd.PersistentFlags().BoolP("create-keys", "c", false, "Creates a new pair of keys, outdating all valid keys.")
+	signCmd.PersistentFlags().BoolP("create-keys", "c", false, "Creates a new pair of keys, deleting all previously valid keys.")
 	signCmd.PersistentFlags().StringP("sign-algorithm", "a", "rsa", "Algorithm used in signing.")
 	signCmd.PersistentFlags().BoolP("nsec3", "3", false, "Use NSEC3 instead of NSEC.")
 	signCmd.PersistentFlags().BoolP("opt-out", "x", false, "Use NSEC3 with opt-out.")

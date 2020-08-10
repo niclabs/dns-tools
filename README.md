@@ -42,7 +42,7 @@ the command has three modes:
 
 - **Reset PKCS#11 Keys** `dns-tools reset-pkcs11-keys` Deletes all the keys from the HSM. Is a very dangerous command. It uses some parameters from `sign`, as `-p`, `-l` and `-k`.
 - **Sign** allows to sign a zone. Its common parameters are:
-  - `--create-keys (-c)` creates the keys if they doesn't exist.
+  - `--create-keys (-c)` creates the keys if they do not exist. If they exist, they are overwritten.
   - `--rrsig-expiration-date (-E)` Allows to use a specific expiration date for RRSIG signatures. It can be overrided by --rrsig-duration.
   - `--rrsig-duration (-D)` Allows to use a expiration date for RRSIG signatures relative to current time. It overrides --rrsig-expiration-date. Default value is empty.
   - `--verify-threshold-date (-t)` Exact date it needs to be before a signature expiration to be considered as expired by the verifier. It is ignored if --verify-threshold-duration is set. Default is tomorrow.
