@@ -56,10 +56,11 @@ func (f *vFile) Seek(offset int64, whence int) (int64, error) {
 func TestSession_FileRSASign(t *testing.T) {
 	ctx := &tools.Context{
 		Config: &tools.ContextConfig{
-			Zone:       zone,
-			CreateKeys: true,
-			NSEC3:      false,
-			OptOut:     false,
+			Zone:            zone,
+			CreateKeys:      true,
+			NSEC3:           false,
+			OptOut:          false,
+			VerifyThreshold: time.Now(),
 		},
 		SignAlgorithm: tools.RsaSha256,
 		Log:           Log,
@@ -86,10 +87,11 @@ func TestSession_FileRSASign(t *testing.T) {
 func TestSession_FileRSASignNSEC3(t *testing.T) {
 	ctx := &tools.Context{
 		Config: &tools.ContextConfig{
-			Zone:       zone,
-			CreateKeys: true,
-			NSEC3:      true,
-			OptOut:     false,
+			Zone:            zone,
+			CreateKeys:      true,
+			NSEC3:           true,
+			OptOut:          false,
+			VerifyThreshold: time.Now(),
 		},
 		SignAlgorithm: tools.RsaSha256,
 		Log:           Log,
@@ -116,10 +118,11 @@ func TestSession_FileRSASignNSEC3(t *testing.T) {
 func TestSession_FileRSASignNSEC3OptOut(t *testing.T) {
 	ctx := &tools.Context{
 		Config: &tools.ContextConfig{
-			Zone:       zone,
-			CreateKeys: true,
-			NSEC3:      true,
-			OptOut:     true,
+			Zone:            zone,
+			CreateKeys:      true,
+			NSEC3:           true,
+			OptOut:          true,
+			VerifyThreshold: time.Now(),
 		},
 		SignAlgorithm: tools.RsaSha256,
 		Log:           Log,
@@ -146,10 +149,11 @@ func TestSession_FileRSASignNSEC3OptOut(t *testing.T) {
 func TestSession_FileECDSASign(t *testing.T) {
 	ctx := &tools.Context{
 		Config: &tools.ContextConfig{
-			Zone:       zone,
-			CreateKeys: true,
-			NSEC3:      false,
-			OptOut:     false,
+			Zone:            zone,
+			CreateKeys:      true,
+			NSEC3:           false,
+			OptOut:          false,
+			VerifyThreshold: time.Now(),
 		},
 		SignAlgorithm: tools.EcdsaP256Sha256,
 		Log:           Log,
@@ -176,10 +180,11 @@ func TestSession_FileECDSASign(t *testing.T) {
 func TestSession_FileECDSASignNSEC3(t *testing.T) {
 	ctx := &tools.Context{
 		Config: &tools.ContextConfig{
-			Zone:       zone,
-			CreateKeys: true,
-			NSEC3:      true,
-			OptOut:     false,
+			Zone:            zone,
+			CreateKeys:      true,
+			NSEC3:           true,
+			OptOut:          false,
+			VerifyThreshold: time.Now(),
 		},
 		SignAlgorithm: tools.EcdsaP256Sha256,
 		Log:           Log,
@@ -206,10 +211,11 @@ func TestSession_FileECDSASignNSEC3(t *testing.T) {
 func TestSession_FileECDSASignNSEC3OptOut(t *testing.T) {
 	ctx := &tools.Context{
 		Config: &tools.ContextConfig{
-			Zone:       zone,
-			CreateKeys: true,
-			NSEC3:      true,
-			OptOut:     true,
+			Zone:            zone,
+			CreateKeys:      true,
+			NSEC3:           true,
+			OptOut:          true,
+			VerifyThreshold: time.Now(),
 		},
 		SignAlgorithm: tools.EcdsaP256Sha256,
 		Log:           Log,
@@ -236,11 +242,12 @@ func TestSession_FileECDSASignNSEC3OptOut(t *testing.T) {
 func TestSession_FileExpiredSig(t *testing.T) {
 	ctx := &tools.Context{
 		Config: &tools.ContextConfig{
-			Zone:         zone,
-			CreateKeys:   true,
-			NSEC3:        false,
-			OptOut:       false,
-			RRSIGExpDate: time.Now().AddDate(-1, 0, 0),
+			Zone:            zone,
+			CreateKeys:      true,
+			NSEC3:           false,
+			OptOut:          false,
+			RRSIGExpDate:    time.Now().AddDate(-1, 0, 0),
+			VerifyThreshold: time.Now(),
 		},
 		Log:           Log,
 		SignAlgorithm: tools.EcdsaP256Sha256,

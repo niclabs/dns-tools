@@ -34,24 +34,29 @@ The file `dns-tools` will be created on the same directory.
 
 the command has three modes:
 
-- **Verify** `dns-tools verify` allows to verify a previously signed and/or digested zone. It only receives one parameter, `--file (-f)`, that is used as the input file for verification.
+- **Verify** `dns-tools verify` allows to verify a previously signed and/or digested zone. It receives the following parameters:
+  - `--file (-f)` is used as the input file for verification.
+  - `--zone (-z)` Zone name.
+  - `--verify-threshold-date (-t)` Exact date it needs to be before a signature expiration to be considered as expired by the verifier. It is ignored if --verify-threshold-duration is set. Default is tomorrow.
+  - `--verify-threshold-duration (-T)` Number of days it needs to be before a signature expiration to be considered as valid by the verifier. It overrides `--verify-threshold-date` if it is defined. Default is empty.
+
 - **Reset PKCS#11 Keys** `dns-tools reset-pkcs11-keys` Deletes all the keys from the HSM. Is a very dangerous command. It uses some parameters from `sign`, as `-p`, `-l` and `-k`.
 - **Sign** allows to sign a zone. Its common parameters are:
   - `--create-keys (-c)` creates the keys if they doesn't exist.
-  - `--zsk-expiration-date` Allows to use a specific expiration date for ZSK key if it is created. It can be overrided by --zsk-duration.
-  - `--ksk-expiration-date` Allows to use a specific expiration date for KSK key if it is created. It can be overrided by --ksk-duration.
-  - `--rrsig-expiration-date` Allows to use a specific expiration date for RRSIG signatures. It can be overrided by --rrsig-duration.
-  - `--zsk-duration` Allows to use an expiration date for ZSK key relative to current time if it is created. It overrides --zsk-expiration-date. Default value is empty.
-  - `--ksk-duration` Allows to use an expiration date for KSK key relative to current time if it is created. It overrides --ksk-expiration-date. Default value is empty.
-  - `--rrsig-duration` Allows to use a expiration date for RRSIG signatures relative to current time. It overrides --rrsig-expiration-date. Default value is empty.
+  - `--rrsig-expiration-date (-E)` Allows to use a specific expiration date for RRSIG signatures. It can be overrided by --rrsig-duration.
+  - `--rrsig-duration (-D)` Allows to use a expiration date for RRSIG signatures relative to current time. It overrides --rrsig-expiration-date. Default value is empty.
+  - `--verify-threshold-date (-t)` Exact date it needs to be before a signature expiration to be considered as expired by the verifier. It is ignored if --verify-threshold-duration is set. Default is tomorrow.
+  - `--verify-threshold-duration (-T)` Number of days it needs to be before a signature expiration to be considered as valid by the verifier. It overrides `--verify-threshold-date` if it is defined. Default is empty.
   - `--file (-f)` allows to select the file that will be signed.
   - `--nsec3 (-3)` Uses NSEC3 for zone signing, as specified in [RFC5155](https://tools.ietf.org/html/rfc5155). If not activated, it uses NSEC.
   - `--optout (-o)` Uses Opt-out, as specified in [RFC5155](https://tools.ietf.org/html/rfc5155).
   - `--p11lib (-p)` selects the library to use as pkcs11 HSM driver.
   - `--sign-algorithm (-a)` Sign algorithm used. It can be 'rsa' or 'ecdsa'.
-  - `--zone (-z)` Zone name
+  - `--zone (-z)` Zone name.
   - `--digest (-d)` If true, the signature also creates a [Digest](https://tools.ietf.org/html/draft-ietf-dnsop-dns-zone-digest-05.html) over the zone
   * `--info (-i)` Add a TXT RR to the zone with signing information (signer software, mode and library used if PKCS#11)
+  - `--lazy (-L)` Signs only if it is needed (output file does not exist, already signed zone is invalid or original zone was modified after signed zone). If it is not needed, it returns with an error.
+
 - **ZONEMD calculation** Allows to generate a [ZONEMD](https://tools.ietf.org/html/draft-ietf-dnsop-dns-zone-digest-05.html) RR over the zone. It allows the following commands:
   - `--file (-f)` Input zone file
   - `--output (-o)` Output for zone file

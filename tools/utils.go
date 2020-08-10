@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
-	"github.com/miekg/pkcs11"
 )
 
 // CreateNewDNSKEY creates a new DNSKEY RR, using the parameters provided.
@@ -54,19 +53,6 @@ func generateSalt() (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("%x", b), nil
-}
-
-// removeDuplicates removes the duplicates from an array of object handles.
-func removeDuplicates(objs []pkcs11.ObjectHandle) []pkcs11.ObjectHandle {
-	encountered := map[pkcs11.ObjectHandle]bool{}
-	result := make([]pkcs11.ObjectHandle, 0)
-	for _, o := range objs {
-		if !encountered[o] {
-			encountered[o] = true
-			result = append(result, o)
-		}
-	}
-	return result
 }
 
 // rsaPublicKeyToBytes transforms an RSA Public key to formatted bytes, usable in zone signing

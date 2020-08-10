@@ -12,11 +12,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Defaults for ZSK and KSK signature expirations
+// Defaults for RRSIG signature expirations
 var (
-	DefaultKSKExpiration   time.Time = time.Now().AddDate(1, 0, 0)
-	DefaultZSKExpiration   time.Time = time.Now().AddDate(1, 0, 0)
 	DefaultRRSigExpiration time.Time = time.Now().AddDate(0, 3, 0)
+	DefaultVerifyThreshold time.Time = time.Now()
 )
 
 func init() {
@@ -27,15 +26,15 @@ func init() {
 	signCmd.PersistentFlags().StringP("sign-algorithm", "a", "rsa", "Algorithm used in signing.")
 	signCmd.PersistentFlags().BoolP("nsec3", "3", false, "Use NSEC3 instead of NSEC.")
 	signCmd.PersistentFlags().BoolP("opt-out", "x", false, "Use NSEC3 with opt-out.")
-	signCmd.PersistentFlags().BoolP("digest", "d", false, "If true, DigestEnabled RR is added to the signed zone")
-	signCmd.PersistentFlags().BoolP("info", "i", false, "If true, an TXT RR is added with information about the signing process (tool and mode)")
+	signCmd.PersistentFlags().BoolP("digest", "d", false, "If it is true, DigestEnabled RR is added to the signed zone")
+	signCmd.PersistentFlags().BoolP("info", "i", false, "If it is true, an TXT RR is added with information about the signing process (tool and mode)")
+	signCmd.PersistentFlags().BoolP("lazy", "L", false, "If it is true, the zone will be signed only if it is needed (i.e. it is not signed already, it is signed with different key, the signatures are about to expire or the original zone is newer than the signed zone)")
 
-	signCmd.PersistentFlags().String("zsk-expiration-date", "", "ZSK Key expiration Date, in YYYYMMDD format. It is ignored if --zsk-duration is set. Default is three months from now.")
-	signCmd.PersistentFlags().String("ksk-expiration-date", "", "KSK Key expiration Date, in YYYYMMDD format. It is ignored if --ksk-duration is set. Default is one year from now.")
-	signCmd.PersistentFlags().String("rrsig-expiration-date", "", "RRSIG expiration Date, in YYYYMMDD format. It is ignored if --ksk-duration is set. Default is three months from now.")
-	signCmd.PersistentFlags().String("zsk-duration", "", "Relative ZSK Key expiration Date, in human readable format (combining numbers with labels like year(s), month(s), day(s), hour(s), minute(s), second(s)). Overrides --ksk-date-expiration. Default is empty.")
-	signCmd.PersistentFlags().String("ksk-duration", "", "Relative KSK Key expiration Date, in human readable format (combining numbers with labels like year(s), month(s), day(s), hour(s), minute(s), second(s)). Overrides --zsk-date-expiration. Default is empty.")
-	signCmd.PersistentFlags().String("rrsig-duration", "", "Relative RRSIG expiration Date, in human readable format (combining numbers with labels like year(s), month(s), day(s), hour(s), minute(s), second(s)). Overrides --rrsig-date-expiration. Default is empty.")
+	signCmd.PersistentFlags().StringP("rrsig-expiration-date", "E", "", "RRSIG expiration Date, in YYYYMMDD format. It is ignored if --ksk-duration is set. Default is three months from now.")
+	signCmd.PersistentFlags().StringP("rrsig-duration", "D", "", "Relative RRSIG expiration Date, in human readable format (combining numbers with labels like year(s), month(s), day(s), hour(s), minute(s), second(s)). Overrides --rrsig-date-expiration. Default is empty.")
+
+	signCmd.PersistentFlags().StringP("verify-threshold-duration", "t", "", "Number of days it needs to be before a signature expiration to be considered as valid by the verifier. Default is empty")
+	signCmd.PersistentFlags().StringP("verify-threshold-date", "T", "", "Exact date it needs to be before a signature expiration to be considered as expired by the verifier. It is ignored if --verify-threshold-duration is set. Default is tomorrow")
 
 	pkcs11Cmd.PersistentFlags().StringP("user-key", "k", "1234", "HSM User Login PKCS11Key.")
 	pkcs11Cmd.PersistentFlags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer PKCS11Key.")
@@ -72,11 +71,9 @@ func signPKCS11(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	ctx, err := tools.NewContext(conf, commandLog)
-	if err != nil {
-		return err
+	if conf.Lazy && !needsToBeSigned(conf) {
+		return fmt.Errorf("file does not need to be signed")
 	}
-	defer ctx.Close()
 	p11lib := viper.GetString("p11lib")
 	if len(p11lib) == 0 {
 		return fmt.Errorf("p11lib not specified")
@@ -92,6 +89,11 @@ func signPKCS11(cmd *cobra.Command, _ []string) error {
 	if err := filesExist(p11lib); err != nil {
 		return err
 	}
+	ctx, err := tools.NewContext(conf, commandLog)
+	if err != nil {
+		return err
+	}
+	defer ctx.Close()
 	session, err := ctx.NewPKCS11Session(key, label, p11lib)
 	if err != nil {
 		return err
@@ -112,6 +114,9 @@ func signFile(cmd *cobra.Command, _ []string) error {
 	conf, err := newSignConfig()
 	if err != nil {
 		return err
+	}
+	if conf.Lazy && !needsToBeSigned(conf) {
+		return fmt.Errorf("file does not need to be signed")
 	}
 	ctx, err := tools.NewContext(conf, commandLog)
 	defer ctx.Close()
@@ -159,6 +164,7 @@ func newSignConfig() (*tools.ContextConfig, error) {
 	optOut := viper.GetBool("opt-out")
 	digest := viper.GetBool("digest")
 	info := viper.GetBool("info")
+	lazy := viper.GetBool("lazy")
 
 	path := viper.GetString("file")
 	out := viper.GetString("output")
@@ -180,32 +186,29 @@ func newSignConfig() (*tools.ContextConfig, error) {
 	if err := filesExist(path); err != nil {
 		return nil, err
 	}
-
-	kskExpDate, err := getExpDate(viper.GetString("zsk-duration"), viper.GetString("zsk-expiration-date"), DefaultZSKExpiration)
-	if err != nil {
-		return nil, err
-	}
-	zskExpDate, err := getExpDate(viper.GetString("ksk-duration"), viper.GetString("ksk-expiration-date"), DefaultKSKExpiration)
-	if err != nil {
-		return nil, err
-	}
 	rrsigExpDate, err := getExpDate(viper.GetString("rrsig-duration"), viper.GetString("rrsig-expiration-date"), DefaultRRSigExpiration)
 	if err != nil {
 		return nil, err
 	}
+
+	verifyThreshold, err := getExpDate(viper.GetString("verify-threshold-duration"), viper.GetString("verify-threshold-date"), DefaultVerifyThreshold)
+	if err != nil {
+		return nil, err
+	}
+
 	return &tools.ContextConfig{
-		Zone:          zone,
-		CreateKeys:    createKeys,
-		NSEC3:         nsec3,
-		DigestEnabled: digest,
-		OptOut:        optOut,
-		SignAlgorithm: signAlgorithm,
-		KSKExpDate:    kskExpDate,
-		ZSKExpDate:    zskExpDate,
-		RRSIGExpDate:  rrsigExpDate,
-		FilePath:      path,
-		OutputPath:    out,
-		Info:          info,
+		Zone:            zone,
+		CreateKeys:      createKeys,
+		NSEC3:           nsec3,
+		DigestEnabled:   digest,
+		OptOut:          optOut,
+		SignAlgorithm:   signAlgorithm,
+		RRSIGExpDate:    rrsigExpDate,
+		FilePath:        path,
+		OutputPath:      out,
+		Info:            info,
+		Lazy:            lazy,
+		VerifyThreshold: verifyThreshold,
 	}, nil
 }
 
@@ -217,4 +220,48 @@ func getExpDate(durString, expDate string, def time.Time) (time.Time, error) {
 		return time.Parse("20060102", expDate)
 	}
 	return def, nil
+}
+
+func needsToBeSigned(conf *tools.ContextConfig) bool {
+	signedIsValid := false
+	signedExists := false
+	commandLog.Printf("Checking if file needs to be signed (--lazy flag enabled)...")
+	var zoneModDate, signedModDate time.Time
+	if outputStat, err := os.Stat(conf.OutputPath); err == nil {
+		outputFile, err := os.Open(conf.OutputPath)
+		if err != nil {
+			commandLog.Printf("Error opening output file when verifying if it needs to be signed: %s", err)
+			signedExists = false
+		}
+		defer outputFile.Close()
+		zoneStat, err := os.Stat(conf.FilePath)
+		if err != nil {
+			commandLog.Printf("Error opening zone file when verifying if it needs to be signed: %s", err)
+			return true
+		}
+		zoneModDate = zoneStat.ModTime()
+		signedModDate = outputStat.ModTime()
+		commandLog.Printf("Input Zone modification date: %s", zoneModDate)
+		commandLog.Printf("Signed Zone modification date: %s", signedModDate)
+
+		signedExists = true
+		ctx := &tools.Context{
+			Config: &tools.ContextConfig{
+				Zone:     conf.Zone,
+				FilePath: conf.OutputPath,
+			},
+			File: outputFile,
+			Log:  commandLog,
+		}
+		if err := ctx.VerifyFile(); err == nil {
+			signedIsValid = true
+		} else {
+			commandLog.Printf("Already signed zone does not verify: %s", err)
+		}
+	} else {
+		commandLog.Printf("Cannot open output file: %s", err)
+	}
+	signedIsObsolete := signedModDate.Before(zoneModDate)
+	commandLog.Printf("Signed file exists? %t | Signed file is valid? %t | Signed file is obsolete? %t", signedExists, signedIsValid, signedIsObsolete)
+	return !signedExists || !signedIsValid || signedIsObsolete
 }

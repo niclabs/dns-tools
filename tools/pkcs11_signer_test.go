@@ -12,7 +12,8 @@ import (
 // Using default softHSM configuration. Change it if necessary.
 const p11Lib = "/usr/lib/softhsm/libsofthsm2.so" // Path used by Ubuntu Bionic Beaver
 const p11Key = "1234"
-const p11Label = "hsm"
+const p11LabelRSA = "test-hsm-rsa"
+const p11LabelECDSA = "test-hsm-ecdsa"
 
 func TestSession_PKCS11RSASign(t *testing.T) {
 	ctx := &tools.Context{
@@ -21,11 +22,12 @@ func TestSession_PKCS11RSASign(t *testing.T) {
 			CreateKeys: true,
 			NSEC3:      false,
 			OptOut:     false,
+			VerifyThreshold: time.Now(),
 		},
 		SignAlgorithm: tools.RsaSha256,
 		Log:           Log,
 	}
-	session, err := ctx.NewPKCS11Session(p11Key, p11Label, p11Lib)
+	session, err := ctx.NewPKCS11Session(p11Key, p11LabelRSA, p11Lib)
 	if err != nil {
 		t.Errorf("%s", err)
 		return
@@ -49,11 +51,12 @@ func TestSession_PKCS11RSASignNSEC3(t *testing.T) {
 			CreateKeys: true,
 			NSEC3:      true,
 			OptOut:     false,
+			VerifyThreshold: time.Now(),
 		},
 		SignAlgorithm: tools.RsaSha256,
 		Log:           Log,
 	}
-	session, err := ctx.NewPKCS11Session(p11Key, p11Label, p11Lib)
+	session, err := ctx.NewPKCS11Session(p11Key, p11LabelRSA, p11Lib)
 	if err != nil {
 		t.Errorf("%s", err)
 		return
@@ -77,11 +80,12 @@ func TestSession_PKCS11RSASignNSEC3OptOut(t *testing.T) {
 			CreateKeys: true,
 			NSEC3:      true,
 			OptOut:     true,
+			VerifyThreshold: time.Now(),
 		},
 		SignAlgorithm: tools.RsaSha256,
 		Log:           Log,
 	}
-	session, err := ctx.NewPKCS11Session(p11Key, p11Label, p11Lib)
+	session, err := ctx.NewPKCS11Session(p11Key, p11LabelRSA, p11Lib)
 	if err != nil {
 		t.Errorf("%s", err)
 		return
@@ -105,11 +109,12 @@ func TestSession_PKCS11ECDSASign(t *testing.T) {
 			CreateKeys: true,
 			NSEC3:      false,
 			OptOut:     false,
+			VerifyThreshold: time.Now(),
 		},
 		SignAlgorithm: tools.EcdsaP256Sha256,
 		Log:           Log,
 	}
-	session, err := ctx.NewPKCS11Session(p11Key, p11Label, p11Lib)
+	session, err := ctx.NewPKCS11Session(p11Key, p11LabelECDSA, p11Lib)
 	if err != nil {
 		t.Errorf("%s", err)
 		return
@@ -133,11 +138,12 @@ func TestSession_PKCS11ECDSASignNSEC3(t *testing.T) {
 			CreateKeys: true,
 			NSEC3:      true,
 			OptOut:     false,
+			VerifyThreshold: time.Now(),
 		},
 		SignAlgorithm: tools.EcdsaP256Sha256,
 		Log:           Log,
 	}
-	session, err := ctx.NewPKCS11Session(p11Key, p11Label, p11Lib)
+	session, err := ctx.NewPKCS11Session(p11Key, p11LabelECDSA, p11Lib)
 	if err != nil {
 		t.Errorf("%s", err)
 		return
@@ -157,15 +163,16 @@ func TestSession_PKCS11ECDSASignNSEC3(t *testing.T) {
 func TestSession_PKCS11ECDSASignNSEC3OptOut(t *testing.T) {
 	ctx := &tools.Context{
 		Config: &tools.ContextConfig{
-			Zone:       zone,
-			CreateKeys: true,
-			NSEC3:      true,
-			OptOut:     true,
+			Zone:            zone,
+			CreateKeys:      true,
+			NSEC3:           true,
+			OptOut:          true,
+			VerifyThreshold: time.Now(),
 		},
 		SignAlgorithm: tools.EcdsaP256Sha256,
 		Log:           Log,
 	}
-	session, err := ctx.NewPKCS11Session(p11Key, p11Label, p11Lib)
+	session, err := ctx.NewPKCS11Session(p11Key, p11LabelECDSA, p11Lib)
 	if err != nil {
 		t.Errorf("%s", err)
 		return
@@ -185,16 +192,17 @@ func TestSession_PKCS11ECDSASignNSEC3OptOut(t *testing.T) {
 func TestSession_PKCS11ExpiredSig(t *testing.T) {
 	ctx := &tools.Context{
 		Config: &tools.ContextConfig{
-			Zone:         zone,
-			CreateKeys:   true,
-			NSEC3:        false,
-			OptOut:       false,
-			RRSIGExpDate: time.Now().AddDate(-1, 0, 0),
+			Zone:            zone,
+			CreateKeys:      true,
+			NSEC3:           false,
+			OptOut:          false,
+			RRSIGExpDate:    time.Now().AddDate(-1, 0, 0),
+			VerifyThreshold: time.Now(),
 		},
 		SignAlgorithm: tools.EcdsaP256Sha256,
 		Log:           Log,
 	}
-	session, err := ctx.NewPKCS11Session(p11Key, p11Label, p11Lib)
+	session, err := ctx.NewPKCS11Session(p11Key, p11LabelECDSA, p11Lib)
 	if err != nil {
 		t.Errorf("%s", err)
 		return

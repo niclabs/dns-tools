@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"time"
 
 	"github.com/miekg/pkcs11"
 )
@@ -24,7 +23,6 @@ var pkcs1Prefix = map[crypto.Hash][]byte{
 type PKCS11RRSigner struct {
 	Session *PKCS11Session      // PKCS#11 PKCS11Session
 	SK, PK  pkcs11.ObjectHandle // Secret and Public PKCS11Key handles
-	ExpDate time.Time           // Expiration Date of the key
 }
 
 // Public returns the public key related to the signer

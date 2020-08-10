@@ -2,9 +2,10 @@ package tools
 
 import (
 	"fmt"
-	"github.com/miekg/dns"
 	"os"
 	"time"
+
+	"github.com/miekg/dns"
 )
 
 // RRSigTuple combines an RRSIg and the set related to it.
@@ -97,7 +98,7 @@ func (ctx *Context) VerifyFile() (err error) {
 			continue
 		}
 		expDate := time.Unix(int64(sig.Expiration), 0)
-		if expDate.Before(time.Now()) {
+		if expDate.Before(ctx.Config.VerifyThreshold) {
 			err = fmt.Errorf(
 				"the Signature for RRSet %s has already expired. Expiration date: %s",
 				setName,

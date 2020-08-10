@@ -5,7 +5,6 @@ import (
 	"encoding/asn1"
 	"encoding/binary"
 	"fmt"
-	"time"
 
 	"github.com/miekg/pkcs11"
 )
@@ -30,27 +29,22 @@ func (session *PKCS11Session) Context() *Context {
 // returns an error, if any.
 func (session *PKCS11Session) GetKeys() (keys *SigKeys, err error) {
 	ctx := session.Context()
+	if ctx.Config.CreateKeys { // If we want to create new keys
+		err = session.DestroyAllKeys() // We destroy the previously created keys
+		if err != nil {
+			return
+		}
+		return session.newSigners() // And create them
+	}
 	keys, err = session.searchValidKeys()
 	if err != nil {
-		if err == ErrNoValidKeys {
-			if !ctx.Config.CreateKeys {
-				err = fmt.Errorf("no valid keys and --create-keys disabled." +
-					"Try again using --create-keys flag")
-				return
-			}
+		if err == ErrNoValidKeys { // There are no keys
+			err = fmt.Errorf("no valid keys and --create-keys disabled." +
+				"Try again using --create-keys flag")
 		} else {
 			err = fmt.Errorf("corrupted hsm state (%s)."+
 				" Please reset the keys or create new ones with "+
 				"--create-keys flag", err)
-			return
-		}
-	}
-	if ctx.Config.CreateKeys {
-		if err = session.expireKeys(keys); err != nil {
-			return
-		}
-		if err = session.generateSigners(keys, ctx.Config.ZSKExpDate, ctx.Config.KSKExpDate); err != nil {
-			return
 		}
 	}
 	return
@@ -111,8 +105,6 @@ func (session *PKCS11Session) DestroyAllKeys() error {
 				session.ctx.Log.Printf("Destroy PKCS11Key failed %s\n", e)
 			}
 		}
-	} else {
-		return nil
 	}
 	return nil
 }
@@ -135,54 +127,36 @@ func (session *PKCS11Session) End() error {
 	return nil
 }
 
-func (session *PKCS11Session) expireKeys(keys *SigKeys) error {
-	if keys == nil {
-		return nil
-	}
-	err := session.expirePKCS11Key(keys.zskSigner)
-	if err != nil {
-		return err
-	}
-	return session.expirePKCS11Key(keys.kskSigner)
-}
-
-func (session *PKCS11Session) generateSigners(keys *SigKeys, zskExpDate, kskExpDate time.Time) error {
+func (session *PKCS11Session) newSigners() (keys *SigKeys, err error) {
+	keys = &SigKeys{}
 	session.ctx.Log.Printf("generating zsk")
-	public, private, err := session.generateKeyPair(
-		"zsk",
-		true,
-		zskExpDate)
+	public, private, err := session.generateKeyPair("zsk")
 	if err != nil {
-		return err
+		return
 	}
 	keys.zskSigner = &PKCS11RRSigner{
 		Session: session,
 		PK:      public,
 		SK:      private,
-		ExpDate: zskExpDate,
 	}
 
 	session.ctx.Log.Printf("generating ksk")
-	public, private, err = session.generateKeyPair(
-		"ksk",
-		true,
-		kskExpDate)
+	public, private, err = session.generateKeyPair("ksk")
 	if err != nil {
-		return err
+		return
 	}
 	keys.kskSigner = &PKCS11RRSigner{
 		Session: session,
 		PK:      public,
 		SK:      private,
-		ExpDate: kskExpDate,
 	}
 	session.ctx.Log.Printf("keys generated")
-	return nil
+	return
 }
 
 // generateKeyPair returns a public-private key handle pair of the signAlgorithm defined
 // for the session.
-func (session *PKCS11Session) generateKeyPair(label string, tokenPersistent bool, expDate time.Time) (pk, sk pkcs11.ObjectHandle, err error) {
+func (session *PKCS11Session) generateKeyPair(label string) (pk, sk pkcs11.ObjectHandle, err error) {
 	ctx := session.Context()
 	switch ctx.SignAlgorithm {
 	case RsaSha256:
@@ -190,18 +164,9 @@ func (session *PKCS11Session) generateKeyPair(label string, tokenPersistent bool
 		if label == "ksk" {
 			bitSize = 2048
 		}
-		return session.genRSAKeyPair(
-			label,
-			tokenPersistent,
-			expDate,
-			bitSize,
-		)
+		return session.genRSAKeyPair(label, bitSize)
 	case EcdsaP256Sha256:
-		return session.genECDSAKeyPair(
-			label,
-			tokenPersistent,
-			expDate,
-		)
+		return session.genECDSAKeyPair(label)
 	default:
 		err = fmt.Errorf("undefined sign algorithm")
 		return
@@ -225,7 +190,7 @@ func (session *PKCS11Session) findObject(template []*pkcs11.Attribute) ([]pkcs11
 	if err := session.P11Context.FindObjectsFinal(session.Handle); err != nil {
 		return nil, err
 	}
-	return removeDuplicates(obj), nil
+	return obj, nil
 }
 
 // searchValidKeys returns an array with the valid keys stored in the HSM.
@@ -236,21 +201,15 @@ func (session *PKCS11Session) searchValidKeys() (*SigKeys, error) {
 	AllTemplate := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, session.Label),
 	}
-
-	DateTemplate := []*pkcs11.Attribute{
+	keyTemplate := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, nil),
 		pkcs11.NewAttribute(pkcs11.CKA_ID, nil),
-		pkcs11.NewAttribute(pkcs11.CKA_START_DATE, nil),
-		pkcs11.NewAttribute(pkcs11.CKA_END_DATE, nil),
-		pkcs11.NewAttribute(pkcs11.CKA_LABEL, nil),
 	}
 	objects, err := session.findObject(AllTemplate)
 	if err != nil {
 		return nil, err
 	}
 
-	// I'm not sure if objects start at 0 or 1, so
-	// I'm adding a boolean to tell if that key is present
 	zskSigner := &PKCS11RRSigner{
 		Session: session,
 	}
@@ -262,52 +221,34 @@ func (session *PKCS11Session) searchValidKeys() (*SigKeys, error) {
 		zskSigner: zskSigner,
 	}
 	found := 0
-	t := time.Now()
-	sToday := t.Format("20060102")
 	for _, object := range objects {
-		attr, err := session.P11Context.GetAttributeValue(session.Handle, object, DateTemplate)
+		attr, err := session.P11Context.GetAttributeValue(session.Handle, object, keyTemplate)
 		if err != nil {
 			return nil, fmt.Errorf("cannot get attributes: %s", err)
 		}
 		class := uint(binary.LittleEndian.Uint32(attr[0].Value))
 		id := string(attr[1].Value)
-		start := string(attr[2].Value)
-		end := string(attr[3].Value)
-		valid := start <= sToday && sToday <= end
-		endTime, _ := time.Parse("20060102", end)
 
-		session.ctx.Log.Printf("Checking key class %v id %s and valid %t\n", class, id, valid)
-
-		if !valid {
-			continue
-		}
+		session.ctx.Log.Printf("Checking key class=%v and id=%s", class, id)
 
 		if class == pkcs11.CKO_PUBLIC_KEY {
 			if id == "zsk" {
-				if valid {
-					session.ctx.Log.Printf("Found valid Public ZSK")
-					zskSigner.ExpDate = endTime
-					zskSigner.PK = object
-					found++
-				}
+				session.ctx.Log.Printf("Found Public ZSK")
+				zskSigner.PK = object
+				found++
 			}
 			if id == "ksk" {
-				if valid {
-					session.ctx.Log.Printf("Found valid Public KSK")
-					kskSigner.ExpDate = endTime
-					kskSigner.PK = object
-					found++
-				}
+				session.ctx.Log.Printf("Found valid Public KSK")
+				kskSigner.PK = object
+				found++
 			}
 		} else if class == pkcs11.CKO_PRIVATE_KEY {
 			if id == "zsk" {
 				session.ctx.Log.Printf("Found valid Private ZSK\n")
-				zskSigner.ExpDate = endTime
 				zskSigner.SK = object
 				found++
 			} else if id == "ksk" {
 				session.ctx.Log.Printf("Found valid Private KSK\n")
-				kskSigner.ExpDate = endTime
 				kskSigner.SK = object
 				found++
 			}
@@ -325,43 +266,17 @@ func (session *PKCS11Session) searchValidKeys() (*SigKeys, error) {
 	}
 }
 
-// expirePKCS11Key expires a key into the HSM.
-func (session *PKCS11Session) expirePKCS11Key(signer crypto.Signer) error {
-	pkcs11Signer, ok := signer.(*PKCS11RRSigner)
-	if !ok {
-		return fmt.Errorf("cannot convert tools into PKCS11RRSigner")
-	}
-	today := time.Now()
-	yesterday := today.AddDate(0, 0, -1)
-
-	expireTemplate := []*pkcs11.Attribute{
-		pkcs11.NewAttribute(pkcs11.CKA_END_DATE, yesterday),
-	}
-	if pkcs11Signer.PK != 0 {
-		if err := session.P11Context.SetAttributeValue(session.Handle, pkcs11Signer.PK, expireTemplate); err != nil {
-			return err
-		}
-	}
-	if pkcs11Signer.SK != 0 {
-		return session.P11Context.SetAttributeValue(session.Handle, pkcs11Signer.SK, expireTemplate)
-	}
-	return nil
-}
-
 // genRSAKeyPair creates a RSA key pair, or returns an error if it cannot create the key pair.
-func (session *PKCS11Session) genRSAKeyPair(tokenLabel string, tokenPersistent bool, expDate time.Time, bits int) (pkcs11.ObjectHandle, pkcs11.ObjectHandle, error) {
+func (session *PKCS11Session) genRSAKeyPair(tokenLabel string, bits int) (pkcs11.ObjectHandle, pkcs11.ObjectHandle, error) {
 	if session == nil || session.P11Context == nil {
 		return 0, 0, fmt.Errorf("session not initialized")
 	}
-	today := time.Now()
 	publicKeyTemplate := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, session.Label),
 		pkcs11.NewAttribute(pkcs11.CKA_ID, []byte(tokenLabel)),
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
-		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, tokenPersistent),
-		pkcs11.NewAttribute(pkcs11.CKA_START_DATE, today),
-		pkcs11.NewAttribute(pkcs11.CKA_END_DATE, expDate),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
 		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
 		pkcs11.NewAttribute(pkcs11.CKA_PUBLIC_EXPONENT, []byte{1, 0, 1}),
 		pkcs11.NewAttribute(pkcs11.CKA_MODULUS_BITS, bits),
@@ -372,9 +287,7 @@ func (session *PKCS11Session) genRSAKeyPair(tokenLabel string, tokenPersistent b
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, session.Label),
 		pkcs11.NewAttribute(pkcs11.CKA_ID, []byte(tokenLabel)),
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_RSA),
-		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, tokenPersistent),
-		pkcs11.NewAttribute(pkcs11.CKA_START_DATE, today),
-		pkcs11.NewAttribute(pkcs11.CKA_END_DATE, expDate),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
 		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
 		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
 	}
@@ -394,20 +307,17 @@ func (session *PKCS11Session) genRSAKeyPair(tokenLabel string, tokenPersistent b
 }
 
 // genECDSAKeyPair creates a ECDSA key pair, or returns an error if it cannot create the key pair.
-func (session *PKCS11Session) genECDSAKeyPair(tokenLabel string, tokenPersistent bool, expDate time.Time) (pkcs11.ObjectHandle, pkcs11.ObjectHandle, error) {
+func (session *PKCS11Session) genECDSAKeyPair(tokenLabel string) (pkcs11.ObjectHandle, pkcs11.ObjectHandle, error) {
 	if session == nil || session.P11Context == nil {
 		return 0, 0, fmt.Errorf("session not initialized")
 	}
-	today := time.Now()
 	ecParams, _ := asn1.Marshal(asn1.ObjectIdentifier{1, 2, 840, 10045, 3, 1, 7}) // P-256 params
 	publicKeyTemplate := []*pkcs11.Attribute{
 		pkcs11.NewAttribute(pkcs11.CKA_CLASS, pkcs11.CKO_PUBLIC_KEY),
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, session.Label),
 		pkcs11.NewAttribute(pkcs11.CKA_ID, []byte(tokenLabel)),
-		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, tokenPersistent),
-		pkcs11.NewAttribute(pkcs11.CKA_START_DATE, today),
-		pkcs11.NewAttribute(pkcs11.CKA_END_DATE, expDate),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
 		pkcs11.NewAttribute(pkcs11.CKA_VERIFY, true),
 		pkcs11.NewAttribute(pkcs11.CKA_EC_PARAMS, ecParams),
 	}
@@ -417,9 +327,7 @@ func (session *PKCS11Session) genECDSAKeyPair(tokenLabel string, tokenPersistent
 		pkcs11.NewAttribute(pkcs11.CKA_LABEL, session.Label),
 		pkcs11.NewAttribute(pkcs11.CKA_ID, []byte(tokenLabel)),
 		pkcs11.NewAttribute(pkcs11.CKA_KEY_TYPE, pkcs11.CKK_EC),
-		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, tokenPersistent),
-		pkcs11.NewAttribute(pkcs11.CKA_START_DATE, today),
-		pkcs11.NewAttribute(pkcs11.CKA_END_DATE, expDate),
+		pkcs11.NewAttribute(pkcs11.CKA_TOKEN, true),
 		pkcs11.NewAttribute(pkcs11.CKA_SIGN, true),
 		pkcs11.NewAttribute(pkcs11.CKA_SENSITIVE, true),
 	}

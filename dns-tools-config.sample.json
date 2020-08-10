@@ -9,14 +9,13 @@
   "nsec3": true,
   "opt-out": true,
   "digest": true,
-  "zsk-expiration-date": "20300101",
-  "ksk-expiration-date": "20300101",
   "rrsig-expiration-date": "20300101",
-  "zsk-duration": "1 year 7 months 2 days 8 hours 3 minutes 12 seconds",
-  "ksk-duration": "10 years 3 months 2 days 1 hr 4 min 3 secs",
   "rrsig-duration": "10 years 3 months 2 days 1 hr 4 min 3 secs",
   "zone": "example.com.",
   "zsk-keyfile": "zsk.pem",
   "ksk-keyfile": "ksk.pem",
-  "info": false
+  "info": false,
+  "lazy": true,
+  "verify-threshold-duration": "7 days",
+  "verify-threshold-date": "20300101"
 }

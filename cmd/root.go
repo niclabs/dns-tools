@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"log"
 	"os"
+
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var cfgFile string
@@ -58,7 +59,7 @@ func filesExist(filepaths ...string) error {
 	for _, path := range filepaths {
 		_, err := os.Stat(path)
 		if err != nil || os.IsNotExist(err) {
-			return fmt.Errorf("File %s doesn't exist or it has not reading permissions\n", path)
+			return fmt.Errorf("file %s doesn't exist or it has not reading permissions", path)
 		}
 	}
 	return nil

@@ -28,18 +28,18 @@ type Context struct {
 
 // ContextConfig contains the common args to sign and verify files
 type ContextConfig struct {
-	Zone          string    // Zone name
-	CreateKeys    bool      // If True, the sign process creates new keys for the signature.
-	NSEC3         bool      // If true, the zone is signed using NSEC3
-	OptOut        bool      // If true and NSEC3 is true, the zone is signed using OptOut NSEC3 flag.
-	DigestEnabled bool      // If true, the zone is hashed and DigestEnabled is used
-	SignAlgorithm string    // Signature algorithm
-	FilePath      string    // Output Path
-	OutputPath    string    // Output Path
-	KSKExpDate    time.Time // KSK Key Expiration Date
-	ZSKExpDate    time.Time // ZSK Key Expiration Date
-	RRSIGExpDate  time.Time // RRSIG Expiration Date
-	Info          bool      // If true, a credits txt will be added to _dnstools subdomain.
+	Zone            string    // Zone name
+	CreateKeys      bool      // If True, the sign process creates new keys for the signature.
+	NSEC3           bool      // If true, the zone is signed using NSEC3
+	OptOut          bool      // If true and NSEC3 is true, the zone is signed using OptOut NSEC3 flag.
+	DigestEnabled   bool      // If true, the zone is hashed and DigestEnabled is used
+	SignAlgorithm   string    // Signature algorithm
+	FilePath        string    // Output Path
+	OutputPath      string    // Output Path
+	RRSIGExpDate    time.Time // RRSIG Expiration Date
+	Info            bool      // If true, a credits txt will be added to _dnstools subdomain.
+	Lazy            bool      // If true, the zone will not be signed if it is not needed.
+	VerifyThreshold time.Time // Verification Threshold
 }
 
 // NewContext creates a new context based on a configuration structure. It also receives
@@ -49,15 +49,17 @@ func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error
 	ctx = &Context{
 		Config:        config,
 		Log:           log,
-		Output:        os.Stdout,
 		SignAlgorithm: algorithm,
 	}
 
 	if len(config.FilePath) > 0 {
-		ctx.File, err = os.Open(config.FilePath)
+		f, err := os.Open(config.FilePath)
 		if err != nil {
 			return nil, err
 		}
+		ctx.File = f
+	} else {
+		ctx.File = os.Stdin
 	}
 
 	if len(config.OutputPath) > 0 {
@@ -66,6 +68,8 @@ func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error
 			return nil, fmt.Errorf("couldn't create out file in path %s: %s", config.OutputPath, err)
 		}
 		ctx.Output = writer
+	} else {
+		ctx.Output = os.Stdout
 	}
 	return ctx, nil
 }
@@ -73,7 +77,7 @@ func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error
 // ReadAndParseZone parses a DNS zone file and returns an array of rrs and the zone minTTL.
 // It also updates the serial in the SOA record if updateSerial is true.
 // If setCredits is true, it adds a TXT record to the zone, under the subdomain _dnstools, with signing information
-// Returns the SOA
+// Returns the SOA.
 // IT DOES NOT SORT THE RR LIST
 func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 	if ctx.soa != nil {
