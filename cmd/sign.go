@@ -38,7 +38,7 @@ func init() {
 
 	pkcs11Cmd.PersistentFlags().StringP("user-key", "k", "1234", "HSM User Login PKCS11Key.")
 	pkcs11Cmd.PersistentFlags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer PKCS11Key.")
-	pkcs11Cmd.PersistentFlags().StringP("p11lib", "p", "", "Full path to PKCS11Type lib file.")
+	pkcs11Cmd.PersistentFlags().StringP("p11lib", "p", "", "Full path to PKCS11 lib file.")
 	signCmd.AddCommand(pkcs11Cmd)
 
 	fileCmd.PersistentFlags().StringP("zsk-keyfile", "Z", "zsk.pem", "Full path to ZSK key file.")

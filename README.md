@@ -93,10 +93,10 @@ Some arguments were omitted, so they are set by their default value.
 
 ## How to verify a zone
 
-The following command verifies the previously created zone.
+The following command verifies a previously signed (or digested) zone.
 
 ```
-./dns-tools verify -f ./example.com.signed
+./dns-tools verify -f ./example.com.signed -z example.com
 ```
 
 ## How to add ZONEMD RR to a zone
