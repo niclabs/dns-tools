@@ -180,4 +180,4 @@ Examples:
 
 ## Bugs
 
-- [Some incompatibilities with some common PKCS11-enabled libraries](https://github.com/niclabs/dns-tools/issues/8)
+- ~[Some incompatibilities with some common PKCS11-enabled libraries](https://github.com/niclabs/dns-tools/issues/8)~
