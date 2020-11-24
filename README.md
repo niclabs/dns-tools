@@ -23,7 +23,7 @@ To compile it, you need to have `Go` installed on your machine. You can find how
 Then, you need to clone, execute and build the repository:
 
 ```
-git clone https://github.com/niclabs/dns-tools --branch v1.1.0
+git clone https://github.com/niclabs/dns-tools
 cd dns-tools
 go build
 ```
