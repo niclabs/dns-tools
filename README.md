@@ -49,7 +49,7 @@ the command has three modes:
   - `--verify-threshold-duration (-T)` Number of days it needs to be before a signature expiration to be considered as valid by the verifier. It overrides `--verify-threshold-date` if it is defined. Default is empty.
   - `--file (-f)` allows to select the file that will be signed.
   - `--nsec3 (-3)` Uses NSEC3 for zone signing, as specified in [RFC5155](https://tools.ietf.org/html/rfc5155). If not activated, it uses NSEC.
-  - `--optout (-o)` Uses Opt-out, as specified in [RFC5155](https://tools.ietf.org/html/rfc5155).
+  - `--opt-out (-x)` Uses Opt-out, as specified in [RFC5155](https://tools.ietf.org/html/rfc5155).
   - `--p11lib (-p)` selects the library to use as pkcs11 HSM driver.
   - `--sign-algorithm (-a)` Sign algorithm used. It can be 'rsa' or 'ecdsa'.
   - `--zone (-z)` Zone name.
