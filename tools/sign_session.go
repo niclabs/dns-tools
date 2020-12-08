@@ -86,7 +86,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 			ctx.Log.Printf("[Signature %d/%d] Creating RRSig for RRSet %s", i+1, len(rrSet)+1, v.String())
 			err = rrSig.Sign(keys.zskSigner, v)
 			if err != nil {
-				err = fmt.Errorf("cannot sign RRSig: %s", err)
+				err = fmt.Errorf("cannot create RRSig: %s", err)
 				if try == numTries {
 					return
 				}
@@ -96,7 +96,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 			ctx.Log.Printf("[Signature %d/%d] Verifying RRSig for RRSet %s\n", i+1, len(rrSet)+1, v.String())
 			err = rrSig.Verify(zsk, v)
 			if err != nil {
-				err = fmt.Errorf("cannot check RRSig: %s", err)
+				err = fmt.Errorf("RRSig does not validate: %s", err)
 				if try == numTries {
 					return
 				}
@@ -146,7 +146,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 		ctx.Log.Printf("Signing new zone digest...")
 		err = rrSig.Sign(keys.zskSigner, []dns.RR{ctx.zonemd})
 		if err != nil {
-			err = fmt.Errorf("cannot sign RRSig: %s", err)
+			err = fmt.Errorf("cannot create RRSig: %s", err)
 			return nil, err
 		}
 		ctx.Log.Printf("Verifying new zone digest...")

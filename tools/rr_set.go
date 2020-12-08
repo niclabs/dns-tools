@@ -272,7 +272,11 @@ func (ctx *Context) addNSEC3Records(optOut bool) error {
 		// Link the first one
 		nsec3List[len(nsec3List)-1].NextDomain = nsec3List[0].Hdr.Name
 		for i := 0; i < len(nsec3List); i++ {
-			nsec3List[i].Header().Name += "." + ctx.Config.Zone
+			if ctx.Config.Zone != "." {
+				nsec3List[i].Header().Name += "." + ctx.Config.Zone
+			} else {
+				nsec3List[i].Header().Name += ctx.Config.Zone
+			}
 			ctx.rrs = append(ctx.rrs, nsec3List[i])
 		}
 	}
