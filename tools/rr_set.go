@@ -286,12 +286,8 @@ func (ctx *Context) addNSEC3Records() error {
 		if typeMap[dns.TypeSOA] {
 			typeMap[dns.TypeNSEC3PARAM] = true
 		}
-		if !typeMap[dns.TypeDS] && !typeMap[dns.TypeDNSKEY] {
-			if ctx.Config.OptOut {
-				continue
-			} else {
-				ctx.Log.Printf("opt-out is not set and owner name %s has not a DS RR", rrSet[0].Header().Name)
-			}
+		if !typeMap[dns.TypeDS] && !typeMap[dns.TypeDNSKEY] && ctx.Config.OptOut {
+			continue
 		}
 		// Add current NSEC3 RR
 		err := nsec3list.add(rrSet[0].Header().Name, param, typeMap)

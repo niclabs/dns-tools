@@ -51,7 +51,6 @@ func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error
 		Config:        config,
 		Log:           log,
 		SignAlgorithm: algorithm,
-		Glue:          make(map[string]struct{}),
 	}
 
 	if len(config.FilePath) > 0 {
@@ -88,6 +87,9 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 	}
 	if ctx.File == nil {
 		return fmt.Errorf("no file defined on context")
+	}
+	if ctx.Glue == nil {
+		ctx.Glue = make(map[string]struct{})
 	}
 
 	rrs := make(RRArray, 0)
