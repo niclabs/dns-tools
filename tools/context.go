@@ -17,13 +17,14 @@ import (
 // Context contains the state of a zone signing process.
 type Context struct {
 	Config        *ContextConfig
-	File          io.Reader      // zone path
-	Output        io.WriteCloser // Out path
-	rrs           RRArray        // rrs
-	soa           *dns.SOA       // SOA RR
-	zonemd        *dns.ZONEMD
-	Log           *log.Logger   // Logger
-	SignAlgorithm SignAlgorithm // Sign Algorithm
+	File          io.Reader           // zone path
+	Output        io.WriteCloser      // Out path
+	rrs           RRArray             // rrs
+	soa           *dns.SOA            // SOA RR
+	zonemd        *dns.ZONEMD         // ZONEMD RR
+	Log           *log.Logger         // Logger
+	SignAlgorithm SignAlgorithm       // Sign Algorithm
+	Glue          map[string]struct{} // Map with glue fqdns.
 }
 
 // ContextConfig contains the common args to sign and verify files
@@ -50,6 +51,7 @@ func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error
 		Config:        config,
 		Log:           log,
 		SignAlgorithm: algorithm,
+		Glue:          make(map[string]struct{}),
 	}
 
 	if len(config.FilePath) > 0 {
@@ -99,6 +101,7 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 	if err := zone.Err(); err != nil {
 		return err
 	}
+	nsValues := make(map[string]struct{})
 	for rr, ok := zone.Next(); ok; rr, ok = zone.Next() {
 		switch rr.Header().Rrtype {
 		case dns.TypeSOA:
@@ -122,6 +125,8 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 			}
 		case dns.TypeZONEMD:
 			zoneMDArray = append(zoneMDArray, rr.(*dns.ZONEMD))
+		case dns.TypeNS:
+			nsValues[rr.(*dns.NS).Ns] = struct{}{}
 		}
 		rrs = append(rrs, rr)
 	}
@@ -145,15 +150,18 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 	}
 
 	ctx.Log.Printf("Zone parsed is %s", ctx.Config.Zone)
-	// We check that all the rrs are from the defined zone
+	// Last iteration, we check for rr zones and we define glue domains
 	zoneRRs := make(RRArray, 0)
 	for _, rr := range rrs {
 		if strings.HasSuffix(rr.Header().Name, ctx.Config.Zone) {
 			zoneRRs = append(zoneRRs, rr)
 		}
+		if _, ok := nsValues[rr.Header().Name]; ok && rr.Header().Name != ctx.Config.Zone &&
+			(rr.Header().Rrtype == dns.TypeA || rr.Header().Rrtype == dns.TypeAAAA) {
+			ctx.Glue[rr.Header().Name] = struct{}{}
+		}
 	}
 	ctx.rrs = zoneRRs
-
 	return nil
 }
 
@@ -161,7 +169,9 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 func (ctx *Context) AddNSEC13() {
 	if ctx.Config.NSEC3 {
 		for {
-			if err := ctx.addNSEC3Records(ctx.Config.OptOut); err == nil {
+			if err := ctx.addNSEC3Records(); err != nil {
+				ctx.Log.Printf("%s", err)
+			} else {
 				break
 			}
 		}
@@ -235,4 +245,12 @@ func (ctx *Context) genInfo(session SignSession) string {
 	}
 	// I assume that no session implies digest mode
 	return fmt.Sprintf("signer=dns-tools;timestamp=%d;mode=digest", now)
+}
+
+// isSignable returns true if the rr requires to be signed.
+// The design of DNSSEC stipulates that delegations (non-apex NS records)
+// are not signed, and neither are any glue records.
+func (ctx *Context) isSignable(ownerName string) bool {
+	_, isGlue := ctx.Glue[dns.Fqdn(ownerName)]
+	return !isGlue
 }

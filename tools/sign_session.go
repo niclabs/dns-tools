@@ -38,14 +38,16 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 	if err != nil {
 		return
 	}
-
+	ctx.Log.Printf("Starting signing process for %s", ctx.Config.Zone)
 	// Do we use DigestEnabled?
 	if ctx.Config.DigestEnabled {
+		ctx.Log.Println("Adding ZONEMD RR")
 		ctx.AddZONEMDRecord()
 		ctx.CleanDigests()
 	}
 
 	if ctx.Config.Info {
+		ctx.Log.Println("Adding _created_by TXT for marking library usage")
 		ctx.rrs = append(ctx.rrs, &dns.TXT{
 			Hdr: dns.RR_Header{
 				Name:   "_created_by." + ctx.Config.Zone,
@@ -59,12 +61,13 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 
 	sort.Sort(ctx.rrs)
 
+	ctx.Log.Println("Creating NSEC/NSEC3 RRs")
 	ctx.AddNSEC13()
 	keys, err := session.GetKeys()
 	if err != nil {
 		return nil, err
 	}
-	ctx.Log.Printf("Starting signing process...\n")
+	ctx.Log.Println("Signing")
 	rrSet := ctx.getRRSetList(true)
 
 	// ok, we create DNSKEYS
@@ -161,7 +164,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 		ctx.Log.Printf("Digest calculation done")
 	}
 	/* end DigestEnabled digest updating*/
-	ctx.Log.Printf("Signing done")
+	ctx.Log.Printf("Signing done, writing zone")
 
 	ds = ksk.ToDS(1)
 	ctx.Log.Printf("DS: %s\n", ds) // SHA256

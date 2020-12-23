@@ -3,7 +3,7 @@
 # possible zone files
 *.txt
 *.com
-*.com.signed
+*.signed
 # binary
 dns-tools
 # scripts that should not be here

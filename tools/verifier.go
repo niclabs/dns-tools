@@ -31,7 +31,6 @@ func (ctx *Context) VerifyFile() (err error) {
 		return
 	}
 	setList := ctx.getRRSetList(true)
-	nsNames := getAllNSNames(ctx.rrs)
 
 	rrSigTuples := make(map[string]*RRSigTuple)
 
@@ -40,7 +39,14 @@ func (ctx *Context) VerifyFile() (err error) {
 
 	// Pairing each RRArray with its RRSig
 	for _, set := range setList {
-		if len(set) > 0 && set.isSignable(ctx.Config.Zone, nsNames) {
+		isSignable := true
+		for _, rr := range set {
+			if !ctx.isSignable(rr.Header().Name) {
+				isSignable = false
+				break
+			}
+		}
+		if len(set) > 0 && isSignable {
 			if set[0].Header().Rrtype == dns.TypeDNSKEY {
 				for _, rr := range set {
 					key := rr.(*dns.DNSKEY)

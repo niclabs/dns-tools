@@ -108,6 +108,7 @@ func ecdsaPublicKeyToBytes(ecPoint []byte) ([]byte, error) {
 
 }
 
+// Transformas an array of booleans into a map of uint16s
 func newTypeArray(typeMap map[uint16]bool) []uint16 {
 	typeArray := make([]uint16, 0)
 	for k := range typeMap {

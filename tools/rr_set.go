@@ -16,6 +16,11 @@ type RRArray []dns.RR
 // RRSetList is an array of RRArrays.
 type RRSetList []RRArray
 
+type NSEC3List struct {
+	hashed map[string]string
+	rrs    map[string]*dns.NSEC3
+}
+
 // Len returns the length of an RRArray.
 func (array RRArray) Len() int {
 	return len(array)
@@ -71,14 +76,61 @@ func (array RRArray) getTypeMap() map[uint16]bool {
 	return typeMap
 }
 
-// isSignable checks if all the rrs are signable (they should be).
-func (array RRArray) isSignable(zone string, nsNames map[string]struct{}) bool {
-	for _, rr := range array {
-		if !isSignable(rr, zone, nsNames) {
-			return false
-		}
+func newNSEC3List() *NSEC3List {
+	return &NSEC3List{
+		hashed: make(map[string]string),
+		rrs:    make(map[string]*dns.NSEC3),
 	}
-	return true
+}
+
+func (nsec3Map NSEC3List) toArray() RRArray {
+	arr := make(RRArray, 0)
+	for _, rr := range nsec3Map.rrs {
+		arr = append(arr, rr)
+	}
+	sort.Sort(arr)
+	return arr
+}
+
+func (nsec3Map NSEC3List) add(ownerName string, param *dns.NSEC3PARAM, typeMap map[uint16]bool) error {
+	hName := dns.HashName(ownerName, param.Hash,
+		param.Iterations, param.Salt)
+	if hName == "" {
+		return fmt.Errorf("empty NSEC3")
+	}
+	if name, hashedBefore := nsec3Map.hashed[hName]; hashedBefore && ownerName != name {
+		return fmt.Errorf("hash collision")
+	}
+	if nsec3, ok := nsec3Map.rrs[hName]; !ok {
+		// It does not exist in the map.
+		nsec3 := &dns.NSEC3{
+			Hdr: dns.RR_Header{
+				Name:   hName,
+				Rrtype: dns.TypeNSEC3,
+				Class:  param.Hdr.Class,
+				Ttl:    param.Hdr.Ttl,
+			},
+			Hash:       param.Hash,
+			Flags:      param.Flags,
+			Iterations: param.Iterations,
+			SaltLength: param.SaltLength,
+			Salt:       param.Salt,
+			HashLength: 20,
+			TypeBitMap: newTypeArray(typeMap),
+		}
+		nsec3Map.rrs[hName] = nsec3
+	} else {
+		// It exists in the map. We need to update it
+		subTypeMap := make(map[uint16]bool)
+		for k, v := range typeMap {
+			subTypeMap[k] = v
+		}
+		for _, t := range nsec3.TypeBitMap {
+			subTypeMap[t] = true
+		}
+		nsec3.TypeBitMap = newTypeArray(subTypeMap)
+	}
+	return nil
 }
 
 func compareRRData(rri, rrj dns.RR) bool {
@@ -151,10 +203,9 @@ func (ctx *Context) getRRSetList(byType bool) (set RRSetList) {
 	// An RRSIG record contains the signature for an RRset with a particular
 	// name, class, and type. RFC4034
 	set = make(RRSetList, 0)
-	nsNames := getAllNSNames(ctx.rrs)
 	var lastRR dns.RR
 	for _, rr := range ctx.rrs {
-		if isSignable(rr, ctx.Config.Zone, nsNames) {
+		if ctx.isSignable(rr.Header().Name) {
 			if !sameRRSet(lastRR, rr, byType) {
 				// create new set
 				set = append(set, make(RRArray, 0))
@@ -208,7 +259,7 @@ func (ctx *Context) addNSECRecords() {
 // addNSEC3Records edits an RRArray and adds the respective NSEC3 records to it.
 // If optOut is true, it sets the flag for NSEC3PARAM RR, following RFC5155 section 6.
 // It returns an error if there is a colission on the hashes.
-func (ctx *Context) addNSEC3Records(optOut bool) error {
+func (ctx *Context) addNSEC3Records() error {
 	setList := ctx.getRRSetList(false)
 	salt, err := generateSalt()
 	if err != nil {
@@ -226,86 +277,59 @@ func (ctx *Context) addNSEC3Records(optOut bool) error {
 		Salt:       salt,
 		SaltLength: uint8(len(salt) / 2),
 	}
-	if optOut {
+	if ctx.Config.OptOut {
 		param.Flags = 1
 	}
-
-	nsec3List := make([]*dns.NSEC3, 0)
-
-	hashedNames := make(map[string]bool)
-	for i, rrSet := range setList {
+	nsec3list := newNSEC3List()
+	for _, rrSet := range setList {
 		typeMap := rrSet.getTypeMap()
 		if typeMap[dns.TypeSOA] {
 			typeMap[dns.TypeNSEC3PARAM] = true
 		}
-		if optOut && !typeMap[dns.TypeDS] && !typeMap[dns.TypeDNSKEY] {
-			continue
-		}
-		hName := dns.HashName(rrSet[0].Header().Name, param.Hash,
-			param.Iterations, param.Salt)
-		if hashedNames[hName] {
-			return fmt.Errorf("collision detected")
-		}
-		hashedNames[hName] = true
-		nsec3 := &dns.NSEC3{
-			Hdr: dns.RR_Header{
-				Name:   hName,
-				Rrtype: dns.TypeNSEC3,
-				Class:  param.Hdr.Class,
-				Ttl:    param.Hdr.Ttl,
-			},
-			Hash:       param.Hash,
-			Flags:      param.Flags,
-			Iterations: param.Iterations,
-			SaltLength: param.SaltLength,
-			Salt:       param.Salt,
-			HashLength: 20,
-			TypeBitMap: newTypeArray(typeMap),
-		}
-
-		if i > 0 { // not the first NSEC3 record
-			nsec3List[i-1].NextDomain = nsec3.Hdr.Name
-		}
-		nsec3List = append(nsec3List, nsec3)
-	}
-	if len(nsec3List) > 0 {
-		// Link the first one
-		nsec3List[len(nsec3List)-1].NextDomain = nsec3List[0].Hdr.Name
-		for i := 0; i < len(nsec3List); i++ {
-			if ctx.Config.Zone != "." {
-				nsec3List[i].Header().Name += "." + ctx.Config.Zone
+		if !typeMap[dns.TypeDS] && !typeMap[dns.TypeDNSKEY] {
+			if ctx.Config.OptOut {
+				continue
 			} else {
-				nsec3List[i].Header().Name += ctx.Config.Zone
+				ctx.Log.Printf("opt-out is not set and owner name %s has not a DS RR", rrSet[0].Header().Name)
 			}
-			ctx.rrs = append(ctx.rrs, nsec3List[i])
 		}
+		// Add current NSEC3 RR
+		err := nsec3list.add(rrSet[0].Header().Name, param, typeMap)
+		if err != nil {
+			return err
+		}
+		// Add NSEC3 RRS for each sublabel
+		labels := dns.SplitDomainName(rrSet[0].Header().Name)
+		for i := range labels {
+			label := strings.Join(labels[i:], ".") + "."
+			if ctx.isSignable(label) {
+				if len(label) == 0 {
+					break
+				}
+				err := nsec3list.add(label, param, typeMap) // we don't know if it is signable
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	// transform nsec3list to Sorted RRArray
+	sortedList := nsec3list.toArray()
+	// Link NSEC3s with their next domains.
+	for i, nsec3 := range sortedList {
+		nsec3.(*dns.NSEC3).NextDomain = sortedList[(i+1)%len(sortedList)].Header().Name
+	}
+	// Add zone name to each NSEC3 name.
+	for i := 0; i < len(sortedList); i++ {
+		sortedList[i].Header().Name += "."
+		if ctx.Config.Zone != "." {
+			sortedList[i].Header().Name += ctx.Config.Zone
+		}
+		ctx.rrs = append(ctx.rrs, sortedList[i])
 	}
 	ctx.rrs = append(ctx.rrs, param)
 	sort.Sort(ctx.rrs)
 	return nil
-}
-
-func getAllNSNames(set RRArray) map[string]struct{} {
-	m := make(map[string]struct{})
-	for _, elem := range set {
-		if _, ok := elem.(*dns.NS); ok {
-			m[dns.Fqdn(elem.Header().Name)] = struct{}{}
-		}
-	}
-	return m
-}
-
-// isSignable returns true if the rr requires to be signed.
-// The design of DNSSEC stipulates that delegations (non-apex NS records)
-// are not signed, and neither are any glue records.
-func isSignable(rr dns.RR, zone string, nsNames map[string]struct{}) bool {
-	rrName := dns.Fqdn(rr.Header().Name)
-	if _, ok := nsNames[rrName]; ok &&
-		rrName != dns.Fqdn(zone) {
-		return false
-	}
-	// It could be a IPv6 glue, too
-	return true
 }
 
 // sameRRSet returns true if both rrs provided should be on the same RRSetList.
