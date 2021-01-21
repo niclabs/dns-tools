@@ -61,7 +61,8 @@ the command has three modes:
   - `--file (-f)` Input zone file
   - `--output (-o)` Output for zone file
   - `--info (-i)` Add a TXT RR to the zone with signing information (signer software, mode and library used if PKCS#11)
-
+  -  `--hash-digest` Hash algorithm for digest, default: 1 (SHA384), also accepted 2 (SHA512) 
+  
 ## Signing modes
 
 Sign can be used in two modes:
