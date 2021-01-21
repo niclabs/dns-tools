@@ -25,6 +25,7 @@ type Context struct {
 	Log           *log.Logger         // Logger
 	SignAlgorithm SignAlgorithm       // Sign Algorithm
 	Glue          map[string]struct{} // Map with glue fqdns.
+	HashDigest	uint8	  // 1:sha384 (default), 2:sha512
 }
 
 // ContextConfig contains the common args to sign and verify files
@@ -105,11 +106,20 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 	}
 	nsValues := make(map[string]struct{})
 	for rr, ok := zone.Next(); ok; rr, ok = zone.Next() {
+		// I hate you RFC 4034, Section 6.2
+		rr.Header().Name = strings.ToLower(rr.Header().Name)
+
 		switch rr.Header().Rrtype {
 		case dns.TypeSOA:
 			if ctx.soa != nil {
 				continue // parse only one SOA
 			}
+
+			// I hate you RFC 4034, Section 6.2
+			rr.(*dns.SOA).Ns = strings.ToLower(rr.(*dns.SOA).Ns)
+			rr.(*dns.SOA).Mbox = strings.ToLower(rr.(*dns.SOA).Mbox)
+
+
 			ctx.soa = rr.(*dns.SOA)
 			// UPDATING THE SERIAL
 			if updateSerial {
@@ -121,14 +131,58 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 					ctx.soa.Serial += 2
 				}
 			}
+
 			// Getting zone name if it is not defined as argument
 			if ctx.Config.Zone == "" {
 				ctx.Config.Zone = rr.Header().Name
 			}
 		case dns.TypeZONEMD:
 			zoneMDArray = append(zoneMDArray, rr.(*dns.ZONEMD))
+		// I hate you RFC 4034, Section 6.2
 		case dns.TypeNS:
+			rr.(*dns.NS).Ns = strings.ToLower(rr.(*dns.NS).Ns)
 			nsValues[rr.(*dns.NS).Ns] = struct{}{}
+		case dns.TypeMD:
+			rr.(*dns.MD).Md = strings.ToLower(rr.(*dns.MD).Md)
+		case dns.TypeMF:
+			rr.(*dns.MF).Mf = strings.ToLower(rr.(*dns.MF).Mf)
+		case dns.TypeCNAME:
+			rr.(*dns.CNAME).Target = strings.ToLower(rr.(*dns.CNAME).Target)
+		case dns.TypeMB:
+			rr.(*dns.MB).Mb = strings.ToLower(rr.(*dns.MB).Mb)
+		case dns.TypeMR:
+			rr.(*dns.MR).Mr = strings.ToLower(rr.(*dns.MR).Mr)
+		case dns.TypePTR:
+			rr.(*dns.PTR).Ptr = strings.ToLower(rr.(*dns.PTR).Ptr)
+		case dns.TypeMINFO:
+			rr.(*dns.MINFO).Rmail = strings.ToLower(rr.(*dns.MINFO).Rmail)
+			rr.(*dns.MINFO).Email = strings.ToLower(rr.(*dns.MINFO).Email)
+		case dns.TypeMX:
+			rr.(*dns.MX).Mx = strings.ToLower(rr.(*dns.MX).Mx)
+		case dns.TypeRP:
+			rr.(*dns.RP).Mbox = strings.ToLower(rr.(*dns.RP).Mbox)
+			rr.(*dns.RP).Txt = strings.ToLower(rr.(*dns.RP).Txt)
+		case dns.TypeAFSDB:
+			rr.(*dns.AFSDB).Hostname = strings.ToLower(rr.(*dns.AFSDB).Hostname)
+		case dns.TypeRT:
+			rr.(*dns.RT).Host = strings.ToLower(rr.(*dns.RT).Host)
+		case dns.TypeSIG:
+			rr.(*dns.SIG).SignerName = strings.ToLower(rr.(*dns.SIG).SignerName)
+		case dns.TypeRRSIG:
+			rr.(*dns.RRSIG).SignerName = strings.ToLower(rr.(*dns.RRSIG).SignerName)
+		case dns.TypePX:
+			rr.(*dns.PX).Map822 = strings.ToLower(rr.(*dns.PX).Map822)
+			rr.(*dns.PX).Mapx400 = strings.ToLower(rr.(*dns.PX).Mapx400)
+		case dns.TypeNAPTR:
+			rr.(*dns.NAPTR).Replacement = strings.ToLower(rr.(*dns.NAPTR).Replacement)
+		case dns.TypeKX:
+			rr.(*dns.KX).Exchanger = strings.ToLower(rr.(*dns.KX).Exchanger)
+		case dns.TypeSRV:
+			rr.(*dns.SRV).Target = strings.ToLower(rr.(*dns.SRV).Target)
+		case dns.TypeDNAME:
+			rr.(*dns.DNAME).Target = strings.ToLower(rr.(*dns.DNAME).Target)
+		case dns.TypeNSEC:
+			rr.(*dns.NSEC).NextDomain = strings.ToLower(rr.(*dns.NSEC).NextDomain)
 		}
 		rrs = append(rrs, rr)
 	}
@@ -142,8 +196,7 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 	// We look for the correct zonemd RR
 	for _, zonemd := range zoneMDArray {
 		if zonemd.Header().Name == ctx.Config.Zone &&
-			zonemd.Scheme == 1 && // Hardcoded: only scheme option
-			zonemd.Hash == 1 { // Hardcoded: only hash option.
+			zonemd.Scheme == 1 {// Hardcoded: only scheme option
 			if ctx.zonemd != nil {
 				return fmt.Errorf("two ZONEMD with same Scheme and Hash found in zone")
 			}

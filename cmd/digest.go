@@ -33,6 +33,10 @@ func digest(cmd *cobra.Command, args []string) error {
 	out := viper.GetString("output")
 	info := viper.GetBool("info")
 
+	hashdigest := uint8(1)  // default value: hash384
+	if viper.IsSet("hash-digest") {
+		hashdigest = uint8(viper.GetInt("hash-digest"))
+	}
 	if len(zonePath) == 0 {
 		return fmt.Errorf("input file zonePath not specified")
 	}
@@ -73,6 +77,7 @@ func digest(cmd *cobra.Command, args []string) error {
 		File:   zoneFile,
 		Output: outFile,
 		Log:    commandLog,
+		HashDigest: hashdigest,
 	}
 	if err := ctx.Digest(); err != nil {
 		return err

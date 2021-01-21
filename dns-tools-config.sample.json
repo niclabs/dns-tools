@@ -9,6 +9,7 @@
   "nsec3": true,
   "opt-out": true,
   "digest": true,
+  "hash-digest": 1,
   "rrsig-expiration-date": "20300101",
   "rrsig-duration": "10 years 3 months 2 days 1 hr 4 min 3 secs",
   "zone": "example.com.",

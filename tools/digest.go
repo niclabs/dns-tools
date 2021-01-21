@@ -14,6 +14,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/miekg/dns"
+	"hash"
 	"sort"
 	"strings"
 )
@@ -85,7 +86,7 @@ func (ctx *Context) AddZONEMDRecord() {
 			},
 			Serial: ctx.soa.Serial,
 			Scheme: 1, // SIMPLE
-			Hash:   1, // SHA384
+			Hash:   ctx.HashDigest, // Default: 1 = SHA384
 			Digest: strings.Repeat("0", 48*2),
 		}
 		ctx.rrs = append(ctx.rrs, zonemd)
@@ -111,8 +112,14 @@ func (ctx *Context) CalculateDigest() (string, error) {
 	if ctx.zonemd == nil {
 		return "", fmt.Errorf("error trying to calculate a digest without a ZONEMD RR present")
 	}
-	h := sha512.New384()
+	var h hash.Hash 
 	var prevRR dns.RR
+
+	if ctx.zonemd.Hash == 2 {
+		h = sha512.New512_256()
+	} else {  // default
+		h = sha512.New384()
+	}
 	for _, rr := range ctx.rrs {
 		switch {
 		// Ignore ZONEMD RRs (new in v06)
