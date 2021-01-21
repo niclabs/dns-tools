@@ -116,7 +116,7 @@ func (ctx *Context) CalculateDigest() (string, error) {
 	var prevRR dns.RR
 
 	if ctx.zonemd.Hash == 2 {
-		h = sha512.New512_256()
+		h = sha512.New()
 	} else {  // default
 		h = sha512.New384()
 	}
