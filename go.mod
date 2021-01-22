@@ -9,4 +9,4 @@ require (
 	github.com/spf13/viper v1.4.0
 )
 
-replace github.com/miekg/dns => github.com/niclabs/dns v1.1.36
+replace github.com/miekg/dns => github.com/niclabs/dns v1.1.37

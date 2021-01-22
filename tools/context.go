@@ -99,14 +99,15 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 		ctx.Config.Zone += "."
 	}
 
-	zone := dns.NewZoneParser(ctx.File, ctx.Config.Zone, "")
 	zoneMDArray := make([]*dns.ZONEMD, 0)
+	zone := dns.NewZoneParser(ctx.File, ctx.Config.Zone, "")
 	if err := zone.Err(); err != nil {
 		return err
 	}
 	nsValues := make(map[string]struct{})
 	for rr, ok := zone.Next(); ok; rr, ok = zone.Next() {
 		// I hate you RFC 4034, Section 6.2
+
 		rr.Header().Name = strings.ToLower(rr.Header().Name)
 
 		switch rr.Header().Rrtype {
@@ -186,6 +187,7 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 		}
 		rrs = append(rrs, rr)
 	}
+
 	if ctx.soa == nil {
 		return fmt.Errorf("SOA RR not found")
 	}
