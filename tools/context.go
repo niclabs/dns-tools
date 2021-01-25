@@ -21,11 +21,11 @@ type Context struct {
 	Output        io.WriteCloser      // Out path
 	rrs           RRArray             // rrs
 	soa           *dns.SOA            // SOA RR
-	zonemd        *dns.ZONEMD         // ZONEMD RR
+	zonemd        [](*dns.ZONEMD)         // ZONEMD RRs
 	Log           *log.Logger         // Logger
 	SignAlgorithm SignAlgorithm       // Sign Algorithm
 	Glue          map[string]struct{} // Map with glue fqdns.
-	HashDigest	uint8	  // 1:sha384 (default), 2:sha512
+	HashAlg		uint8	  // 1:sha384 (default), 2:sha512
 }
 
 // ContextConfig contains the common args to sign and verify files
@@ -75,6 +75,20 @@ func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error
 	}
 	return ctx, nil
 }
+
+// Check if a ZONEMD with same Schema and Hash Algorith exists on that context.
+
+func (ctx *Context) isZONEMDAlready (newmd *dns.ZONEMD) bool {
+	if (len(ctx.zonemd) > 0) {
+		for _, md := range ctx.zonemd {
+			if (md.Scheme == newmd.Scheme && md.Hash == newmd.Hash) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 
 // ReadAndParseZone parses a DNS zone file and returns an array of rrs and the zone minTTL.
 // It also updates the serial in the SOA record if updateSerial is true.
@@ -195,16 +209,16 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 		return fmt.Errorf("zone name not defined in arguments nor guessable using SOA RR. Try again using --zone argument")
 	}
 
-	// We look for the correct zonemd RR
-	for _, zonemd := range zoneMDArray {
-		if zonemd.Header().Name == ctx.Config.Zone &&
-			zonemd.Scheme == 1 && // Hardcoded: only scheme option
-			(zonemd.Hash == 1 || zonemd.Hash == 2)  &&  // hash 1-2?
-			zonemd.Hash == ctx.HashDigest {
-			if ctx.zonemd != nil {
+	// We look for the correct zonemd RRs
+	for _, newmd := range zoneMDArray {
+		if newmd.Header().Name == ctx.Config.Zone &&
+			(newmd.Scheme == 1) &&
+			(newmd.Hash == 1 || newmd.Hash == 2) { // hash 1-2?
+			if ctx.isZONEMDAlready(newmd) {
 				return fmt.Errorf("two ZONEMD with same Scheme and configured Hash found in zone")
+			} else {
+				ctx.zonemd = append(ctx.zonemd,newmd)
 			}
-			ctx.zonemd = zonemd
 		}
 	}
 

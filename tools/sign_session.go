@@ -136,24 +136,32 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 
 	/* begin DigestEnabled digest updating (and signing)*/
 	if ctx.Config.DigestEnabled {
-		ctx.Log.Printf("Updating zone digest...")
+		ctx.Log.Printf("Updating zone digests...")
 		if err := ctx.UpdateDigest(); err != nil {
 			return nil, fmt.Errorf("Error updating ZONEMD Digest: %s", err)
 		}
+
 		rrSig := CreateNewRRSIG(
 			ctx.Config.Zone,
 			zsk,
 			ctx.Config.RRSIGExpDate,
-			ctx.zonemd.Header().Ttl,
+			ctx.zonemd[0].Header().Ttl,
 		)
+
+		var zmdrrs []dns.RR
+
+		for _, zmd := range ctx.zonemd {
+			zmdrrs = append (zmdrrs, dns.RR(zmd))
+		}
+
 		ctx.Log.Printf("Signing new zone digest...")
-		err = rrSig.Sign(keys.zskSigner, []dns.RR{ctx.zonemd})
+		err = rrSig.Sign(keys.zskSigner, zmdrrs)
 		if err != nil {
 			err = fmt.Errorf("cannot create RRSig: %s", err)
 			return nil, err
 		}
 		ctx.Log.Printf("Verifying new zone digest...")
-		err = rrSig.Verify(zsk, []dns.RR{ctx.zonemd})
+		err = rrSig.Verify(zsk, zmdrrs)
 		if err != nil {
 			err = fmt.Errorf("cannot check RRSig: %s", err)
 			return nil, err

@@ -34,12 +34,20 @@ func (ctx *Context) VerifyDigest() error {
 	if ctx.zonemd == nil {
 		return fmt.Errorf("cannot verify (ZONEMD RR not present)")
 	}
-	if ctx.soa.Serial != ctx.zonemd.Serial {
-		return fmt.Errorf("ZONEMD serial does not match with SOA serial")
+	for i := 0; i < len(ctx.zonemd); i++ {
+		if ctx.soa.Serial != ctx.zonemd[i].Serial {
+			return fmt.Errorf("ZONEMD serial does not match with SOA serial")
+		}
 	}
 	sort.Sort(ctx.rrs)
-	if err := ctx.ValidateOrderedZoneDigest(); err != nil {
-		return err
+	for _ , mdRR := range ctx.zonemd {
+		if ctx.HashAlg < 1  || (ctx.HashAlg > 0 && mdRR.Hash == ctx.HashAlg ) {
+			fmt.Printf("Validating Scheme %d, HashAlg %d... ",mdRR.Scheme,mdRR.Hash)
+			if err := ctx.ValidateOrderedZoneDigest(mdRR.Hash,mdRR.Digest); err != nil {
+				return err
+			}
+			fmt.Println("ok")
+		}
 	}
 	return nil
 }
@@ -76,22 +84,20 @@ func (ctx *Context) Digest() error {
 // AddZONEMDRecord adds a zone digest following draft-ietf-dnsop-dns-zone-digest-05
 // we need the SOA info for that
 func (ctx *Context) AddZONEMDRecord() {
-	if ctx.zonemd == nil {
-		zonemd := &dns.ZONEMD{
-			Hdr: dns.RR_Header{
-				Name:   ctx.soa.Header().Name,
-				Rrtype: dns.TypeZONEMD,
-				Class:  dns.ClassINET,
-				Ttl:    ctx.soa.Header().Ttl,
-			},
-			Serial: ctx.soa.Serial,
-			Scheme: 1, // SIMPLE
-			Hash:   ctx.HashDigest, // Default: 1 = SHA384
-			Digest: strings.Repeat("0", 48*2),
-		}
-		ctx.rrs = append(ctx.rrs, zonemd)
-		ctx.zonemd = zonemd
+	zonemd := &dns.ZONEMD{
+		Hdr: dns.RR_Header{
+			Name:   ctx.soa.Header().Name,
+			Rrtype: dns.TypeZONEMD,
+			Class:  dns.ClassINET,
+			Ttl:    ctx.soa.Header().Ttl,
+		},
+	Serial: ctx.soa.Serial,
+	Scheme: 1, // SIMPLE
+	Hash:   ctx.HashAlg, // Default: 1 = SHA384
+	Digest: strings.Repeat("0", 48*2),
 	}
+	ctx.rrs = append(ctx.rrs, zonemd)
+	ctx.zonemd = append(ctx.zonemd, zonemd)
 }
 
 // CleanDigests sets all root zone digests to 0
@@ -108,14 +114,14 @@ func (ctx *Context) CleanDigests() {
 
 // CalculateDigest calculates the digest for a PREVIOUSLY ORDERED zone.
 // This method returns the digest hex value.
-func (ctx *Context) CalculateDigest() (string, error) {
+func (ctx *Context) CalculateDigest(hashAlg uint8) (string, error) {
 	if ctx.zonemd == nil {
 		return "", fmt.Errorf("error trying to calculate a digest without a ZONEMD RR present")
 	}
 	var h hash.Hash 
 	var prevRR dns.RR
 
-	if ctx.zonemd.Hash == 2 {
+	if hashAlg == 2 {
 		h = sha512.New()
 	} else {  // default
 		h = sha512.New384()
@@ -150,25 +156,38 @@ func (ctx *Context) CalculateDigest() (string, error) {
 // UpdateDigest calculates the digest for a PREVIOUSLY ORDERED zone with one ZONEMD RR
 // This method updates the ZONEMD RR directly
 func (ctx *Context) UpdateDigest() (err error) {
-	digest, err := ctx.CalculateDigest()
+	itIsDigestedWithThisHash := false
+	digestedPosition := 0
+	for i, mdRR := range ctx.zonemd {
+		if mdRR.Hash == ctx.HashAlg {
+			digestedPosition = i
+			itIsDigestedWithThisHash = true
+			break
+		}
+	}
+	if !itIsDigestedWithThisHash { 
+		return fmt.Errorf("cannot update digest for non-existent pair schema-hash")
+		}
+
+	digest, err := ctx.CalculateDigest(ctx.zonemd[digestedPosition].Hash)
 	if err != nil {
 		return
 	}
-	ctx.zonemd.Digest = digest
-	return
+	ctx.zonemd[digestedPosition].Digest = digest
+	return nil
 }
 
 // ValidateOrderedZoneDigest validates the digest for a PREVIOUSLY ORDERED zone.
 // Returns nil if the calculated digest is equals the ZONEMD one, and an error otherwise.
 // Follows the validation from https://datatracker.ietf.org/doc/draft-ietf-dnsop-dns-zone-digest.
 // It is hardcoded to use SHA384 and SIMPLE scheme.
-func (ctx *Context) ValidateOrderedZoneDigest() error {
-	digest, err := ctx.CalculateDigest()
+func (ctx *Context) ValidateOrderedZoneDigest(hashAlg uint8, mddigest string) error {
+	digest, err := ctx.CalculateDigest(hashAlg)
 	if err != nil {
 		return err
 	}
-	if strings.ToLower(digest) != strings.ToLower(ctx.zonemd.Digest) {
-		return fmt.Errorf("invalid digest (expected: %s obtained: %s)", ctx.zonemd.Digest, digest)
+	if strings.ToLower(digest) != strings.ToLower(mddigest) {
+		return fmt.Errorf("invalid digest (expected: %s obtained: %s)", mddigest, digest)
 	}
 	return nil
 }

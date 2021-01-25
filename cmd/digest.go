@@ -76,7 +76,7 @@ func digest(cmd *cobra.Command, args []string) error {
 		File:   zoneFile,
 		Output: outFile,
 		Log:    commandLog,
-		HashDigest: hashdigest,
+		HashAlg: hashdigest,
 	}
 	if err := ctx.Digest(); err != nil {
 		return err
