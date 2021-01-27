@@ -16,7 +16,7 @@ func init() {
 
 	verifyCmd.PersistentFlags().StringP("verify-threshold-duration", "t", "", "Number of days it needs to be before a signature expiration to be considered as valid by the verifier. Default is empty")
 	verifyCmd.PersistentFlags().StringP("verify-threshold-date", "T", "", "Exact date it needs to be before a signature expiration to be considered as expired by the verifier. It is ignored if --verify-threshold-duration is set. Default is tomorrow")
-	verifyCmd.PersistentFlags().IntP("hash-digest", "d", 0, "Hash algorithm for Digest Verification: 1=sha384, 2=sha256")
+	verifyCmd.PersistentFlags().IntP("hash-digest", "d", 2, "Hash algorithm for Digest Verification: 1=sha384, 2=sha256")
 
 }
 
