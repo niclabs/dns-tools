@@ -27,7 +27,7 @@ func init() {
 	signCmd.PersistentFlags().BoolP("nsec3", "3", false, "Use NSEC3 instead of NSEC.")
 	signCmd.PersistentFlags().BoolP("opt-out", "x", false, "Use NSEC3 with opt-out.")
 	signCmd.PersistentFlags().BoolP("digest", "d", false, "If it is true, DigestEnabled RR is added to the signed zone")
-	verifyCmd.PersistentFlags().IntP("hash-digest", "Q", 0, "Hash algorithm for Digest Verification: 1=sha384, 2=sha256")
+	signCmd.PersistentFlags().IntP("hash-digest", "Q", 0, "Hash algorithm for Digest Verification: 1=sha384, 2=sha256")
 	signCmd.PersistentFlags().BoolP("info", "i", false, "If it is true, an TXT RR is added with information about the signing process (tool and mode)")
 	signCmd.PersistentFlags().BoolP("lazy", "L", false, "If it is true, the zone will be signed only if it is needed (i.e. it is not signed already, it is signed with different key, the signatures are about to expire or the original zone is newer than the signed zone)")
 
