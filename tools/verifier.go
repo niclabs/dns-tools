@@ -18,6 +18,7 @@ type RRSigTuple struct {
 // zone represents the domain origin, while path is the zone location, and it is used
 // to resolve $INCLUDE directives. reader has the zone input and logger allows us to log the operations.
 func (ctx *Context) VerifyFile() (err error) {
+	ctx.Log.Printf("Zone must be valid before %s to succeed", ctx.Config.VerifyThreshold.String())
 	if ctx.File == nil {
 		return fmt.Errorf("zone file not defined")
 	}
