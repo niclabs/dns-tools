@@ -25,7 +25,6 @@ type Context struct {
 	Log           *log.Logger         // Logger
 	SignAlgorithm SignAlgorithm       // Sign Algorithm
 	Glue          map[string]struct{} // Map with glue fqdns.
-	HashAlg		uint8	  // 1:sha384 (default), 2:sha512
 }
 
 // ContextConfig contains the common args to sign and verify files
@@ -42,6 +41,8 @@ type ContextConfig struct {
 	Info            bool      // If true, a credits txt will be added to _dnstools subdomain.
 	Lazy            bool      // If true, the zone will not be signed if it is not needed.
 	VerifyThreshold time.Time // Verification Threshold
+	HashAlg		uint8	  // 1:sha384 (default), 2:sha512
+
 }
 
 // NewContext creates a new context based on a configuration structure. It also receives

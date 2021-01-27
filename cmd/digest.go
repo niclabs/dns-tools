@@ -72,11 +72,11 @@ func digest(cmd *cobra.Command, args []string) error {
 		Config: &tools.ContextConfig{
 			Zone: zone,
 			Info: info,
+			HashAlg: hashdigest,
 		},
 		File:   zoneFile,
 		Output: outFile,
 		Log:    commandLog,
-		HashAlg: hashdigest,
 	}
 	if err := ctx.Digest(); err != nil {
 		return err

@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"fmt"
 	"io"
 	"os"
+
 	"github.com/niclabs/dns-tools/tools"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -32,6 +34,10 @@ func verify(cmd *cobra.Command, args []string) error {
 	zone := viper.GetString("zone")
 	hashdigest := uint8(viper.GetInt("hash-digest"))
 
+	if hashdigest == 0 {
+		return fmt.Errorf("hash-digest not specified")
+	}
+
 	verifyThreshold, err := getExpDate(viper.GetString("verify-threshold-duration"), viper.GetString("verify-threshold-date"), DefaultVerifyThreshold)
 	if err != nil {
 		return err
@@ -56,10 +62,10 @@ func verify(cmd *cobra.Command, args []string) error {
 			Zone:            zone,
 			FilePath:        path,
 			VerifyThreshold: verifyThreshold,
+			HashAlg:         hashdigest,
 		},
 		File: file,
 		Log:  commandLog,
-		HashAlg: hashdigest,
 	}
 
 	if err := ctx.VerifyFile(); err != nil {

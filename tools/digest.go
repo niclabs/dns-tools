@@ -13,10 +13,11 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
-	"github.com/miekg/dns"
 	"hash"
 	"sort"
 	"strings"
+
+	"github.com/miekg/dns"
 )
 
 // VerifyDigest validates a version of a zone with a valid ZONEMD RR.
@@ -40,10 +41,10 @@ func (ctx *Context) VerifyDigest() error {
 		}
 	}
 	sort.Sort(ctx.rrs)
-	for _ , mdRR := range ctx.zonemd {
-		if ctx.HashAlg < 1  || (ctx.HashAlg > 0 && mdRR.Hash == ctx.HashAlg ) {
-			fmt.Printf("Validating Scheme %d, HashAlg %d... ",mdRR.Scheme,mdRR.Hash)
-			if err := ctx.ValidateOrderedZoneDigest(mdRR.Hash,mdRR.Digest); err != nil {
+	for _, mdRR := range ctx.zonemd {
+		if ctx.Config.HashAlg < 1 || (ctx.Config.HashAlg > 0 && mdRR.Hash == ctx.Config.HashAlg) {
+			fmt.Printf("Validating Scheme %d, HashAlg %d... ", mdRR.Scheme, mdRR.Hash)
+			if err := ctx.ValidateOrderedZoneDigest(mdRR.Hash, mdRR.Digest); err != nil {
 				return err
 			}
 			fmt.Println("ok")
@@ -91,10 +92,10 @@ func (ctx *Context) AddZONEMDRecord() {
 			Class:  dns.ClassINET,
 			Ttl:    ctx.soa.Header().Ttl,
 		},
-	Serial: ctx.soa.Serial,
-	Scheme: 1, // SIMPLE
-	Hash:   ctx.HashAlg, // Default: 1 = SHA384
-	Digest: strings.Repeat("0", 48*2),
+		Serial: ctx.soa.Serial,
+		Scheme: 1,           // SIMPLE
+		Hash:   ctx.Config.HashAlg, // Default: 1 = SHA384
+		Digest: strings.Repeat("0", 48*2),
 	}
 	ctx.rrs = append(ctx.rrs, zonemd)
 	ctx.zonemd = append(ctx.zonemd, zonemd)
@@ -118,12 +119,12 @@ func (ctx *Context) CalculateDigest(hashAlg uint8) (string, error) {
 	if ctx.zonemd == nil {
 		return "", fmt.Errorf("error trying to calculate a digest without a ZONEMD RR present")
 	}
-	var h hash.Hash 
+	var h hash.Hash
 	var prevRR dns.RR
 
 	if hashAlg == 2 {
 		h = sha512.New()
-	} else {  // default
+	} else { // default
 		h = sha512.New384()
 	}
 	for _, rr := range ctx.rrs {
@@ -159,15 +160,15 @@ func (ctx *Context) UpdateDigest() (err error) {
 	itIsDigestedWithThisHash := false
 	digestedPosition := 0
 	for i, mdRR := range ctx.zonemd {
-		if mdRR.Hash == ctx.HashAlg {
+		if mdRR.Hash == ctx.Config.HashAlg {
 			digestedPosition = i
 			itIsDigestedWithThisHash = true
 			break
 		}
 	}
-	if !itIsDigestedWithThisHash { 
+	if !itIsDigestedWithThisHash {
 		return fmt.Errorf("cannot update digest for non-existent pair schema-hash")
-		}
+	}
 
 	digest, err := ctx.CalculateDigest(ctx.zonemd[digestedPosition].Hash)
 	if err != nil {
