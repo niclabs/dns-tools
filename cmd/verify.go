@@ -36,7 +36,7 @@ func verify(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
+	commandLog.Printf("Zone must be valid before %s to succeed", verifyThreshold.String())
 	var file io.Reader
 	if len(path) == 0 {
 		file = os.Stdin
