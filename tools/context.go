@@ -16,15 +16,15 @@ import (
 
 // Context contains the state of a zone signing process.
 type Context struct {
-	Config        *ContextConfig
-	File          io.Reader           // zone path
-	Output        io.WriteCloser      // Out path
-	rrs           RRArray             // rrs
-	soa           *dns.SOA            // SOA RR
-	zonemd        [](*dns.ZONEMD)         // ZONEMD RRs
-	Log           *log.Logger         // Logger
-	SignAlgorithm SignAlgorithm       // Sign Algorithm
-	Glue          map[string]struct{} // Map with glue fqdns.
+	Config         *ContextConfig
+	File           io.Reader           // zone path
+	Output         io.WriteCloser      // Out path
+	rrs            RRArray             // rrs
+	soa            *dns.SOA            // SOA RR
+	zonemd         [](*dns.ZONEMD)     // ZONEMD RRs
+	Log            *log.Logger         // Logger
+	SignAlgorithm  SignAlgorithm       // Sign Algorithm
+	DelegatedZones map[string]struct{} // Map with Delegated zones.
 }
 
 // ContextConfig contains the common args to sign and verify files
@@ -41,7 +41,7 @@ type ContextConfig struct {
 	Info            bool      // If true, a credits txt will be added to _dnstools subdomain.
 	Lazy            bool      // If true, the zone will not be signed if it is not needed.
 	VerifyThreshold time.Time // Verification Threshold
-	HashAlg		uint8	  // 1:sha384 (default), 2:sha512
+	HashAlg         uint8     // 1:sha384 (default), 2:sha512
 
 }
 
@@ -79,17 +79,16 @@ func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error
 
 // Check if a ZONEMD with same Schema and Hash Algorith exists on that context.
 
-func (ctx *Context) isZONEMDAlready (newmd *dns.ZONEMD) bool {
-	if (len(ctx.zonemd) > 0) {
+func (ctx *Context) isZONEMDAlready(newmd *dns.ZONEMD) bool {
+	if len(ctx.zonemd) > 0 {
 		for _, md := range ctx.zonemd {
-			if (md.Scheme == newmd.Scheme && md.Hash == newmd.Hash) {
+			if md.Scheme == newmd.Scheme && md.Hash == newmd.Hash {
 				return true
 			}
 		}
 	}
 	return false
 }
-
 
 // ReadAndParseZone parses a DNS zone file and returns an array of rrs and the zone minTTL.
 // It also updates the serial in the SOA record if updateSerial is true.
@@ -104,8 +103,8 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 	if ctx.File == nil {
 		return fmt.Errorf("no file defined on context")
 	}
-	if ctx.Glue == nil {
-		ctx.Glue = make(map[string]struct{})
+	if ctx.DelegatedZones == nil {
+		ctx.DelegatedZones = make(map[string]struct{})
 	}
 
 	rrs := make(RRArray, 0)
@@ -119,7 +118,6 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 	if err := zone.Err(); err != nil {
 		return err
 	}
-	nsValues := make(map[string]struct{})
 	for rr, ok := zone.Next(); ok; rr, ok = zone.Next() {
 		// I hate you RFC 4034, Section 6.2
 
@@ -134,7 +132,6 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 			// I hate you RFC 4034, Section 6.2
 			rr.(*dns.SOA).Ns = strings.ToLower(rr.(*dns.SOA).Ns)
 			rr.(*dns.SOA).Mbox = strings.ToLower(rr.(*dns.SOA).Mbox)
-
 
 			ctx.soa = rr.(*dns.SOA)
 			// UPDATING THE SERIAL
@@ -157,7 +154,9 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 		// I hate you RFC 4034, Section 6.2
 		case dns.TypeNS:
 			rr.(*dns.NS).Ns = strings.ToLower(rr.(*dns.NS).Ns)
-			nsValues[rr.(*dns.NS).Ns] = struct{}{}
+			if rr.Header().Name != ctx.Config.Zone {
+				ctx.DelegatedZones[rr.Header().Name] = struct{}{}
+			}
 		case dns.TypeMD:
 			rr.(*dns.MD).Md = strings.ToLower(rr.(*dns.MD).Md)
 		case dns.TypeMF:
@@ -218,7 +217,7 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 			if ctx.isZONEMDAlready(newmd) {
 				return fmt.Errorf("two ZONEMD with same Scheme and configured Hash found in zone")
 			} else {
-				ctx.zonemd = append(ctx.zonemd,newmd)
+				ctx.zonemd = append(ctx.zonemd, newmd)
 			}
 		}
 	}
@@ -227,12 +226,8 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 	// Last iteration, we check for rr zones and we define glue domains
 	zoneRRs := make(RRArray, 0)
 	for _, rr := range rrs {
-		if strings.HasSuffix(rr.Header().Name, ctx.Config.Zone) {
+		if dns.IsSubDomain(ctx.Config.Zone, rr.Header().Name) {
 			zoneRRs = append(zoneRRs, rr)
-		}
-		if _, ok := nsValues[rr.Header().Name]; ok && rr.Header().Name != ctx.Config.Zone &&
-			(rr.Header().Rrtype == dns.TypeA || rr.Header().Rrtype == dns.TypeAAAA) {
-			ctx.Glue[rr.Header().Name] = struct{}{}
 		}
 	}
 	ctx.rrs = zoneRRs
@@ -325,6 +320,12 @@ func (ctx *Context) genInfo(session SignSession) string {
 // The design of DNSSEC stipulates that delegations (non-apex NS records)
 // are not signed, and neither are any glue records.
 func (ctx *Context) isSignable(ownerName string) bool {
-	_, isGlue := ctx.Glue[dns.Fqdn(ownerName)]
-	return !isGlue
+	// check if ownerName is contained by a delegated zone
+	fqdnName := dns.Fqdn(ownerName)
+	for zone := range ctx.DelegatedZones {
+		if dns.IsSubDomain(zone, fqdnName) {
+			return false
+		}
+	}
+	return true
 }
