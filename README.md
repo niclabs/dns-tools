@@ -1,6 +1,125 @@
-# DNS Tools: ZONEMD digest calculator and Signer (using PKCS11 and files)
-
+# DNS Tools: DNS signer (using PKCS11 and files) and ZONEMD digest calculator 
 [![Go Report Card](https://goreportcard.com/badge/github.com/niclabs/dns-tools)](https://goreportcard.com/report/github.com/niclabs/dns-tools) [![Build Status](https://travis-ci.org/niclabs/dns-tools.svg?branch=master)](https://travis-ci.org/niclabs/dns-tools)
+
+Currently there are several solutions that allow automating the DNSSEC
+signing of domains, integrated into the same services that normally
+provide DNS. In the open source area, the most widely used ones allow
+DNSSEC to be activated with a few instructions in the configuration,
+without worrying about keys or signatures.
+
+However, it is always good to have tools that allow verifications or
+even signatures in a more low-level way. There are often use cases
+where someone prefers to have more control, or to integrate with
+non-standard internal systems.
+
+We present **dns-tools**, a command line tool (CLI), written in Go
+language, that allows you to sign with DNSSEC a zone, create zone
+*integrity* records called ZONEMD, and in turn validate these signatures
+and records. This tool was created by [NICLabs](https://niclabs.cl/),
+the laboratory of NIC Chile. It is maintained as open source code on
+github with MIT license.
+
+One of the most outstanding things, and what makes it a unique tool, is
+its integration with another NICLabs project called *dtc: distributed
+threshold signatures*, which allows using a group of "sub"-signers
+that provide greater security against the case of having the keys *"on
+disk"*, as is the normal case of the signers integrated in DNS
+software. Currently there are basically two scales of security with
+respect to DNSSEC keys: either they are kept on disk on a single
+machine, or they are kept in an external HSM. The dns-tools solution
+is in the middle of these two, since on the one hand there is no risk
+of having a complete key on disk; and on the other hand it is much
+cheaper than buying a dedicated HSM.
+
+## Zone Integrity (ZONEMD)
+
+The dns-tools tool has support for the new ZONEMD registry, created at
+the end of 2020. This registry allows to have a *checksum* of the
+complete zone file, which allows the one receiving a zone to verify
+that it is correct. It is similar to the SHA*SUM files that accompany
+certain software, which makes it possible to ensure that a download was
+not maliciously modified, or that it had transmission failures.
+
+Its usefulness is mainly for certain systems that transfer zones using
+the AXFR protocol internal to the DNS, which allows each of the
+receivers of a zone to verify that it is correct. It is also thought to
+be useful for the distribution of certain zones outside the DNS, as is
+the case for example of the DNS root, which is published on websites
+or FTP, and that thanks to the ZONEMD record can be verified after
+downloading.
+
+So, the dns-tools tool allows to generate ZONEMD records, and to verify
+the existing ones. It was one of the first implementations of this new
+standard, and it complied with the compatibility tests performed by the
+authors of the document.
+
+One important thing is that in order to generate ZONEMD records it is a
+requirement that the zone is also signed with DNSSEC, by the same tool.
+And therefore it is necessary to have access to the keys.
+
+On the contrary and as in the case of DNSSEC validation, to verify a
+ZONEMD record it is enough to have the zone file.
+
+```
+  $ dns-tools verify -f example.cl.zone.signed
+  dns-tools] 2021/04/07 11:53:08 Zone parsed is example.cl.
+  Validating Scheme 1, HashAlg 1... ok
+  dns-tools] 2021/04/07 11:53:08 Zone Digest: Verified Successfully.
+```
+
+# Distributed DNSSEC signing
+
+dns-tools allows you to sign a zone by passing the keys directly to
+disk, in the style of most automatic signers, but also allows the use
+of the *PKCS11* interface to have an external keystore, either also on
+disk but managed by a different process (such as *SoftHSM*), or an
+external hardware device specialized in cryptography, the HSM.
+
+This is where it is possible to integrate dns-tools with another system
+developed by NICLabs called ["dtc" (Distributed Threshold Cryptography
+Library Signer)](https://github.com/niclabs/dtc/wiki), which through
+this same PKCS11 interface allows the use of "signer nodes" that share
+*pieces* of a key and must comply with certain *consensus* rules to
+generate a definitive signature. The details of this will be the subject
+of another article.
+
+The important thing is to be clear that the command:
+
+```
+  $ dns-tools sign file -f example.cl.zone -K ksk.pem -Z zsk.pem
+```
+
+takes a normal zone file, DNSSEC keys on disk file, and generates a
+correctly signed zone with DNSSEC. In case the keys do not exist,
+dns-tools can also create them. It is also possible to use the syntax:
+
+```
+  $ dns-tools sign pkcs11 -f example.cl.zone -p /usr/lib/dtc.so
+```
+
+which allows using the PKCS11 interface for communication with an
+external keystore. The corresponding library must be specified with the
+-p option.
+
+The inverse operation, checking or validating signatures, is very
+useful to be used also as a *"second opinion"* in the case of using
+a different signing software. It is a very good practice that when
+having any signature, another completely independent software is used
+to verify the signatures, in order to be sure that the process is
+correct. In this case its use is much simpler, since it is not
+necessary to access the keys:
+
+```
+  $ dns-tools verify -f ejemplo.cl.zone.signed
+  [dns-tools] 2021/04/21 12:35:43 Zone parsed is ejemplo.cl.
+  Validating Scheme 1, HashAlg 1... ok
+  [dns-tools] 2021/04/21 12:35:43 Zone Digest: Verified Successfully.
+```
+
+We invite you to try the tool and use it. As any open source project we
+are attentive to the needs of the community, so if you feel that
+something is missing or want to collaborate with any correction, please
+enter your "issues" to the github and we will improve it together!
 
 ## How to build dns-tools
 
