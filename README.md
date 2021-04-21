@@ -1,6 +1,8 @@
 # DNS Tools: DNS signer (using PKCS11 and files) and ZONEMD digest calculator 
 [![Go Report Card](https://goreportcard.com/badge/github.com/niclabs/dns-tools)](https://goreportcard.com/report/github.com/niclabs/dns-tools) [![Build Status](https://travis-ci.org/niclabs/dns-tools.svg?branch=master)](https://travis-ci.org/niclabs/dns-tools)
 
+(originally written by Hugo Salgado at [this blog post (in Spanish)](https://blog.nic.cl/2021/04/dns-tools-herramienta-para-verificar.html))
+
 Currently there are several solutions that allow automating the DNSSEC
 signing of domains, integrated into the same services that normally
 provide DNS. In the open source area, the most widely used ones allow
