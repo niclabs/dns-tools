@@ -35,8 +35,8 @@ func (ctx *Context) VerifyFile() (err error) {
 
 	rrSigTuples := make(map[string]*RRSigTuple)
 
-	pzsk := make(map[uint16]*dns.DNSKEY, 0)
-	pksk := make(map[uint16]*dns.DNSKEY, 0)
+	pzsk := make(map[uint16]*dns.DNSKEY)
+	pksk := make(map[uint16]*dns.DNSKEY)
 
 	// Pairing each RRArray with its RRSig
 	for _, set := range setList {
@@ -125,10 +125,10 @@ func (ctx *Context) VerifyFile() (err error) {
 			key, ok = pzsk[sig.KeyTag]
 		}
 		if !ok {
-			return fmt.Errorf("Key with keytag declared in signature not found")
+			return fmt.Errorf("key with keytag declared in signature not found")
 		}
 		if key.Algorithm != sig.Algorithm {
-			return fmt.Errorf("Key and signature algorithm does not match")
+			return fmt.Errorf("key and signature algorithm does not match")
 		}
 		err = sig.Verify(key, set)
 		if err != nil {

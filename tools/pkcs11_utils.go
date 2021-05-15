@@ -47,7 +47,7 @@ func (session *PKCS11Session) getECDSAPubKeyBytes(signer crypto.Signer) ([]byte,
 		return nil, err
 	}
 	if len(attr) == 0 {
-		return nil, fmt.Errorf("Attribute not found")
+		return nil, fmt.Errorf("attribute not found")
 	}
 	// asn1 -> elliptic-marshaled
 	return ecdsaPublicKeyToBytes(attr[0].Value)

@@ -138,7 +138,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 	if ctx.Config.DigestEnabled {
 		ctx.Log.Printf("Updating zone digests...")
 		if err := ctx.UpdateDigest(); err != nil {
-			return nil, fmt.Errorf("Error updating ZONEMD Digest: %s", err)
+			return nil, fmt.Errorf("error updating ZONEMD Digest: %s", err)
 		}
 
 		rrSig := CreateNewRRSIG(
@@ -151,7 +151,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 		var zmdrrs []dns.RR
 
 		for _, zmd := range ctx.zonemd {
-			zmdrrs = append (zmdrrs, dns.RR(zmd))
+			zmdrrs = append(zmdrrs, dns.RR(zmd))
 		}
 
 		ctx.Log.Printf("Signing new zone digest...")

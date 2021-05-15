@@ -93,7 +93,7 @@ func (ctx *Context) AddZONEMDRecord() {
 			Ttl:    ctx.soa.Header().Ttl,
 		},
 		Serial: ctx.soa.Serial,
-		Scheme: 1,           // SIMPLE
+		Scheme: 1,                  // SIMPLE
 		Hash:   ctx.Config.HashAlg, // Default: 1 = SHA384
 		Digest: strings.Repeat("0", 48*2),
 	}
@@ -110,7 +110,6 @@ func (ctx *Context) CleanDigests() {
 			x.Digest = strings.Repeat("0", len(x.Digest))
 		}
 	}
-	return
 }
 
 // CalculateDigest calculates the digest for a PREVIOUSLY ORDERED zone.
@@ -187,7 +186,7 @@ func (ctx *Context) ValidateOrderedZoneDigest(hashAlg uint8, mddigest string) er
 	if err != nil {
 		return err
 	}
-	if strings.ToLower(digest) != strings.ToLower(mddigest) {
+	if !strings.EqualFold(digest, mddigest) {
 		return fmt.Errorf("invalid digest (expected: %s obtained: %s)", mddigest, digest)
 	}
 	return nil

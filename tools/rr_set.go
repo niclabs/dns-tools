@@ -164,10 +164,7 @@ func (setList RRSetList) Less(i, j int) bool {
 	iRRArray := setList[i]
 	jRRArray := setList[j]
 	if len(iRRArray) == 0 {
-		if len(jRRArray) == 0 {
-			return false
-		}
-		return true
+		return len(jRRArray) != 0
 	}
 	// Create and array to reuse Less method from rrArrays
 	cmpArray := append(make(RRArray, 0), iRRArray[0], jRRArray[0])
@@ -286,7 +283,10 @@ func (ctx *Context) addNSEC3Records() error {
 		if typeMap[dns.TypeSOA] {
 			typeMap[dns.TypeNSEC3PARAM] = true
 		}
-		if !typeMap[dns.TypeDS] && !typeMap[dns.TypeDNSKEY] && ctx.Config.OptOut {
+		// Zones delegated without a DS RR should not have a NSEC3 RR
+		_, withDS := ctx.WithDS[rrSet[0].Header().Name]
+		_, delegated := ctx.DelegatedZones[rrSet[0].Header().Name]
+		if delegated && !withDS && ctx.Config.OptOut {
 			continue
 		}
 		// Add current NSEC3 RR
@@ -295,9 +295,9 @@ func (ctx *Context) addNSEC3Records() error {
 			return err
 		}
 		// Add NSEC3 RRS for each sublabel
-		labels := dns.SplitDomainName(rrSet[0].Header().Name)
+		labels := dns.SplitDomainName(strings.TrimSuffix(rrSet[0].Header().Name, ctx.Config.Zone))
 		for i := range labels {
-			label := strings.Join(labels[i:], ".") + "."
+			label := strings.Join(labels[i:], ".") + "." + ctx.Config.Zone
 			if ctx.isSignable(label) {
 				if len(label) == 0 {
 					break
@@ -334,7 +334,7 @@ func sameRRSet(rr1, rr2 dns.RR, byType bool) bool {
 		return false
 	}
 	return rr1.Header().Class == rr2.Header().Class &&
-		strings.ToLower(dns.Fqdn(rr1.Header().Name)) == strings.ToLower(dns.Fqdn(rr2.Header().Name)) &&
+		strings.EqualFold(dns.Fqdn(rr1.Header().Name), dns.Fqdn(rr2.Header().Name)) &&
 		(!byType || rr1.Header().Rrtype == rr2.Header().Rrtype)
 }
 

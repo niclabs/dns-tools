@@ -25,6 +25,7 @@ type Context struct {
 	Log            *log.Logger         // Logger
 	SignAlgorithm  SignAlgorithm       // Sign Algorithm
 	DelegatedZones map[string]struct{} // Map with Delegated zones.
+	WithDS         map[string]struct{} // Map with zones with a DS RR
 }
 
 // ContextConfig contains the common args to sign and verify files
@@ -48,7 +49,7 @@ type ContextConfig struct {
 // NewContext creates a new context based on a configuration structure. It also receives
 // a logger to log errors.
 func NewContext(config *ContextConfig, log *log.Logger) (ctx *Context, err error) {
-	algorithm, _ := StringToSignAlgorithm[config.SignAlgorithm] // It could be nil
+	algorithm := StringToSignAlgorithm[config.SignAlgorithm] // It could be nil
 	ctx = &Context{
 		Config:        config,
 		Log:           log,
@@ -107,6 +108,10 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 		ctx.DelegatedZones = make(map[string]struct{})
 	}
 
+	if ctx.WithDS == nil {
+		ctx.WithDS = make(map[string]struct{})
+	}
+
 	rrs := make(RRArray, 0)
 
 	if len(ctx.Config.Zone) > 0 && !strings.HasSuffix(ctx.Config.Zone, ".") {
@@ -157,6 +162,8 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 			if rr.Header().Name != ctx.Config.Zone {
 				ctx.DelegatedZones[rr.Header().Name] = struct{}{}
 			}
+		case dns.TypeDS:
+			ctx.WithDS[rr.Header().Name] = struct{}{}
 		case dns.TypeMD:
 			rr.(*dns.MD).Md = strings.ToLower(rr.(*dns.MD).Md)
 		case dns.TypeMF:
@@ -254,23 +261,23 @@ func (ctx *Context) AddNSEC13() {
 func (ctx *Context) NewPKCS11Session(key, label, p11lib string) (SignSession, error) {
 	p := pkcs11.New(p11lib)
 	if p == nil {
-		return nil, fmt.Errorf("Error initializing %s: file not found", p11lib)
+		return nil, fmt.Errorf("error initializing %s: file not found", p11lib)
 	}
 	err := p.Initialize()
 	if err != nil {
-		return nil, fmt.Errorf("Error initializing %s: %s. (Has the .db RW permission?)", p11lib, err)
+		return nil, fmt.Errorf("error initializing %s: %s. (Has the .db RW permission?)", p11lib, err)
 	}
 	slots, err := p.GetSlotList(true)
 	if err != nil {
-		return nil, fmt.Errorf("Error checking slots: %s", err)
+		return nil, fmt.Errorf("error checking slots: %s", err)
 	}
 	session, err := p.OpenSession(slots[0], pkcs11.CKF_SERIAL_SESSION|pkcs11.CKF_RW_SESSION)
 	if err != nil {
-		return nil, fmt.Errorf("Error creating session: %s", err)
+		return nil, fmt.Errorf("error creating session: %s", err)
 	}
 	err = p.Login(session, pkcs11.CKU_USER, key)
 	if err != nil {
-		return nil, fmt.Errorf("Error login with provided key: %s", err)
+		return nil, fmt.Errorf("error login with provided key: %s", err)
 	}
 	return &PKCS11Session{
 		libPath:    p11lib,

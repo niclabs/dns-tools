@@ -51,6 +51,8 @@ func initConfig() {
 	viper.AutomaticEnv()
 	if err := viper.ReadInConfig(); err == nil {
 		commandLog.Println("Using config file:", viper.ConfigFileUsed())
+	} else {
+		commandLog.Printf("Error reading Config File: %s. Using flags only", err)
 	}
 }
 

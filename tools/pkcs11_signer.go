@@ -36,31 +36,31 @@ func (rs *PKCS11RRSigner) Sign(rand io.Reader, rr []byte, opts crypto.SignerOpts
 		return nil, fmt.Errorf("session not initialized")
 	}
 	var mechanisms []*pkcs11.Mechanism
-	T := make([]byte, 0)
+	var arr []byte
 	ctx := rs.Session.Context()
 	switch ctx.SignAlgorithm {
 	case RsaSha256:
 		// Inspired in https://github.com/ThalesIgnite/crypto11/blob/38ef75346a1dc2094ffdd919341ef9827fb041c0/rsa.go#L281
 		oid := pkcs1Prefix[opts.HashFunc()]
-		T = make([]byte, len(oid)+len(rr))
-		copy(T[0:len(oid)], oid)
-		copy(T[len(oid):], rr)
+		arr = make([]byte, len(oid)+len(rr))
+		copy(arr[0:len(oid)], oid)
+		copy(arr[len(oid):], rr)
 		mechanisms = []*pkcs11.Mechanism{
 			pkcs11.NewMechanism(pkcs11.CKM_RSA_PKCS, nil),
 		}
 	case EcdsaP256Sha256:
-		T = rr
+		arr = rr
 		mechanisms = []*pkcs11.Mechanism{
 			pkcs11.NewMechanism(pkcs11.CKM_ECDSA, nil),
 		}
 	default:
-		return nil, fmt.Errorf("Algorithm not supported")
+		return nil, fmt.Errorf("algorithm not supported")
 	}
 	err := rs.Session.P11Context.SignInit(rs.Session.Handle, mechanisms, rs.SK)
 	if err != nil {
 		return nil, err
 	}
-	sig, err := rs.Session.P11Context.Sign(rs.Session.Handle, T)
+	sig, err := rs.Session.P11Context.Sign(rs.Session.Handle, arr)
 	if err != nil {
 		return nil, err
 	}

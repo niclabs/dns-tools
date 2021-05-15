@@ -35,7 +35,6 @@ func TestSession_PKCS11RSASign(t *testing.T) {
 	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
-	return
 }
 
 func TestSession_PKCS11RSASignNSEC3(t *testing.T) {
@@ -64,7 +63,6 @@ func TestSession_PKCS11RSASignNSEC3(t *testing.T) {
 	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
-	return
 }
 
 func TestSession_PKCS11RSASignNSEC3OptOut(t *testing.T) {
@@ -93,7 +91,6 @@ func TestSession_PKCS11RSASignNSEC3OptOut(t *testing.T) {
 	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
-	return
 }
 
 func TestSession_PKCS11ECDSASign(t *testing.T) {
@@ -122,7 +119,6 @@ func TestSession_PKCS11ECDSASign(t *testing.T) {
 	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
-	return
 }
 
 func TestSession_PKCS11ECDSASignNSEC3(t *testing.T) {
@@ -151,7 +147,6 @@ func TestSession_PKCS11ECDSASignNSEC3(t *testing.T) {
 	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
-	return
 }
 
 func TestSession_PKCS11ECDSASignNSEC3OptOut(t *testing.T) {
@@ -180,7 +175,6 @@ func TestSession_PKCS11ECDSASignNSEC3OptOut(t *testing.T) {
 	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
-	return
 }
 
 func TestSession_PKCS11ExpiredSig(t *testing.T) {
@@ -216,5 +210,4 @@ func TestSession_PKCS11ExpiredSig(t *testing.T) {
 	} else {
 		t.Errorf("Error expected, but nil received")
 	}
-	return
 }

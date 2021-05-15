@@ -81,7 +81,6 @@ func TestSession_FileRSASign(t *testing.T) {
 	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
-	return
 }
 
 func TestSession_FileRSASignNSEC3(t *testing.T) {
@@ -112,7 +111,6 @@ func TestSession_FileRSASignNSEC3(t *testing.T) {
 	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
-	return
 }
 
 func TestSession_FileRSASignNSEC3OptOut(t *testing.T) {
@@ -143,7 +141,6 @@ func TestSession_FileRSASignNSEC3OptOut(t *testing.T) {
 	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
-	return
 }
 
 func TestSession_FileECDSASign(t *testing.T) {
@@ -174,7 +171,6 @@ func TestSession_FileECDSASign(t *testing.T) {
 	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
-	return
 }
 
 func TestSession_FileECDSASignNSEC3(t *testing.T) {
@@ -205,7 +201,6 @@ func TestSession_FileECDSASignNSEC3(t *testing.T) {
 	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
-	return
 }
 
 func TestSession_FileECDSASignNSEC3OptOut(t *testing.T) {
@@ -236,7 +231,6 @@ func TestSession_FileECDSASignNSEC3OptOut(t *testing.T) {
 	if err := ctx.VerifyFile(); err != nil {
 		t.Errorf("Error verifying output: %s", err)
 	}
-	return
 }
 
 func TestSession_FileExpiredSig(t *testing.T) {
@@ -274,5 +268,4 @@ func TestSession_FileExpiredSig(t *testing.T) {
 	} else {
 		t.Errorf("Error expected, but nil received")
 	}
-	return
 }
