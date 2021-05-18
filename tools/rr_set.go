@@ -256,11 +256,16 @@ func (ctx *Context) addNSECRecords() {
 // addNSEC3Records edits an RRArray and adds the respective NSEC3 records to it.
 // If optOut is true, it sets the flag for NSEC3PARAM RR, following RFC5155 section 6.
 // It returns an error if there is a colission on the hashes.
-func (ctx *Context) addNSEC3Records() error {
+func (ctx *Context) addNSEC3Records() (err error) {
 	setList := ctx.getRRSetList(false)
-	salt, err := generateSalt()
-	if err != nil {
-		return err
+	var salt string
+	if ctx.Config.NSEC3SaltValue == "" {
+		salt, err = generateSalt(ctx.Config.NSEC3SaltLength)
+		if err != nil {
+			return err
+		}
+	} else {
+		salt = ctx.Config.NSEC3SaltValue
 	}
 	param := &dns.NSEC3PARAM{
 		Hdr: dns.RR_Header{
@@ -270,7 +275,7 @@ func (ctx *Context) addNSEC3Records() error {
 			Ttl:    ctx.soa.Minttl,
 		},
 		Hash:       dns.SHA1,
-		Iterations: 100, // Is enough
+		Iterations: ctx.Config.NSEC3Iterations,
 		Salt:       salt,
 		SaltLength: uint8(len(salt) / 2),
 	}

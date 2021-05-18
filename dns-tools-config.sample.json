@@ -18,5 +18,8 @@
   "info": false,
   "lazy": true,
   "verify-threshold-duration": "7 days",
-  "verify-threshold-date": "20300101"
+  "verify-threshold-date": "20300101",
+  "nsec3-iterations": 100,
+  "nsec3-salt-length": 1000,
+  "nsec3-salt-value": "f1c5ed5a17"
 }

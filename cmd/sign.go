@@ -37,6 +37,10 @@ func init() {
 	signCmd.PersistentFlags().StringP("verify-threshold-duration", "t", "", "Number of days it needs to be before a signature expiration to be considered as valid by the verifier. Default is empty")
 	signCmd.PersistentFlags().StringP("verify-threshold-date", "T", "", "Exact date it needs to be before a signature expiration to be considered as expired by the verifier. It is ignored if --verify-threshold-duration is set. Default is tomorrow")
 
+	signCmd.PersistentFlags().Uint16("nsec3-iterations", 0, "If --nsec3 is activated, define the number of iterations of NSEC3 hashing")
+	signCmd.PersistentFlags().Uint16("nsec3-salt-length", 64, "If --nsec3 is activated and there is no --nsec3-salt-value, define the salt length in bytes.")
+	signCmd.PersistentFlags().String("nsec3-salt-value", "", "If --nsec3 is activated, define the salt value in hexadecimal. Its length overrides --nsec3-salt-length")
+
 	pkcs11Cmd.PersistentFlags().StringP("user-key", "k", "1234", "HSM User Login PKCS11Key.")
 	pkcs11Cmd.PersistentFlags().StringP("key-label", "l", "HSM-tools", "Label of HSM Signer PKCS11Key.")
 	pkcs11Cmd.PersistentFlags().StringP("p11lib", "p", "", "Full path to PKCS11 lib file.")
@@ -171,6 +175,10 @@ func newSignConfig() (*tools.ContextConfig, error) {
 	out := viper.GetString("output")
 	hashdigest := uint8(viper.GetInt("hash-digest"))
 
+	nsec3Iterations := uint16(viper.GetInt("nsec3-iterations"))
+	nsec3SaltLength := uint8(viper.GetInt("nsec3-salt-length"))
+	nsec3SaltValue := viper.GetString("nsec3-salt-value")
+
 	if hashdigest == 0 {
 		return nil, fmt.Errorf("hash-digest not specified")
 	}
@@ -216,6 +224,9 @@ func newSignConfig() (*tools.ContextConfig, error) {
 		Lazy:            lazy,
 		VerifyThreshold: verifyThreshold,
 		HashAlg:         hashdigest,
+		NSEC3Iterations: nsec3Iterations,
+		NSEC3SaltLength: nsec3SaltLength,
+		NSEC3SaltValue:  nsec3SaltValue,
 	}, nil
 }
 

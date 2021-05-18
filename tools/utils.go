@@ -45,9 +45,12 @@ func CreateNewRRSIG(zone string, dnsKeyRR *dns.DNSKEY, expDate time.Time, rrSetT
 	}
 }
 
-// generateSalt returns a 64 bit salt from a cryptographically secure generator.
-func generateSalt() (string, error) {
-	b := make([]byte, 8)
+// generateSalt returns a salt of length bytes from a cryptographically secure generator.
+func generateSalt(length uint8) (string, error) {
+	if length > 64 {
+		length = 64
+	}
+	b := make([]byte, length)
 	_, err := rand.Read(b)
 	if err != nil {
 		return "", err

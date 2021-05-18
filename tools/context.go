@@ -43,7 +43,9 @@ type ContextConfig struct {
 	Lazy            bool      // If true, the zone will not be signed if it is not needed.
 	VerifyThreshold time.Time // Verification Threshold
 	HashAlg         uint8     // 1:sha384 (default), 2:sha512
-
+	NSEC3Iterations uint16
+	NSEC3SaltLength uint8
+	NSEC3SaltValue  string
 }
 
 // NewContext creates a new context based on a configuration structure. It also receives
@@ -244,9 +246,15 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 // AddNSEC13 adds NSEC 1 and 3 rrs to the RR list.
 func (ctx *Context) AddNSEC13() {
 	if ctx.Config.NSEC3 {
+		errors := 0
 		for {
 			if err := ctx.addNSEC3Records(); err != nil {
 				ctx.Log.Printf("%s", err)
+				errors++
+				if errors == 3 {
+					panic("cannot add NSEC3 Records. Chech your --nsec3-* params and try again.")
+					break
+				}
 			} else {
 				break
 			}
