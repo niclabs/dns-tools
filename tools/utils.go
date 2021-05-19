@@ -113,7 +113,10 @@ func ecdsaPublicKeyToBytes(ecPoint []byte) ([]byte, error) {
 
 // Transformas an array of booleans into a map of uint16s
 func newTypeArray(typeMap map[uint16]bool) []uint16 {
+	// RRSIG byte is added just in case
+	typeMap[dns.TypeRRSIG] = true
 	typeArray := make([]uint16, 0)
+	// Then we add the types present in typeMap
 	for k := range typeMap {
 		typeArray = append(typeArray, k)
 	}
