@@ -20,6 +20,12 @@ import (
 	"github.com/miekg/dns"
 )
 
+var intToHash = map[uint8]func() hash.Hash{
+	0: sha512.New384, // Default is the same hash as 1
+	1: sha512.New384,
+	2: sha512.New,
+}
+
 // VerifyDigest validates a version of a zone with a valid ZONEMD RR.
 func (ctx *Context) VerifyDigest() error {
 	if ctx.File == nil {
@@ -42,13 +48,11 @@ func (ctx *Context) VerifyDigest() error {
 	}
 	sort.Sort(ctx.rrs)
 	for _, mdRR := range ctx.zonemd {
-		if ctx.Config.HashAlg < 1 || (ctx.Config.HashAlg > 0 && mdRR.Hash == ctx.Config.HashAlg) {
-			fmt.Printf("Validating Scheme %d, HashAlg %d... ", mdRR.Scheme, mdRR.Hash)
-			if err := ctx.ValidateOrderedZoneDigest(mdRR.Hash, mdRR.Digest); err != nil {
-				return err
-			}
-			fmt.Println("ok")
+		ctx.Log.Printf("Validating ZONEMD %s with scheme %d and hashAlg %d", mdRR.Header().Name, mdRR.Scheme, mdRR.Hash)
+		if err := ctx.ValidateOrderedZoneDigest(mdRR.Hash, mdRR.Digest); err != nil {
+			return err
 		}
+		ctx.Log.Printf("ZONEMD %s is valid!", mdRR.Header().Name)
 	}
 	return nil
 }
@@ -93,9 +97,9 @@ func (ctx *Context) AddZONEMDRecord() {
 			Ttl:    ctx.soa.Header().Ttl,
 		},
 		Serial: ctx.soa.Serial,
-		Scheme: 1,                  // SIMPLE
-		Hash:   ctx.Config.HashAlg, // Default: 1 = SHA384
-		Digest: strings.Repeat("0", 48*2),
+		Scheme: 1, // SIMPLE
+		Hash:   ctx.Config.HashAlg,
+		Digest: strings.Repeat("00", 48),
 	}
 	ctx.rrs = append(ctx.rrs, zonemd)
 	ctx.zonemd = append(ctx.zonemd, zonemd)
@@ -118,14 +122,13 @@ func (ctx *Context) CalculateDigest(hashAlg uint8) (string, error) {
 	if ctx.zonemd == nil {
 		return "", fmt.Errorf("error trying to calculate a digest without a ZONEMD RR present")
 	}
-	var h hash.Hash
-	var prevRR dns.RR
 
-	if hashAlg == 2 {
-		h = sha512.New()
-	} else { // default
-		h = sha512.New384()
+	hashFunc, ok := intToHash[hashAlg]
+	if !ok {
+		return "", fmt.Errorf("hashAlg provided (%d) is not valid", hashAlg)
 	}
+	h := hashFunc()
+	var prevRR dns.RR
 	for _, rr := range ctx.rrs {
 		switch {
 		// Ignore ZONEMD RRs (new in v06)
@@ -180,14 +183,14 @@ func (ctx *Context) UpdateDigest() (err error) {
 // ValidateOrderedZoneDigest validates the digest for a PREVIOUSLY ORDERED zone.
 // Returns nil if the calculated digest is equals the ZONEMD one, and an error otherwise.
 // Follows the validation from https://datatracker.ietf.org/doc/draft-ietf-dnsop-dns-zone-digest.
-// It is hardcoded to use SHA384 and SIMPLE scheme.
+// It is hardcoded to use SIMPLE scheme.
 func (ctx *Context) ValidateOrderedZoneDigest(hashAlg uint8, mddigest string) error {
 	digest, err := ctx.CalculateDigest(hashAlg)
 	if err != nil {
 		return err
 	}
 	if !strings.EqualFold(digest, mddigest) {
-		return fmt.Errorf("invalid digest (expected: %s obtained: %s)", mddigest, digest)
+		return fmt.Errorf("invalid digest\n   expected: %s\n   obtained: %s", mddigest, digest)
 	}
 	return nil
 }

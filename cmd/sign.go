@@ -27,7 +27,7 @@ func init() {
 	signCmd.PersistentFlags().BoolP("nsec3", "3", false, "Use NSEC3 instead of NSEC.")
 	signCmd.PersistentFlags().BoolP("opt-out", "x", false, "Use NSEC3 with opt-out.")
 	signCmd.PersistentFlags().BoolP("digest", "d", false, "If it is true, DigestEnabled RR is added to the signed zone")
-	signCmd.PersistentFlags().IntP("hash-digest", "Q", 2, "Hash algorithm for Digest Verification: 1=sha384, 2=sha256")
+	signCmd.PersistentFlags().IntP("hash-digest", "Q", 1, "Hash algorithm for Digest Verification: 1=sha384, 2=sha512")
 	signCmd.PersistentFlags().BoolP("info", "i", false, "If it is true, an TXT RR is added with information about the signing process (tool and mode)")
 	signCmd.PersistentFlags().BoolP("lazy", "L", false, "If it is true, the zone will be signed only if it is needed (i.e. it is not signed already, it is signed with different key, the signatures are about to expire or the original zone is newer than the signed zone)")
 
@@ -173,13 +173,13 @@ func newSignConfig() (*tools.ContextConfig, error) {
 
 	path := viper.GetString("file")
 	out := viper.GetString("output")
-	hashdigest := uint8(viper.GetInt("hash-digest"))
+	hashDigest := uint8(viper.GetInt("hash-digest"))
 
 	nsec3Iterations := uint16(viper.GetInt("nsec3-iterations"))
 	nsec3SaltLength := uint8(viper.GetInt("nsec3-salt-length"))
 	nsec3SaltValue := viper.GetString("nsec3-salt-value")
 
-	if hashdigest == 0 {
+	if hashDigest == 0 {
 		return nil, fmt.Errorf("hash-digest not specified")
 	}
 
@@ -223,7 +223,7 @@ func newSignConfig() (*tools.ContextConfig, error) {
 		Info:            info,
 		Lazy:            lazy,
 		VerifyThreshold: verifyThreshold,
-		HashAlg:         hashdigest,
+		HashAlg:         hashDigest,
 		NSEC3Iterations: nsec3Iterations,
 		NSEC3SaltLength: nsec3SaltLength,
 		NSEC3SaltValue:  nsec3SaltValue,

@@ -16,7 +16,7 @@ func init() {
 	digestCmd.PersistentFlags().StringP("zone", "z", "", "Zone name")
 	digestCmd.PersistentFlags().StringP("output", "o", "", "Full path to output file")
 	digestCmd.PersistentFlags().BoolP("info", "i", false, "If true, an TXT RR is added with information about the signing process (tool and mode)")
-	digestCmd.PersistentFlags().IntP("hash-digest", "d", 1, "Hash algorithm for Digest: 1=sha384, 2=sha256")
+	digestCmd.PersistentFlags().IntP("hash-digest", "d", 1, "Hash algorithm for Digest: 1=sha384, 2=sha512")
 }
 
 var digestCmd = &cobra.Command{
@@ -34,7 +34,7 @@ func digest(cmd *cobra.Command, args []string) error {
 	out := viper.GetString("output")
 	info := viper.GetBool("info")
 
-	hashdigest := uint8(viper.GetInt("hash-digest"))
+	hashDigest := uint8(viper.GetInt("hash-digest"))
 
 	if len(zonePath) == 0 {
 		return fmt.Errorf("input file zonePath not specified")
@@ -72,7 +72,7 @@ func digest(cmd *cobra.Command, args []string) error {
 		Config: &tools.ContextConfig{
 			Zone: zone,
 			Info: info,
-			HashAlg: hashdigest,
+			HashAlg: hashDigest,
 		},
 		File:   zoneFile,
 		Output: outFile,

@@ -64,9 +64,9 @@ ZONEMD record it is enough to have the zone file.
 
 ```
   $ dns-tools verify -f example.cl.zone.signed
-  dns-tools] 2021/04/07 11:53:08 Zone parsed is example.cl.
+  [dns-tools] 2021/04/07 11:53:08 Zone parsed is example.cl.
   Validating Scheme 1, HashAlg 1... ok
-  dns-tools] 2021/04/07 11:53:08 Zone Digest: Verified Successfully.
+  [dns-tools] 2021/04/07 11:53:08 Zone Digest: Verified Successfully.
 ```
 
 # Distributed DNSSEC signing

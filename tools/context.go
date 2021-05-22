@@ -253,7 +253,6 @@ func (ctx *Context) AddNSEC13() {
 				errors++
 				if errors == 3 {
 					panic("cannot add NSEC3 Records. Chech your --nsec3-* params and try again.")
-					break
 				}
 			} else {
 				break
