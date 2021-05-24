@@ -54,7 +54,6 @@ func verify(cmd *cobra.Command, args []string) error {
 			Zone:            zone,
 			FilePath:        path,
 			VerifyThreshold: verifyThreshold,
-			HashAlg:         hashDigest,
 		},
 		File: file,
 		Log:  commandLog,
