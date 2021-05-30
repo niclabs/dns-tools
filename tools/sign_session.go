@@ -174,7 +174,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 	/* end DigestEnabled digest updating*/
 	ctx.Log.Printf("Signing done, writing zone")
 
-	ds = ksk.ToDS(1)
+	ds = ksk.ToDS(dns.SHA256)
 	ctx.Log.Printf("DS: %s\n", ds) // SHA256
 	err = ctx.WriteZone()
 	return ds, err
