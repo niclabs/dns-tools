@@ -58,13 +58,20 @@ func verify(cmd *cobra.Command, args []string) error {
 		Log:  commandLog,
 	}
 
-	if err := ctx.VerifyFile(); err != nil {
-		commandLog.Printf("Zone Signature: %s", err)
+	signErr := ctx.VerifyFile()
+
+	if signErr != nil {
+		commandLog.Printf("Zone Signature: Error verifying signatures: %s", signErr)
 	} else {
 		commandLog.Printf("Zone Signature: Verified Successfully.")
 	}
+
 	if err := ctx.VerifyDigest(); err != nil {
 		commandLog.Printf("Zone Digest: %s", err)
+		return err
+	} else if signErr != nil {
+		commandLog.Printf("Zone Digest: Digest matches, but zone signature verification failed")
+		return signErr
 	} else {
 		commandLog.Printf("Zone Digest: Verified Successfully.")
 	}

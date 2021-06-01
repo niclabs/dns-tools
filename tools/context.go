@@ -210,6 +210,9 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 		}
 		rrs = append(rrs, rr)
 	}
+	if zone.Err() != nil {
+		return fmt.Errorf("error parsing zone: %s", zone.Err())
+	}
 
 	if ctx.soa == nil {
 		return fmt.Errorf("SOA RR not found")

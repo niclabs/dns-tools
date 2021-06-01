@@ -98,11 +98,11 @@ func (ctx *Context) VerifyFile() (err error) {
 		set := tuple.RRArray
 		if len(set) == 0 {
 			err = fmt.Errorf("the RRSet %s has no elements", setName)
-			continue
+			return
 		}
 		if sig == nil {
 			err = fmt.Errorf("the RRSet %s does not have a Signature", setName)
-			continue
+			return
 		}
 		expDate := time.Unix(int64(sig.Expiration), 0)
 		if expDate.Before(ctx.Config.VerifyThreshold) {
@@ -111,8 +111,7 @@ func (ctx *Context) VerifyFile() (err error) {
 				setName,
 				expDate.Format("2006-01-02 15:04:05"),
 			)
-			ctx.Log.Printf("%s\n", err)
-			continue
+			return
 		}
 		var key *dns.DNSKEY
 		var ok bool
@@ -133,6 +132,7 @@ func (ctx *Context) VerifyFile() (err error) {
 		err = sig.Verify(key, set)
 		if err != nil {
 			ctx.Log.Printf("[Error] (%s) %s  \n", err, setName)
+			return
 		} else {
 			ctx.Log.Printf("[ OK  ] %s\n", setName)
 		}

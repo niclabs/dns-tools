@@ -249,8 +249,6 @@ func (ctx *Context) addNSECRecords() {
 
 		ctx.rrs = append(ctx.rrs, nsec)
 	}
-
-	sort.Sort(ctx.rrs)
 }
 
 // addNSEC3Records edits an RRArray and adds the respective NSEC3 records to it.
@@ -329,7 +327,6 @@ func (ctx *Context) addNSEC3Records() (err error) {
 		ctx.rrs = append(ctx.rrs, sortedList[i])
 	}
 	ctx.rrs = append(ctx.rrs, param)
-	sort.Sort(ctx.rrs)
 	return nil
 }
 

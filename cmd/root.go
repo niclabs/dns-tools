@@ -13,6 +13,8 @@ var cfgFile string
 
 func init() {
 	cobra.OnInitialize(initConfig)
+	rootCmd.SilenceUsage = true
+	rootCmd.SilenceErrors = true
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "C", "", "configuration file (defaults are \"/etc/dns-tools/dns-tools-config.json\" and \"./dns-tools-config.json\")")
 	rootCmd.AddCommand(signCmd)
 	rootCmd.AddCommand(verifyCmd)
