@@ -14,6 +14,8 @@ type RRSigTuple struct {
 	RRArray RRArray
 }
 
+var ErrNotEnoughDNSkeys = fmt.Errorf("could not find enough dnskeys")
+
 // VerifyFile verifies the signatures in an already signed zone file.
 // zone represents the domain origin, while path is the zone location, and it is used
 // to resolve $INCLUDE directives. reader has the zone input and logger allows us to log the operations.
@@ -87,7 +89,7 @@ func (ctx *Context) VerifyFile() (err error) {
 	}
 
 	if len(pzsk) == 0 || len(pksk) == 0 {
-		err = fmt.Errorf("could not find enough dnskeys")
+		err = ErrNotEnoughDNSkeys
 		return err
 	}
 
