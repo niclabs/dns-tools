@@ -124,10 +124,10 @@ func signFile(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("file does not need to be signed")
 	}
 	ctx, err := tools.NewContext(conf, commandLog)
-	defer ctx.Close()
 	if err != nil {
 		return err
 	}
+	defer ctx.Close()
 	zskKeypath := viper.GetString("ksk-keyfile")
 	if len(zskKeypath) == 0 {
 		return fmt.Errorf("ZSK keyfile not specified")

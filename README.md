@@ -1,4 +1,5 @@
-# DNS Tools: DNS signer (using PKCS11 and files) and ZONEMD digest calculator 
+# DNS Tools: DNS signer (using PKCS11 and files) and ZONEMD digest calculator
+
 [![Go Report Card](https://goreportcard.com/badge/github.com/niclabs/dns-tools)](https://goreportcard.com/report/github.com/niclabs/dns-tools) [![Build Status](https://travis-ci.org/niclabs/dns-tools.svg?branch=master)](https://travis-ci.org/niclabs/dns-tools)
 
 (originally written by Hugo Salgado at [this blog post (in Spanish)](https://blog.nic.cl/2021/04/dns-tools-herramienta-para-verificar.html))
@@ -16,16 +17,16 @@ non-standard internal systems.
 
 We present **dns-tools**, a command line tool (CLI), written in Go
 language, that allows you to sign with DNSSEC a zone, create zone
-*integrity* records called ZONEMD, and in turn validate these signatures
+_integrity_ records called ZONEMD, and in turn validate these signatures
 and records. This tool was created by [NICLabs](https://niclabs.cl/),
 the laboratory of NIC Chile. It is maintained as open source code on
 github with MIT license.
 
 One of the most outstanding things, and what makes it a unique tool, is
-its integration with another NICLabs project called *dtc: distributed
-threshold signatures*, which allows using a group of "sub"-signers
-that provide greater security against the case of having the keys *"on
-disk"*, as is the normal case of the signers integrated in DNS
+its integration with another NICLabs project called _dtc: distributed
+threshold signatures_, which allows using a group of "sub"-signers
+that provide greater security against the case of having the keys _"on
+disk"_, as is the normal case of the signers integrated in DNS
 software. Currently there are basically two scales of security with
 respect to DNSSEC keys: either they are kept on disk on a single
 machine, or they are kept in an external HSM. The dns-tools solution
@@ -36,9 +37,9 @@ cheaper than buying a dedicated HSM.
 ## Zone Integrity (ZONEMD)
 
 The dns-tools tool has support for the new ZONEMD registry, created at
-the end of 2020. This registry allows to have a *checksum* of the
+the end of 2020. This registry allows to have a _checksum_ of the
 complete zone file, which allows the one receiving a zone to verify
-that it is correct. It is similar to the SHA*SUM files that accompany
+that it is correct. It is similar to the SHA\*SUM files that accompany
 certain software, which makes it possible to ensure that a download was
 not maliciously modified, or that it had transmission failures.
 
@@ -73,15 +74,15 @@ ZONEMD record it is enough to have the zone file.
 
 dns-tools allows you to sign a zone by passing the keys directly to
 disk, in the style of most automatic signers, but also allows the use
-of the *PKCS11* interface to have an external keystore, either also on
-disk but managed by a different process (such as *SoftHSM*), or an
+of the _PKCS11_ interface to have an external keystore, either also on
+disk but managed by a different process (such as _SoftHSM_), or an
 external hardware device specialized in cryptography, the HSM.
 
 This is where it is possible to integrate dns-tools with another system
 developed by NICLabs called ["dtc" (Distributed Threshold Cryptography
 Library Signer)](https://github.com/niclabs/dtc/wiki), which through
 this same PKCS11 interface allows the use of "signer nodes" that share
-*pieces* of a key and must comply with certain *consensus* rules to
+_pieces_ of a key and must comply with certain _consensus_ rules to
 generate a definitive signature. The details of this will be the subject
 of another article.
 
@@ -104,7 +105,7 @@ external keystore. The corresponding library must be specified with the
 -p option.
 
 The inverse operation, checking or validating signatures, is very
-useful to be used also as a *"second opinion"* in the case of using
+useful to be used also as a _"second opinion"_ in the case of using
 a different signing software. It is a very good practice that when
 having any signature, another completely independent software is used
 to verify the signatures, in order to be sure that the process is
@@ -156,13 +157,17 @@ The file `dns-tools` will be created on the same directory.
 the command has three modes:
 
 - **Verify** `dns-tools verify` allows to verify a previously signed and/or digested zone. It receives the following parameters:
+
   - `--file (-f)` is used as the input file for verification.
   - `--zone (-z)` Zone name.
+  - `--skip-signatures (-S)` If it is set, signatures verification is skipped.
+  - `--skip-digests (-D)` If it is set, digests verification is skipped.
   - `--verify-threshold-date (-t)` Exact date it needs to be before a signature expiration to be considered as expired by the verifier. It is ignored if --verify-threshold-duration is set. Default is tomorrow.
   - `--verify-threshold-duration (-T)` Number of days it needs to be before a signature expiration to be considered as valid by the verifier. It overrides `--verify-threshold-date` if it is defined. Default is empty.
 
 - **Reset PKCS#11 Keys** `dns-tools reset-pkcs11-keys` Deletes all the keys from the HSM. Is a very dangerous command. It uses some parameters from `sign`, as `-p`, `-l` and `-k`.
 - **Sign** allows to sign a zone. Its common parameters are:
+
   - `--create-keys (-c)` creates the keys if they do not exist. If they exist, they are overwritten.
   - `--rrsig-expiration-date (-E)` Allows to use a specific expiration date for RRSIG signatures. It can be overrided by --rrsig-duration.
   - `--rrsig-duration (-D)` Allows to use a expiration date for RRSIG signatures relative to current time. It overrides --rrsig-expiration-date. Default value is empty.
@@ -178,14 +183,16 @@ the command has three modes:
   - `--sign-algorithm (-a)` Sign algorithm used. It can be 'rsa' or 'ecdsa'.
   - `--zone (-z)` Zone name.
   - `--digest (-d)` If true, the signature also creates a [Digest](https://tools.ietf.org/html/draft-ietf-dnsop-dns-zone-digest-05.html) over the zone
+
   * `--info (-i)` Add a TXT RR to the zone with signing information (signer software, mode and library used if PKCS#11)
+
   - `--lazy (-L)` Signs only if it is needed (output file does not exist, already signed zone is invalid or original zone was modified after signed zone). If it is not needed, it returns with an error.
 
 - **ZONEMD calculation** Allows to generate a [ZONEMD](https://tools.ietf.org/html/draft-ietf-dnsop-dns-zone-digest-05.html) RR over the zone. It allows the following commands:
   - `--file (-f)` Input zone file
   - `--output (-o)` Output for zone file
   - `--info (-i)` Add a TXT RR to the zone with signing information (signer software, mode and library used if PKCS#11)
-  -  `--hash-digest` Hash algorithm for digest, default: 1 (SHA384), also accepted 2 (SHA512) 
+  - `--hash-digest` Hash algorithm for digest, default: 1 (SHA384), also accepted 2 (SHA512)
 
 ## Signing modes
 
@@ -267,16 +274,15 @@ Where:
   - `m`, `month`, `months` for months
   - `y`, `year`, `years` for years
 
-
 In other words, the duration units are separated by one or more spaces, ignoring plurals and commas at the end of each duration definition.
 
 The relative duration definition is used with the time that the command is executed.
 
 Examples:
 
-* 1 year 3 months
-* 1 hour 3 seconds
-* 3 weeks 2 months 4 seconds 1 year
+- 1 year 3 months
+- 1 hour 3 seconds
+- 3 weeks 2 months 4 seconds 1 year
 
 ## Features
 
