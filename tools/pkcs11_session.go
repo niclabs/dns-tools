@@ -84,7 +84,7 @@ func (session *PKCS11Session) DestroyAllKeys() error {
 		return err
 	}
 	if len(objects) > 0 {
-		session.ctx.Log.Printf("SigKeys found. Deleting...\n")
+		session.ctx.Log.Printf("SigKeys found. Deleting them")
 		foundDeleteTemplate := []*pkcs11.Attribute{
 			pkcs11.NewAttribute(pkcs11.CKA_LABEL, nil),
 			pkcs11.NewAttribute(pkcs11.CKA_ID, nil),
@@ -99,10 +99,10 @@ func (session *PKCS11Session) DestroyAllKeys() error {
 			} else if uint(attr[2].Value[0]) == pkcs11.CKO_PRIVATE_KEY {
 				class = "private"
 			}
-			session.ctx.Log.Printf("Deleting key with rsaLabel=%s, id=%s and type=%s\n", string(attr[0].Value), string(attr[1].Value), class)
+			session.ctx.Log.Printf("Deleting key with rsaLabel=%s, id=%s and type=%s", string(attr[0].Value), string(attr[1].Value), class)
 
 			if e := session.P11Context.DestroyObject(session.Handle, object); e != nil {
-				session.ctx.Log.Printf("Destroy PKCS11Key failed %s\n", e)
+				session.ctx.Log.Printf("Destroy PKCS11Key failed %s", e)
 			}
 		}
 	}
@@ -244,11 +244,11 @@ func (session *PKCS11Session) searchValidKeys() (*SigKeys, error) {
 			}
 		} else if class == pkcs11.CKO_PRIVATE_KEY {
 			if id == "zsk" {
-				session.ctx.Log.Printf("Found valid Private ZSK\n")
+				session.ctx.Log.Printf("Found valid Private ZSK")
 				zskSigner.SK = object
 				found++
 			} else if id == "ksk" {
-				session.ctx.Log.Printf("Found valid Private KSK\n")
+				session.ctx.Log.Printf("Found valid Private KSK")
 				kskSigner.SK = object
 				found++
 			}

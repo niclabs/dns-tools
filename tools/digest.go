@@ -14,7 +14,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"hash"
-	"sort"
 	"strings"
 
 	"github.com/miekg/dns"
@@ -28,6 +27,7 @@ var intToHash = map[uint8]func() hash.Hash{
 
 // VerifyDigest validates a version of a zone with a valid ZONEMD RR.
 func (ctx *Context) VerifyDigest() error {
+	ctx.Log.Printf("Verifying ZONEMD digests")
 	if ctx.File == nil {
 		return fmt.Errorf("zone file not defined")
 	}
@@ -46,7 +46,9 @@ func (ctx *Context) VerifyDigest() error {
 			return fmt.Errorf("ZONEMD serial does not match with SOA serial")
 		}
 	}
-	sort.Sort(ctx.rrs)
+	ctx.Log.Printf("Sorting parsed zone")
+	Sort(ctx.rrs)
+	ctx.Log.Printf("Sorted parsed zone")
 	for _, mdRR := range ctx.zonemd {
 		ctx.Log.Printf("Validating ZONEMD %s with scheme %d and hashAlg %d", mdRR.Header().Name, mdRR.Scheme, mdRR.Hash)
 		if err := ctx.ValidateOrderedZoneDigest(mdRR.Hash, mdRR.Digest); err != nil {
@@ -74,7 +76,9 @@ func (ctx *Context) Digest() error {
 	}
 	ctx.AddZONEMDRecord() // If it doesn't exist, adds a ZONEMD record.
 
-	sort.Sort(ctx.rrs)
+	ctx.Log.Printf("Sorting zone")
+	Sort(ctx.rrs)
+	ctx.Log.Printf("Zone Sorted")
 
 	if err := ctx.UpdateDigest(); err != nil {
 		return err
@@ -122,12 +126,15 @@ func (ctx *Context) CalculateDigest(hashAlg uint8) (string, error) {
 	if ctx.zonemd == nil {
 		return "", fmt.Errorf("error trying to calculate a digest without a ZONEMD RR present")
 	}
-
+	ctx.Log.Print("Started digest calculation.")
 	hashFunc, ok := intToHash[hashAlg]
 	if !ok {
 		return "", fmt.Errorf("hashAlg provided (%d) is not valid", hashAlg)
 	}
 	h := hashFunc()
+	BufferLength := 1024 * 1024 // 1 MB is very reasonable imho.
+	buf := make([]byte, BufferLength)
+	lastPos := 0
 	var prevRR dns.RR
 	for _, rr := range ctx.rrs {
 		switch {
@@ -144,14 +151,24 @@ func (ctx *Context) CalculateDigest(hashAlg uint8) (string, error) {
 			rr.(*dns.RRSIG).TypeCovered == dns.TypeZONEMD:
 			continue
 		}
-		buf := make([]byte, dns.MaxMsgSize)
-		size, err := dns.PackRR(rr, buf, 0, nil, false)
-		if err != nil {
-			return "", err
+		newPos, err := dns.PackRR(rr, buf, lastPos, nil, false)
+		if err != nil || newPos > BufferLength {
+			if newPos > BufferLength || err == dns.ErrRdata || err == dns.ErrBuf || strings.Contains(err.Error(), "overflow") {
+				h.Write(buf[:lastPos])
+				buf = make([]byte, BufferLength)
+				newPos, err = dns.PackRR(rr, buf, 0, nil, false)
+				if err != nil {
+					return "", err
+				}
+			} else {
+				return "", err
+			}
 		}
-		h.Write(buf[:size])
+		lastPos = newPos
 		prevRR = rr
 	}
+	h.Write(buf[:lastPos])
+	ctx.Log.Print("Stopped digest calculation.")
 	digest := hex.EncodeToString(h.Sum(nil))
 	return digest, nil
 }
@@ -159,6 +176,7 @@ func (ctx *Context) CalculateDigest(hashAlg uint8) (string, error) {
 // UpdateDigest calculates the digest for a PREVIOUSLY ORDERED zone with one ZONEMD RR
 // This method updates the ZONEMD RR directly
 func (ctx *Context) UpdateDigest() (err error) {
+	ctx.Log.Printf("Updating ZONEMD Digest")
 	itIsDigestedWithThisHash := false
 	digestedPosition := 0
 	for i, mdRR := range ctx.zonemd {

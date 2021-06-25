@@ -88,7 +88,7 @@ func (nsec3Map NSEC3List) toArray() RRArray {
 	for _, rr := range nsec3Map.rrs {
 		arr = append(arr, rr)
 	}
-	sort.Sort(arr)
+	Sort(arr)
 	return arr
 }
 
@@ -177,6 +177,7 @@ func (ctx *Context) WriteZone() error {
 	if ctx.Output == nil {
 		return fmt.Errorf("output not defined in context")
 	}
+	ctx.Log.Printf("Writing zone")
 	if _, err := fmt.Fprintln(ctx.Output, ctx.soa); err != nil {
 		return err
 	}
@@ -188,6 +189,7 @@ func (ctx *Context) WriteZone() error {
 			return err
 		}
 	}
+	ctx.Log.Printf("Zone written")
 	return nil
 }
 
@@ -212,7 +214,7 @@ func (ctx *Context) getRRSetList(byType bool) (set RRSetList) {
 		}
 		lastRR = rr
 	}
-	sort.Sort(set)
+	Sort(set)
 	return set
 }
 
@@ -249,7 +251,7 @@ func (ctx *Context) addNSECRecords() {
 
 		ctx.rrs = append(ctx.rrs, nsec)
 	}
-	sort.Sort(ctx.rrs)
+	Sort(ctx.rrs)
 }
 
 // addNSEC3Records edits an RRArray and adds the respective NSEC3 records to it.
@@ -328,7 +330,7 @@ func (ctx *Context) addNSEC3Records() (err error) {
 		ctx.rrs = append(ctx.rrs, sortedList[i])
 	}
 	ctx.rrs = append(ctx.rrs, param)
-	sort.Sort(ctx.rrs)
+	Sort(ctx.rrs)
 	return nil
 }
 

@@ -34,7 +34,7 @@ func verify(cmd *cobra.Command, args []string) error {
 	skipSignatures := viper.GetBool("skip-signatures")
 	skipDigests := viper.GetBool("skip-digests")
 
-	if skipSignatures || skipDigests {
+	if skipSignatures && skipDigests {
 		return fmt.Errorf("at least one of the following flags should not be set: [skip-signatures, skip-digests]")
 	}
 

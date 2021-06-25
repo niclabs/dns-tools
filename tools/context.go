@@ -99,7 +99,9 @@ func (ctx *Context) isZONEMDAlready(newmd *dns.ZONEMD) bool {
 // Returns the SOA.
 // IT DOES NOT SORT THE RR LIST
 func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
+	ctx.Log.Printf("Reading and parsing zone %s (updateSerial=%t)", ctx.Config.Zone, updateSerial)
 	if ctx.soa != nil {
+		ctx.Log.Printf("Duplicate call (zone had been already parsed), omitting")
 		// Zone has been already parsed. Return.
 		return nil
 	}
@@ -127,7 +129,6 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 	}
 	for rr, ok := zone.Next(); ok; rr, ok = zone.Next() {
 		// I hate you RFC 4034, Section 6.2
-
 		rr.Header().Name = strings.ToLower(rr.Header().Name)
 
 		switch rr.Header().Rrtype {
@@ -158,9 +159,11 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 			}
 		case dns.TypeZONEMD:
 			zoneMDArray = append(zoneMDArray, rr.(*dns.ZONEMD))
-		// I hate you RFC 4034, Section 6.2
 		case dns.TypeNS:
+			// I hate you RFC 4034, Section 6.2
 			rr.(*dns.NS).Ns = strings.ToLower(rr.(*dns.NS).Ns)
+
+			// Add to delegated if it applies
 			if rr.Header().Name != ctx.Config.Zone {
 				ctx.DelegatedZones[rr.Header().Name] = struct{}{}
 			}
@@ -208,19 +211,20 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 		case dns.TypeNSEC:
 			rr.(*dns.NSEC).NextDomain = strings.ToLower(rr.(*dns.NSEC).NextDomain)
 		}
-		rrs = append(rrs, rr)
+		// Skipping non-zone rrs
+		if dns.IsSubDomain(ctx.Config.Zone, rr.Header().Name) {
+			rrs = append(rrs, rr)
+		}
 	}
 	if zone.Err() != nil {
-		return fmt.Errorf("error parsing zone: %s", zone.Err())
+		return fmt.Errorf("error parsing zone: %s.", zone.Err())
 	}
-
 	if ctx.soa == nil {
 		return fmt.Errorf("SOA RR not found")
 	}
 	if ctx.Config.Zone == "" {
 		return fmt.Errorf("zone name not defined in arguments nor guessable using SOA RR. Try again using --zone argument")
 	}
-
 	// We look for the correct zonemd RRs
 	for _, newmd := range zoneMDArray {
 		if newmd.Header().Name == ctx.Config.Zone &&
@@ -233,16 +237,8 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 			}
 		}
 	}
-
-	ctx.Log.Printf("Zone parsed is %s", ctx.Config.Zone)
-	// Last iteration, we check for rr zones and we define glue domains
-	zoneRRs := make(RRArray, 0)
-	for _, rr := range rrs {
-		if dns.IsSubDomain(ctx.Config.Zone, rr.Header().Name) {
-			zoneRRs = append(zoneRRs, rr)
-		}
-	}
-	ctx.rrs = zoneRRs
+	ctx.rrs = rrs
+	ctx.Log.Printf("Zone read and parsed successfully")
 	return nil
 }
 

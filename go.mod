@@ -7,6 +7,7 @@ require (
 	github.com/miekg/pkcs11 v1.0.2
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.4.0
+	github.com/twotwotwo/sorts v0.0.0-20160814051341-bf5c1f2b8553 // indirect
 )
 
 replace github.com/miekg/dns => github.com/niclabs/dns v1.1.39

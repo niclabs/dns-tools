@@ -243,7 +243,7 @@ func getExpDate(durString, expDate string, def time.Time) (time.Time, error) {
 func needsToBeSigned(conf *tools.ContextConfig) bool {
 	signedIsValid := false
 	signedExists := false
-	commandLog.Printf("Checking if file needs to be signed (--lazy flag enabled)...")
+	commandLog.Printf("Checking if file needs to be signed (--lazy flag enabled)")
 	var zoneModDate, signedModDate time.Time
 	if outputStat, err := os.Stat(conf.OutputPath); err == nil {
 		outputFile, err := os.Open(conf.OutputPath)

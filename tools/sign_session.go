@@ -4,7 +4,6 @@ import (
 	"crypto"
 	"encoding/base64"
 	"fmt"
-	"sort"
 
 	"github.com/miekg/dns"
 )
@@ -59,7 +58,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 		})
 	}
 
-	sort.Sort(ctx.rrs)
+	Sort(ctx.rrs)
 
 	ctx.Log.Println("Creating NSEC/NSEC3 RRs")
 	ctx.AddNSEC13()
@@ -93,17 +92,17 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 				if try == numTries {
 					return
 				}
-				ctx.Log.Printf("%s. Retrying...", err)
+				ctx.Log.Printf("%s. Retrying", err)
 				continue
 			}
-			ctx.Log.Printf("[Signature %d/%d] Verifying RRSig for RRSet %s\n", i+1, len(rrSet)+1, v.String())
+			ctx.Log.Printf("[Signature %d/%d] Verifying RRSig for RRSet %s", i+1, len(rrSet)+1, v.String())
 			err = rrSig.Verify(zsk, v)
 			if err != nil {
 				err = fmt.Errorf("RRSig does not validate: %s", err)
 				if try == numTries {
 					return
 				}
-				ctx.Log.Printf("%s. Retrying...", err)
+				ctx.Log.Printf("%s. Retrying", err)
 				continue
 			}
 			ctx.rrs = append(ctx.rrs, rrSig)
@@ -132,11 +131,11 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 	ctx.rrs = append(ctx.rrs, zsk, ksk, rrDNSKeySig)
 
 	// Sorting again
-	sort.Sort(ctx.rrs)
+	Sort(ctx.rrs)
 
 	/* begin DigestEnabled digest updating (and signing)*/
 	if ctx.Config.DigestEnabled {
-		ctx.Log.Printf("Updating zone digests...")
+		ctx.Log.Printf("Updating zone digests")
 		if err := ctx.UpdateDigest(); err != nil {
 			return nil, fmt.Errorf("error updating ZONEMD Digest: %s", err)
 		}
@@ -154,13 +153,13 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 			zmdrrs = append(zmdrrs, dns.RR(zmd))
 		}
 
-		ctx.Log.Printf("Signing new zone digest...")
+		ctx.Log.Printf("Signing new zone digest")
 		err = rrSig.Sign(keys.zskSigner, zmdrrs)
 		if err != nil {
 			err = fmt.Errorf("cannot create RRSig: %s", err)
 			return nil, err
 		}
-		ctx.Log.Printf("Verifying new zone digest...")
+		ctx.Log.Printf("Verifying new zone digest")
 		err = rrSig.Verify(zsk, zmdrrs)
 		if err != nil {
 			err = fmt.Errorf("cannot check RRSig: %s", err)
@@ -168,14 +167,14 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 		}
 		ctx.rrs = append(ctx.rrs, rrSig)
 		// Sort again
-		sort.Sort(ctx.rrs)
+		Sort(ctx.rrs)
 		ctx.Log.Printf("Digest calculation done")
 	}
 	/* end DigestEnabled digest updating*/
 	ctx.Log.Printf("Signing done, writing zone")
 
 	ds = ksk.ToDS(dns.SHA256)
-	ctx.Log.Printf("DS: %s\n", ds) // SHA256
+	ctx.Log.Printf("DS: %s", ds) // SHA256
 	err = ctx.WriteZone()
 	return ds, err
 }

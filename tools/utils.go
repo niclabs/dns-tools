@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/miekg/dns"
+	"github.com/twotwotwo/sorts"
 )
 
 // CreateNewDNSKEY creates a new DNSKEY RR, using the parameters provided.
@@ -125,4 +126,8 @@ func newTypeArray(typeMap map[uint16]bool) []uint16 {
 		return typeArray[i] < typeArray[j]
 	})
 	return typeArray
+}
+
+func Sort(sortable sort.Interface) {
+	sorts.Quicksort(sortable)
 }

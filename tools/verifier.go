@@ -94,7 +94,7 @@ func (ctx *Context) VerifyFile() (err error) {
 	}
 
 	// Checking each RRset RRSignature.
-	ctx.Log.Printf("number of signatures: %d\n", len(rrSigTuples))
+	ctx.Log.Printf("number of signatures: %d", len(rrSigTuples))
 	for setName, tuple := range rrSigTuples {
 		sig := tuple.RRSig
 		set := tuple.RRArray
@@ -133,10 +133,10 @@ func (ctx *Context) VerifyFile() (err error) {
 		}
 		err = sig.Verify(key, set)
 		if err != nil {
-			ctx.Log.Printf("[Error] (%s) %s  \n", err, setName)
+			ctx.Log.Printf("[Error] (%s) %s", err, setName)
 			return
 		} else {
-			ctx.Log.Printf("[ OK  ] %s\n", setName)
+			ctx.Log.Printf("[ OK  ] %s", setName)
 		}
 	}
 	return
