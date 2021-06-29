@@ -131,3 +131,11 @@ func newTypeArray(typeMap map[uint16]bool) []uint16 {
 func Sort(sortable sort.Interface) {
 	sorts.Quicksort(sortable)
 }
+
+func getHash(rr dns.RR, byType bool) string {
+	hash := fmt.Sprintf("%s#%s", rr.Header().Name, dns.Class(rr.Header().Class))
+	if byType {
+		hash += fmt.Sprintf("#%s", dns.Type(rr.Header().Rrtype))
+	}
+	return hash
+}

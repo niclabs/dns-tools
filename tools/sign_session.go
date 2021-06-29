@@ -57,9 +57,6 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 			Txt: []string{ctx.genInfo(session)},
 		})
 	}
-
-	Sort(ctx.rrs)
-
 	ctx.Log.Println("Creating NSEC/NSEC3 RRs")
 	ctx.AddNSEC13()
 	keys, err := session.GetKeys()
@@ -130,11 +127,12 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 
 	ctx.rrs = append(ctx.rrs, zsk, ksk, rrDNSKeySig)
 
-	// Sorting again
-	Sort(ctx.rrs)
-
 	/* begin DigestEnabled digest updating (and signing)*/
 	if ctx.Config.DigestEnabled {
+		// Sorting
+		ctx.Log.Printf("Sorting zone")
+		Sort(ctx.rrs)
+		ctx.Log.Printf("Zone Sorted")
 		ctx.Log.Printf("Updating zone digests")
 		if err := ctx.UpdateDigest(); err != nil {
 			return nil, fmt.Errorf("error updating ZONEMD Digest: %s", err)
@@ -166,8 +164,6 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 			return nil, err
 		}
 		ctx.rrs = append(ctx.rrs, rrSig)
-		// Sort again
-		Sort(ctx.rrs)
 		ctx.Log.Printf("Digest calculation done")
 	}
 	/* end DigestEnabled digest updating*/

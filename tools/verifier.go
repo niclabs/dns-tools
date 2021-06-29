@@ -77,7 +77,7 @@ func (ctx *Context) VerifyFile() (err error) {
 					tuple.RRSig = sig
 				}
 			} else {
-				setHash = fmt.Sprintf("%s#%s#%s", firstRR.Header().Name, dns.Class(firstRR.Header().Class), dns.Type(firstRR.Header().Rrtype))
+				setHash = getHash(firstRR, true)
 				tuple, ok := rrSigTuples[setHash]
 				if !ok {
 					tuple = &RRSigTuple{}

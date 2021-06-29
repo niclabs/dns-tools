@@ -67,7 +67,7 @@ func (array RRArray) Less(i, j int) bool {
 
 }
 
-// getTypeMap returns an array with the types contained in the array, sorted by value.
+// getTypeMap returns an map with the types contained in the array.
 func (array RRArray) getTypeMap() map[uint16]bool {
 	typeMap := make(map[uint16]bool)
 	for _, rr := range array {
@@ -83,7 +83,7 @@ func newNSEC3List() *NSEC3List {
 	}
 }
 
-func (nsec3Map NSEC3List) toArray() RRArray {
+func (nsec3Map NSEC3List) toSortedArray() RRArray {
 	arr := make(RRArray, 0)
 	for _, rr := range nsec3Map.rrs {
 		arr = append(arr, rr)
@@ -195,26 +195,27 @@ func (ctx *Context) WriteZone() error {
 
 // getRRSetList groups the rrs by owner name and class if byType is false, or owner name, class and type if byType is true
 // NSEC/NSEC3 uses the version with byType = false, and RRSIG uses the other version.
-// It assumes the RRArray is properly sorted.
 func (ctx *Context) getRRSetList(byType bool) (set RRSetList) {
 	// RRsets are RR grouped by rsaLabel and class for NSEC/NSEC3
 	// and by rsaLabel, class, type for RRSIG:
 	// An RRSIG record contains the signature for an RRset with a particular
 	// name, class, and type. RFC4034
-	set = make(RRSetList, 0)
-	var lastRR dns.RR
+	setMap := make(map[string]RRArray)
 	for _, rr := range ctx.rrs {
 		if ctx.isSignable(rr.Header().Name) {
-			if !sameRRSet(lastRR, rr, byType) {
-				// create new set
-				set = append(set, make(RRArray, 0))
+			hash := getHash(rr, byType)
+			hashArr, ok := setMap[hash]
+			if !ok {
+				hashArr = make(RRArray, 0)
+				setMap[hash] = hashArr
 			}
-			// append to latest set
-			set[len(set)-1] = append(set[len(set)-1], rr)
+			setMap[hash] = append(setMap[hash], rr)
 		}
-		lastRR = rr
 	}
-	Sort(set)
+	set = make(RRSetList, 0)
+	for _, rrSet := range setMap {
+		set = append(set, rrSet)
+	}
 	return set
 }
 
@@ -251,7 +252,6 @@ func (ctx *Context) addNSECRecords() {
 
 		ctx.rrs = append(ctx.rrs, nsec)
 	}
-	Sort(ctx.rrs)
 }
 
 // addNSEC3Records edits an RRArray and adds the respective NSEC3 records to it.
@@ -315,8 +315,8 @@ func (ctx *Context) addNSEC3Records() (err error) {
 			}
 		}
 	}
-	// transform nsec3list to Sorted RRArray
-	sortedList := nsec3list.toArray()
+	// transform nsec3list to Sorted RRArray (to link to next hashes)
+	sortedList := nsec3list.toSortedArray()
 	// Link NSEC3s with their next domains.
 	for i, nsec3 := range sortedList {
 		nsec3.(*dns.NSEC3).NextDomain = sortedList[(i+1)%len(sortedList)].Header().Name
@@ -330,7 +330,6 @@ func (ctx *Context) addNSEC3Records() (err error) {
 		ctx.rrs = append(ctx.rrs, sortedList[i])
 	}
 	ctx.rrs = append(ctx.rrs, param)
-	Sort(ctx.rrs)
 	return nil
 }
 
