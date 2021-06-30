@@ -2,13 +2,14 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/niclabs/dns-tools/tools"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/niclabs/dns-tools/tools"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func init() {
@@ -30,7 +31,7 @@ func digest(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	zonePath := viper.GetString("file")
-	zone := viper.GetString("zone")
+	zone := tools.NormalizeFQDN(viper.GetString("zone"))
 	out := viper.GetString("output")
 	info := viper.GetBool("info")
 
@@ -70,8 +71,8 @@ func digest(cmd *cobra.Command, args []string) error {
 
 	ctx := &tools.Context{
 		Config: &tools.ContextConfig{
-			Zone: zone,
-			Info: info,
+			Zone:    zone,
+			Info:    info,
 			HashAlg: hashDigest,
 		},
 		File:   zoneFile,

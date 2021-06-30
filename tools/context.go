@@ -129,7 +129,7 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 	}
 	for rr, ok := zone.Next(); ok; rr, ok = zone.Next() {
 		// I hate you RFC 4034, Section 6.2
-		rr.Header().Name = strings.ToLower(rr.Header().Name)
+		rr.Header().Name = NormalizeFQDN(rr.Header().Name)
 
 		switch rr.Header().Rrtype {
 		case dns.TypeSOA:
@@ -155,7 +155,7 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 
 			// Getting zone name if it is not defined as argument
 			if ctx.Config.Zone == "" {
-				ctx.Config.Zone = rr.Header().Name
+				ctx.Config.Zone = strings.ToLower(rr.Header().Name)
 			}
 		case dns.TypeZONEMD:
 			zoneMDArray = append(zoneMDArray, rr.(*dns.ZONEMD))

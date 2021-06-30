@@ -30,7 +30,7 @@ func verify(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	path := viper.GetString("file")
-	zone := viper.GetString("zone")
+	zone := tools.NormalizeFQDN(viper.GetString("zone"))
 	skipSignatures := viper.GetBool("skip-signatures")
 	skipDigests := viper.GetBool("skip-digests")
 

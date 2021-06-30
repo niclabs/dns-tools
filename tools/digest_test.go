@@ -2,9 +2,10 @@ package tools_test
 
 import (
 	"bytes"
-	"github.com/niclabs/dns-tools/tools"
 	"os"
 	"testing"
+
+	"github.com/niclabs/dns-tools/tools"
 )
 
 const simpleZone = `
@@ -244,7 +245,8 @@ func TestContext_MultiZONEMDDigest(t *testing.T) {
 func TestContext_WrongDigest(t *testing.T) {
 	ctx := tools.Context{
 		Config: &tools.ContextConfig{
-			Zone: "root-servers.net",
+			Zone:    "root-servers.net",
+			HashAlg: 1,
 		},
 		File:   bytes.NewBufferString(wrongRootServers),
 		Output: os.Stdout,

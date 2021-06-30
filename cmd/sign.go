@@ -164,7 +164,7 @@ func signFile(cmd *cobra.Command, _ []string) error {
 
 func newSignConfig() (*tools.ContextConfig, error) {
 	createKeys := viper.GetBool("create-keys")
-	zone := strings.ToLower(viper.GetString("zone"))
+	zone := tools.NormalizeFQDN(viper.GetString("zone"))
 	nsec3 := viper.GetBool("nsec3")
 	optOut := viper.GetBool("opt-out")
 	digest := viper.GetBool("digest")

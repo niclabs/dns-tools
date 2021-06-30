@@ -46,11 +46,12 @@ func (ctx *Context) VerifyDigest() error {
 			return fmt.Errorf("ZONEMD serial does not match with SOA serial")
 		}
 	}
-	ctx.Log.Printf("Sorting parsed zone")
-	Sort(ctx.rrs)
-	ctx.Log.Printf("Sorted parsed zone")
+	ctx.Log.Printf("Sorting zone")
+	quickSort(ctx.rrs)
+	ctx.Log.Printf("Zone sorted")
+
 	for _, mdRR := range ctx.zonemd {
-		ctx.Log.Printf("Validating ZONEMD %s with scheme %d and hashAlg %d", mdRR.Header().Name, mdRR.Scheme, mdRR.Hash)
+		ctx.Log.Printf("Checking ZONEMD %s with scheme %d and hashAlg %d", mdRR.Header().Name, mdRR.Scheme, mdRR.Hash)
 		if err := ctx.ValidateOrderedZoneDigest(mdRR.Hash, mdRR.Digest); err != nil {
 			return err
 		}
@@ -74,10 +75,8 @@ func (ctx *Context) Digest() error {
 	if err := ctx.ReadAndParseZone(false); err != nil {
 		return err
 	}
-	ctx.AddZONEMDRecord() // If it doesn't exist, adds a ZONEMD record.
-
 	ctx.Log.Printf("Sorting zone")
-	Sort(ctx.rrs)
+	quickSort(ctx.rrs)
 	ctx.Log.Printf("Zone Sorted")
 
 	if err := ctx.UpdateDigest(); err != nil {
@@ -93,20 +92,29 @@ func (ctx *Context) Digest() error {
 // AddZONEMDRecord adds a zone digest following draft-ietf-dnsop-dns-zone-digest-05
 // we need the SOA info for that
 func (ctx *Context) AddZONEMDRecord() {
-	zonemd := &dns.ZONEMD{
-		Hdr: dns.RR_Header{
-			Name:   ctx.soa.Header().Name,
-			Rrtype: dns.TypeZONEMD,
-			Class:  dns.ClassINET,
-			Ttl:    ctx.soa.Header().Ttl,
-		},
-		Serial: ctx.soa.Serial,
-		Scheme: 1, // SIMPLE
-		Hash:   ctx.Config.HashAlg,
-		Digest: strings.Repeat("00", 48),
+	exists := false
+	for _, zonemd := range ctx.zonemd {
+		if zonemd.Hash == ctx.Config.HashAlg {
+			exists = true
+			break
+		}
 	}
-	ctx.rrs = append(ctx.rrs, zonemd)
-	ctx.zonemd = append(ctx.zonemd, zonemd)
+	if !exists {
+		zonemd := &dns.ZONEMD{
+			Hdr: dns.RR_Header{
+				Name:   ctx.soa.Header().Name,
+				Rrtype: dns.TypeZONEMD,
+				Class:  dns.ClassINET,
+				Ttl:    ctx.soa.Header().Ttl,
+			},
+			Serial: ctx.soa.Serial,
+			Scheme: 1, // SIMPLE
+			Hash:   ctx.Config.HashAlg,
+			Digest: strings.Repeat("00", 48),
+		}
+		ctx.rrs = append(ctx.rrs, zonemd)
+		ctx.zonemd = append(ctx.zonemd, zonemd)
+	}
 }
 
 // CleanDigests sets all root zone digests to 0
@@ -177,17 +185,29 @@ func (ctx *Context) CalculateDigest(hashAlg uint8) (string, error) {
 // This method updates the ZONEMD RR directly
 func (ctx *Context) UpdateDigest() (err error) {
 	ctx.Log.Printf("Updating ZONEMD Digest")
-	itIsDigestedWithThisHash := false
-	digestedPosition := 0
+	digestedPosition := -1
 	for i, mdRR := range ctx.zonemd {
 		if mdRR.Hash == ctx.Config.HashAlg {
 			digestedPosition = i
-			itIsDigestedWithThisHash = true
 			break
 		}
 	}
-	if !itIsDigestedWithThisHash {
-		return fmt.Errorf("cannot update digest for non-existent pair schema-hash")
+	if digestedPosition < 0 {
+		zonemd := &dns.ZONEMD{
+			Hdr: dns.RR_Header{
+				Name:   ctx.soa.Header().Name,
+				Rrtype: dns.TypeZONEMD,
+				Class:  dns.ClassINET,
+				Ttl:    ctx.soa.Header().Ttl,
+			},
+			Serial: ctx.soa.Serial,
+			Scheme: 1, // SIMPLE
+			Hash:   ctx.Config.HashAlg,
+			Digest: strings.Repeat("00", 48),
+		}
+		ctx.rrs = append(ctx.rrs, zonemd)
+		ctx.zonemd = append(ctx.zonemd, zonemd)
+		digestedPosition = len(ctx.zonemd) - 1
 	}
 
 	digest, err := ctx.CalculateDigest(ctx.zonemd[digestedPosition].Hash)

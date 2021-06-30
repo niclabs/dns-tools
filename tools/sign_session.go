@@ -38,12 +38,6 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 		return
 	}
 	ctx.Log.Printf("Starting signing process for %s", ctx.Config.Zone)
-	// Do we use DigestEnabled?
-	if ctx.Config.DigestEnabled {
-		ctx.Log.Println("Adding ZONEMD RR")
-		ctx.AddZONEMDRecord()
-		ctx.CleanDigests()
-	}
 
 	if ctx.Config.Info {
 		ctx.Log.Println("Adding _created_by TXT for marking library usage")
@@ -131,7 +125,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 	if ctx.Config.DigestEnabled {
 		// Sorting
 		ctx.Log.Printf("Sorting zone")
-		Sort(ctx.rrs)
+		quickSort(ctx.rrs)
 		ctx.Log.Printf("Zone Sorted")
 		ctx.Log.Printf("Updating zone digests")
 		if err := ctx.UpdateDigest(); err != nil {

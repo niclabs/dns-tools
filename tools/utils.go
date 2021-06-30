@@ -12,6 +12,7 @@ import (
 
 	"github.com/miekg/dns"
 	"github.com/twotwotwo/sorts"
+	"golang.org/x/net/idna"
 )
 
 // CreateNewDNSKEY creates a new DNSKEY RR, using the parameters provided.
@@ -39,14 +40,22 @@ func CreateNewRRSIG(zone string, dnsKeyRR *dns.DNSKEY, expDate time.Time, rrSetT
 			Ttl: rrSetTTL,
 		},
 		Algorithm:  dnsKeyRR.Algorithm,
-		SignerName: strings.ToLower(zone),
+		SignerName: zone,
 		KeyTag:     dnsKeyRR.KeyTag(),
 		Inception:  uint32(time.Now().Unix()),
 		Expiration: uint32(expDate.Unix()),
 	}
 }
 
-// generateSalt returns a salt of length bytes from a cryptographically secure generator.
+// NormalizeFQDN normalizes a fqdn to ASCII (punycode). 
+func NormalizeFQDN(fqdn string) string {
+	normalized, err := idna.ToASCII(fqdn)
+	if err != nil {
+		panic(fmt.Errorf("error normalizing FQDN to punycode: %s", err))
+	}
+	return strings.ToLower(normalized)
+}
+
 func generateSalt(length uint8) (string, error) {
 	if length > 64 {
 		length = 64
@@ -112,7 +121,6 @@ func ecdsaPublicKeyToBytes(ecPoint []byte) ([]byte, error) {
 
 }
 
-// Transformas an array of booleans into a map of uint16s
 func newTypeArray(typeMap map[uint16]bool) []uint16 {
 	// RRSIG byte is added just in case
 	typeMap[dns.TypeRRSIG] = true
@@ -128,7 +136,7 @@ func newTypeArray(typeMap map[uint16]bool) []uint16 {
 	return typeArray
 }
 
-func Sort(sortable sort.Interface) {
+func quickSort(sortable sort.Interface) {
 	sorts.Quicksort(sortable)
 }
 

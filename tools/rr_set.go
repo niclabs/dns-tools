@@ -40,8 +40,8 @@ func (array RRArray) Less(i, j int) bool {
 	// 3.- Type
 	// 4.- RRData (as left-aligned canonical form)
 
-	si := dns.SplitDomainName(strings.ToLower(array[i].Header().Name))
-	sj := dns.SplitDomainName(strings.ToLower(array[j].Header().Name))
+	si := dns.SplitDomainName(array[i].Header().Name)
+	sj := dns.SplitDomainName(array[j].Header().Name)
 
 	// Comparing tags, right to left
 	ii, ij := len(si)-1, len(sj)-1
@@ -88,7 +88,7 @@ func (nsec3Map NSEC3List) toSortedArray() RRArray {
 	for _, rr := range nsec3Map.rrs {
 		arr = append(arr, rr)
 	}
-	Sort(arr)
+	quickSort(arr)
 	return arr
 }
 
@@ -209,7 +209,7 @@ func (ctx *Context) getRRSetList(byType bool) (set RRSetList) {
 				hashArr = make(RRArray, 0)
 				setMap[hash] = hashArr
 			}
-			setMap[hash] = append(setMap[hash], rr)
+			setMap[hash] = append(hashArr, rr)
 		}
 	}
 	set = make(RRSetList, 0)
