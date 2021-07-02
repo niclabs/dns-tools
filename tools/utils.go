@@ -15,22 +15,6 @@ import (
 	"golang.org/x/net/idna"
 )
 
-// CreateNewDNSKEY creates a new DNSKEY RR, using the parameters provided.
-func CreateNewDNSKEY(zone string, flags uint16, algorithm uint8, ttl uint32, publicKey string) *dns.DNSKEY {
-	return &dns.DNSKEY{
-		Flags:     flags,
-		Protocol:  3, // RFC4034 2.1.2
-		Algorithm: algorithm,
-		Hdr: dns.RR_Header{
-			Name:   zone,
-			Rrtype: dns.TypeDNSKEY,
-			Class:  dns.ClassINET,
-			Ttl:    ttl,
-		},
-		PublicKey: publicKey,
-	}
-}
-
 // CreateNewRRSIG creates a new RRSIG RR, using the parameters provided.
 func CreateNewRRSIG(zone string, dnsKeyRR *dns.DNSKEY, expDate time.Time, rrSetTTL uint32) *dns.RRSIG {
 	return &dns.RRSIG{
@@ -47,7 +31,7 @@ func CreateNewRRSIG(zone string, dnsKeyRR *dns.DNSKEY, expDate time.Time, rrSetT
 	}
 }
 
-// NormalizeFQDN normalizes a fqdn to ASCII (punycode). 
+// NormalizeFQDN normalizes a fqdn to ASCII (punycode).
 func NormalizeFQDN(fqdn string) string {
 	normalized, err := idna.ToASCII(fqdn)
 	if err != nil {
@@ -146,4 +130,13 @@ func getHash(rr dns.RR, byType bool) string {
 		hash += fmt.Sprintf("#%s", dns.Type(rr.Header().Rrtype))
 	}
 	return hash
+}
+
+func getRRSIGHash(rr *dns.RRSIG) string {
+	return fmt.Sprintf("%s#%s#%s", rr.Header().Name, dns.Class(rr.Header().Class), dns.Type(rr.TypeCovered))
+}
+
+func (ctx *Context) isSignable(ownerName string) bool {
+	_, isDS := ctx.WithDS[ownerName]
+	return ctx.Config.OptOut || !ctx.isDelegated(ownerName) || isDS
 }

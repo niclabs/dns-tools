@@ -8,10 +8,10 @@ import (
 	"github.com/miekg/dns"
 )
 
-// RRSigTuple combines an RRSIg and the set related to it.
-type RRSigTuple struct {
-	RRSig   *dns.RRSIG
-	RRArray RRArray
+// RRSigPair combines an RRSIg and the set related to it.
+type RRSigPair struct {
+	RRSig *dns.RRSIG
+	RRSet RRArray
 }
 
 var ErrNotEnoughDNSkeys = fmt.Errorf("could not find enough dnskeys")
@@ -35,77 +35,55 @@ func (ctx *Context) VerifyFile() (err error) {
 	}
 	setList := ctx.getRRSetList(true)
 
-	rrSigTuples := make(map[string]*RRSigTuple)
-
-	pzsk := make(map[uint16]*dns.DNSKEY)
-	pksk := make(map[uint16]*dns.DNSKEY)
+	rrSigPairs := make(map[string]*RRSigPair)
 
 	// Pairing each RRArray with its RRSig
 	for _, set := range setList {
-		isSignable := true
-		for _, rr := range set {
-			if !ctx.isSignable(rr.Header().Name) {
-				isSignable = false
-				break
-			}
-		}
-		if len(set) > 0 && isSignable {
-			if set[0].Header().Rrtype == dns.TypeDNSKEY {
-				for _, rr := range set {
-					key := rr.(*dns.DNSKEY)
-					switch key.Flags {
-					case 256:
-						pzsk[key.KeyTag()] = key
-					case 257:
-						ds := key.ToDS(1)
-						ctx.Log.Printf("DS for KSK with tag %d is \"%s\"", key.KeyTag(), ds)
-						pksk[key.KeyTag()] = key
-					}
-				}
-			}
+		if len(set) > 0 && ctx.isSignable(set[0].Header().Name) {
 			firstRR := set[0]
 			var setHash string
 			if firstRR.Header().Rrtype == dns.TypeRRSIG {
-				for _, preSig := range set {
-					sig := preSig.(*dns.RRSIG)
-					setHash = fmt.Sprintf("%s#%s#%s", sig.Header().Name, dns.Class(sig.Header().Class), dns.Type(sig.TypeCovered))
-					tuple, ok := rrSigTuples[setHash]
+				for _, sig := range set {
+					setHash = getRRSIGHash(sig.(*dns.RRSIG))
+					pair, ok := rrSigPairs[setHash]
 					if !ok {
-						tuple = &RRSigTuple{}
-						rrSigTuples[setHash] = tuple
+						pair = &RRSigPair{}
+						rrSigPairs[setHash] = pair
 					}
-					tuple.RRSig = sig
+					pair.RRSig = sig.(*dns.RRSIG)
 				}
 			} else {
 				setHash = getHash(firstRR, true)
-				tuple, ok := rrSigTuples[setHash]
+				pair, ok := rrSigPairs[setHash]
 				if !ok {
-					tuple = &RRSigTuple{}
-					rrSigTuples[setHash] = tuple
+					pair = &RRSigPair{}
+					rrSigPairs[setHash] = pair
 				}
-				tuple.RRArray = set
+				pair.RRSet = set
 			}
 		}
 	}
 
-	if len(pzsk) == 0 || len(pksk) == 0 {
+	if len(ctx.DNSKEYS.ZSK) == 0 || len(ctx.DNSKEYS.KSK) == 0 {
 		err = ErrNotEnoughDNSkeys
 		return err
 	}
 
+	rrSignatures := make(map[string]*RRSigPair)
+
+	for setName, pair := range rrSigPairs {
+		if pair.RRSet == nil || len(pair.RRSet) == 0 || pair.RRSig == nil {
+			// err = fmt.Errorf("the RRSet %s has no elements", setName)
+			continue
+		}
+		rrSignatures[setName] = pair
+	}
+
 	// Checking each RRset RRSignature.
-	ctx.Log.Printf("number of signatures: %d", len(rrSigTuples))
-	for setName, tuple := range rrSigTuples {
-		sig := tuple.RRSig
-		set := tuple.RRArray
-		if len(set) == 0 {
-			err = fmt.Errorf("the RRSet %s has no elements", setName)
-			return
-		}
-		if sig == nil {
-			err = fmt.Errorf("the RRSet %s does not have a Signature", setName)
-			return
-		}
+	ctx.Log.Printf("number of signatures: %d", len(rrSignatures))
+	for setName, pair := range rrSignatures {
+		sig := pair.RRSig
+		set := pair.RRSet
 		expDate := time.Unix(int64(sig.Expiration), 0)
 		if expDate.Before(ctx.Config.VerifyThreshold) {
 			err = fmt.Errorf(
@@ -118,18 +96,21 @@ func (ctx *Context) VerifyFile() (err error) {
 		var key *dns.DNSKEY
 		var ok bool
 		if set[0].Header().Rrtype == dns.TypeDNSKEY {
-			key, ok = pksk[sig.KeyTag]
+			key, ok = ctx.DNSKEYS.KSK[sig.KeyTag]
 			if !ok {
-				key, ok = pzsk[sig.KeyTag]
+				key, ok = ctx.DNSKEYS.ZSK[sig.KeyTag]
 			}
 		} else {
-			key, ok = pzsk[sig.KeyTag]
+			key, ok = ctx.DNSKEYS.ZSK[sig.KeyTag]
 		}
 		if !ok {
-			return fmt.Errorf("key with keytag declared in signature not found")
+			err = fmt.Errorf("key with keytag declared in signature (%d) not found (keys available: ksk=[%v] zsk=[%v])", sig.KeyTag, ctx.DNSKEYS.KSK, ctx.DNSKEYS.ZSK)
+			ctx.Log.Print(err.Error())
+			return
 		}
 		if key.Algorithm != sig.Algorithm {
-			return fmt.Errorf("key and signature algorithm does not match")
+			err = fmt.Errorf("key and signature algorithm does not match")
+			return
 		}
 		err = sig.Verify(key, set)
 		if err != nil {
@@ -139,5 +120,6 @@ func (ctx *Context) VerifyFile() (err error) {
 			ctx.Log.Printf("[ OK  ] %s", setName)
 		}
 	}
+	ctx.PrintDS()
 	return
 }

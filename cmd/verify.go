@@ -70,7 +70,7 @@ func verify(cmd *cobra.Command, args []string) error {
 	var signErr error
 
 	if !skipSignatures {
-		signErr := ctx.VerifyFile()
+		signErr = ctx.VerifyFile()
 		if signErr != nil {
 			if signErr == tools.ErrNotEnoughDNSkeys {
 				commandLog.Printf("Zone Signature: There are no signatures to check")
@@ -88,7 +88,7 @@ func verify(cmd *cobra.Command, args []string) error {
 		if digestErr := ctx.VerifyDigest(); digestErr != nil {
 			commandLog.Printf("Zone Digest: %s", digestErr)
 			return digestErr
-		} else if signErr != nil && signErr != tools.ErrNotEnoughDNSkeys {
+		} else if !(signErr == nil || signErr == tools.ErrNotEnoughDNSkeys) {
 			commandLog.Printf("Zone Digest: Digest matches, but zone signatures verification failed.")
 			return signErr
 		} else {
@@ -97,5 +97,5 @@ func verify(cmd *cobra.Command, args []string) error {
 	} else {
 		commandLog.Printf("Zone Digest: Skipped verification (verify-digests flag is false)")
 	}
-	return nil
+	return signErr
 }

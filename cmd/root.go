@@ -36,7 +36,6 @@ var rootCmd = &cobra.Command{
 // Execute executes the command.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		commandLog.Printf("Error: %s", err)
 		os.Exit(1)
 	}
 }

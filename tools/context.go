@@ -26,6 +26,9 @@ type Context struct {
 	SignAlgorithm  SignAlgorithm       // Sign Algorithm
 	DelegatedZones map[string]struct{} // Map with Delegated zones.
 	WithDS         map[string]struct{} // Map with zones with a DS RR
+	DNSKEYS        struct {
+		ZSK, KSK map[uint16]*dns.DNSKEY // DNSKEYS
+	}
 }
 
 // ContextConfig contains the common args to sign and verify files
@@ -101,19 +104,23 @@ func (ctx *Context) isZONEMDAlready(newmd *dns.ZONEMD) bool {
 func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 	ctx.Log.Printf("Reading and parsing zone %s (updateSerial=%t)", ctx.Config.Zone, updateSerial)
 	if ctx.soa != nil {
-		ctx.Log.Printf("Duplicate call (zone had been already parsed), omitting")
-		// Zone has been already parsed. Return.
 		return nil
 	}
 	if ctx.File == nil {
 		return fmt.Errorf("no file defined on context")
 	}
-	if ctx.DelegatedZones == nil {
-		ctx.DelegatedZones = make(map[string]struct{})
-	}
+	delegatedZones := make(map[string]struct{})
 
 	if ctx.WithDS == nil {
 		ctx.WithDS = make(map[string]struct{})
+	}
+
+	if ctx.DNSKEYS.KSK == nil {
+		ctx.DNSKEYS.KSK = make(map[uint16]*dns.DNSKEY)
+	}
+
+	if ctx.DNSKEYS.ZSK == nil {
+		ctx.DNSKEYS.ZSK = make(map[uint16]*dns.DNSKEY)
 	}
 
 	rrs := make(RRArray, 0)
@@ -165,7 +172,15 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 
 			// Add to delegated if it applies
 			if rr.Header().Name != ctx.Config.Zone {
-				ctx.DelegatedZones[rr.Header().Name] = struct{}{}
+				delegatedZones[rr.Header().Name] = struct{}{}
+			}
+		case dns.TypeDNSKEY:
+			key := rr.(*dns.DNSKEY)
+			switch key.Flags {
+			case 256:
+				ctx.DNSKEYS.ZSK[key.KeyTag()] = key
+			case 257:
+				ctx.DNSKEYS.KSK[key.KeyTag()] = key
 			}
 		case dns.TypeDS:
 			ctx.WithDS[rr.Header().Name] = struct{}{}
@@ -217,7 +232,7 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 		}
 	}
 	if zone.Err() != nil {
-		return fmt.Errorf("error parsing zone: %s.", zone.Err())
+		return fmt.Errorf("error parsing zone: %s", zone.Err())
 	}
 	if ctx.soa == nil {
 		return fmt.Errorf("SOA RR not found")
@@ -238,7 +253,7 @@ func (ctx *Context) ReadAndParseZone(updateSerial bool) error {
 		}
 	}
 	ctx.rrs = rrs
-	ctx.Log.Printf("Zone read and parsed successfully")
+	ctx.DelegatedZones = delegatedZones
 	return nil
 }
 
@@ -329,16 +344,46 @@ func (ctx *Context) genInfo(session SignSession) string {
 	return fmt.Sprintf("signer=dns-tools;timestamp=%d;mode=digest", now)
 }
 
-// isSignable returns true if the rr requires to be signed.
+// isDelegated returns true if the rr requires to be signed.
 // The design of DNSSEC stipulates that delegations (non-apex NS records)
 // are not signed, and neither are any glue records.
-func (ctx *Context) isSignable(ownerName string) bool {
-	// check if ownerName is contained by a delegated zone
-	fqdnName := dns.Fqdn(ownerName)
-	for zone := range ctx.DelegatedZones {
-		if dns.IsSubDomain(zone, fqdnName) {
-			return false
+func (ctx *Context) isDelegated(ownerName string) bool {
+	splitDomain := dns.SplitDomainName(dns.Fqdn(ownerName))
+	for i := 0; i < len(splitDomain); i++ {
+		domain := strings.Join(splitDomain[i:], ".")
+		if _, ok := ctx.DelegatedZones[domain]; ok {
+			return true
 		}
 	}
-	return true
+	return false
+}
+
+// CreateNewDNSKEY creates a new DNSKEY RR, using the parameters provided.
+func (ctx *Context) CreateNewDNSKEY(flags uint16, publicKey string) *dns.DNSKEY {
+	dnskey := &dns.DNSKEY{
+		Flags:     flags,
+		Protocol:  3, // RFC4034 2.1.2
+		Algorithm: uint8(ctx.SignAlgorithm),
+		Hdr: dns.RR_Header{
+			Name:   ctx.Config.Zone,
+			Rrtype: dns.TypeDNSKEY,
+			Class:  dns.ClassINET,
+			Ttl:    ctx.soa.Minttl,
+		},
+		PublicKey: publicKey,
+	}
+	if flags == 256 {
+		ctx.DNSKEYS.ZSK[dnskey.KeyTag()] = dnskey
+	} else if flags == 257 {
+		ctx.DNSKEYS.KSK[dnskey.KeyTag()] = dnskey
+	}
+	return dnskey
+}
+
+// PrintDS prints to log device DS value of zone:
+func (ctx *Context) PrintDS() {
+	for _, key := range ctx.DNSKEYS.KSK {
+		ds := key.ToDS(dns.SHA256)
+		ctx.Log.Printf("DS [Tag %d]: \"%s\"", key.KeyTag(), ds)
+	}
 }

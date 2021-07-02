@@ -202,15 +202,13 @@ func (ctx *Context) getRRSetList(byType bool) (set RRSetList) {
 	// name, class, and type. RFC4034
 	setMap := make(map[string]RRArray)
 	for _, rr := range ctx.rrs {
-		if ctx.isSignable(rr.Header().Name) {
-			hash := getHash(rr, byType)
-			hashArr, ok := setMap[hash]
-			if !ok {
-				hashArr = make(RRArray, 0)
-				setMap[hash] = hashArr
-			}
-			setMap[hash] = append(hashArr, rr)
+		hash := getHash(rr, byType)
+		hashArr, ok := setMap[hash]
+		if !ok {
+			hashArr = make(RRArray, 0)
+			setMap[hash] = hashArr
 		}
+		setMap[hash] = append(hashArr, rr)
 	}
 	set = make(RRSetList, 0)
 	for _, rrSet := range setMap {
@@ -289,10 +287,8 @@ func (ctx *Context) addNSEC3Records() (err error) {
 		if typeMap[dns.TypeSOA] {
 			typeMap[dns.TypeNSEC3PARAM] = true
 		}
-		// Zones delegated without a DS RR should not have a NSEC3 RR
-		_, withDS := ctx.WithDS[rrSet[0].Header().Name]
-		_, delegated := ctx.DelegatedZones[rrSet[0].Header().Name]
-		if delegated && !withDS && ctx.Config.OptOut {
+		rrSetName := rrSet[0].Header().Name
+		if !(ctx.isSignable(rrSetName)) {
 			continue
 		}
 		// Add current NSEC3 RR
@@ -304,14 +300,12 @@ func (ctx *Context) addNSEC3Records() (err error) {
 		labels := dns.SplitDomainName(strings.TrimSuffix(rrSet[0].Header().Name, ctx.Config.Zone))
 		for i := range labels {
 			label := strings.Join(labels[i:], ".") + "." + ctx.Config.Zone
-			if ctx.isSignable(label) {
-				if len(label) == 0 {
-					break
-				}
-				err := nsec3list.add(label, param, typeMap) // we don't know if it is signable
-				if err != nil {
-					return err
-				}
+			if len(label) == 0 {
+				break
+			}
+			err := nsec3list.add(label, param, typeMap) // we don't know if it is signable
+			if err != nil {
+				return err
 			}
 		}
 	}

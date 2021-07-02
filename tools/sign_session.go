@@ -162,9 +162,7 @@ func Sign(session SignSession) (ds *dns.DS, err error) {
 	}
 	/* end DigestEnabled digest updating*/
 	ctx.Log.Printf("Signing done, writing zone")
-
-	ds = ksk.ToDS(dns.SHA256)
-	ctx.Log.Printf("DS: %s", ds) // SHA256
+	ctx.PrintDS()
 	err = ctx.WriteZone()
 	return ds, err
 }
@@ -176,21 +174,15 @@ func GetDNSKEY(keys *SigKeys, session SignSession) (zsk, ksk *dns.DNSKEY, err er
 		return
 	}
 	ctx := session.Context()
-	zsk = CreateNewDNSKEY(
-		ctx.Config.Zone,
+	zsk = ctx.CreateNewDNSKEY(
 		256,
-		uint8(ctx.SignAlgorithm), // (https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml)
-		ctx.soa.Minttl,
 		base64.StdEncoding.EncodeToString(zskBytes),
 	)
 	if err != nil {
 		return
 	}
-	ksk = CreateNewDNSKEY(
-		ctx.Config.Zone,
+	ksk = ctx.CreateNewDNSKEY(
 		257,
-		uint8(ctx.SignAlgorithm), // (https://www.iana.org/assignments/dns-sec-alg-numbers/dns-sec-alg-numbers.xhtml)
-		ctx.soa.Minttl,           // SOA -> minimum TTL
 		base64.StdEncoding.EncodeToString(kskBytes),
 	)
 	return
