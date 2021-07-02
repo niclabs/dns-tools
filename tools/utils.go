@@ -9,10 +9,10 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/miekg/dns"
 	"github.com/twotwotwo/sorts"
-	"golang.org/x/net/idna"
 )
 
 // CreateNewRRSIG creates a new RRSIG RR, using the parameters provided.
@@ -31,13 +31,15 @@ func CreateNewRRSIG(zone string, dnsKeyRR *dns.DNSKEY, expDate time.Time, rrSetT
 	}
 }
 
-// NormalizeFQDN normalizes a fqdn to ASCII (punycode).
+// NormalizeFQDN normalizes a fqdn to ASCII (lower-case punycode).
 func NormalizeFQDN(fqdn string) string {
-	normalized, err := idna.ToASCII(fqdn)
-	if err != nil {
-		panic(fmt.Errorf("error normalizing FQDN to punycode: %s", err))
+	fqdn = strings.ToLower(fqdn)
+	for i := 0; i < len(fqdn); i++ {
+		if fqdn[i] > unicode.MaxASCII {
+			panic(fmt.Errorf("non-ascii character in a name: %c", fqdn[i]))
+		}
 	}
-	return strings.ToLower(normalized)
+	return fqdn
 }
 
 func generateSalt(length uint8) (string, error) {
