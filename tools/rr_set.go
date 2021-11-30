@@ -240,8 +240,13 @@ func (ctx *Context) addNSECRecords() {
 			return typeArray[i] < typeArray[j]
 		})
 
+		rrSetName := rrs[0].Header().Name
+		if rrSetName == ctx.Config.Zone {
+			typeMap[dns.TypeDNSKEY] = true
+		}
+
 		nsec := &dns.NSEC{}
-		nsec.Hdr.Name = rrs[0].Header().Name
+		nsec.Hdr.Name = rrSetName
 		nsec.Hdr.Rrtype = dns.TypeNSEC
 		nsec.Hdr.Class = dns.ClassINET
 		nsec.Hdr.Ttl = rrs[0].Header().Ttl
@@ -287,7 +292,12 @@ func (ctx *Context) addNSEC3Records() (err error) {
 		if typeMap[dns.TypeSOA] {
 			typeMap[dns.TypeNSEC3PARAM] = true
 		}
+
 		rrSetName := rrSet[0].Header().Name
+		if rrSetName == ctx.Config.Zone {
+			typeMap[dns.TypeDNSKEY] = true
+		}
+
 		if !(ctx.isSignable(rrSetName)) {
 			continue
 		}
