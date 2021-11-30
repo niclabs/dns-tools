@@ -232,6 +232,11 @@ func (ctx *Context) addNSECRecords() {
 		}
 		typeMap[dns.TypeNSEC] = struct{}{}
 
+		rrSetName := rrs[0].Header().Name
+		if rrSetName == ctx.Config.Zone {
+			typeMap[dns.TypeDNSKEY] = struct{}{}
+		}
+		
 		for k := range typeMap {
 			typeArray = append(typeArray, k)
 		}
@@ -239,11 +244,6 @@ func (ctx *Context) addNSECRecords() {
 		sort.Slice(typeArray, func(i, j int) bool {
 			return typeArray[i] < typeArray[j]
 		})
-
-		rrSetName := rrs[0].Header().Name
-		if rrSetName == ctx.Config.Zone {
-			typeMap[dns.TypeDNSKEY] = true
-		}
 
 		nsec := &dns.NSEC{}
 		nsec.Hdr.Name = rrSetName
