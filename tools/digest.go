@@ -215,6 +215,7 @@ func (ctx *Context) UpdateDigest() (err error) {
 		return
 	}
 	ctx.zonemd[digestedPosition].Digest = digest
+	ctx.zonemd[digestedPosition].Serial = ctx.soa.Serial
 	return nil
 }
 
