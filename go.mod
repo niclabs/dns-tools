@@ -8,5 +8,5 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/viper v1.4.0
 	github.com/twotwotwo/sorts v0.0.0-20160814051341-bf5c1f2b8553
-	golang.org/x/net v0.23.0
+	golang.org/x/net v0.33.0
 )
